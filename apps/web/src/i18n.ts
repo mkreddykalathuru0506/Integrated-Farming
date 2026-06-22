@@ -14,6 +14,18 @@ export const resources = {
           down: 'API unreachable',
         },
       },
+      auth: {
+        login: {
+          title: 'Sign in',
+          email: 'Email',
+          password: 'Password',
+          submit: 'Sign in',
+          submitting: 'Signing in…',
+        },
+        errors: { invalid: 'Invalid email or password' },
+        welcome: 'Welcome, {{name}}',
+        logout: 'Sign out',
+      },
     },
   },
 } as const;
