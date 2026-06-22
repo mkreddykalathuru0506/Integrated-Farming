@@ -1,0 +1,166 @@
+// IFM — Phase 0 schema (owner-approved 2026-06-22).
+// Money is integer paise (BigInt). Every tenant entity carries farmId + audit columns + soft-delete.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  MANAGER
+  VETERINARIAN
+  ACCOUNTANT
+  LABOUR
+  BUYER
+}
+
+enum UnitType {
+  POULTRY
+  CATTLE
+  GOATERY
+  RABBITRY
+  MUSHROOM_HOUSE
+  HATCHERY
+  FROZEN_STORE
+  NURSERY
+  BIOGAS
+  OTHER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+enum FssaiTier {
+  BASIC
+  STATE
+  CENTRAL
+}
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  phone        String? @unique
+  name         String
+  passwordHash String
+  locale       String  @default("en")
+  isActive     Boolean @default(true)
+
+  memberships   Membership[]
+  refreshTokens RefreshToken[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Farm {
+  id       String  @id @default(cuid())
+  name     String
+  state    String?
+  district String?
+
+  settings    FarmSetting?
+  units       Unit[]
+  memberships Membership[]
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model FarmSetting {
+  id     String @id @default(cuid())
+  farmId String @unique
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  timezone      String @default("Asia/Kolkata")
+  currency      String @default("INR")
+  defaultLocale String @default("en")
+  areaUnit      String @default("acre")
+
+  // Compliance placeholders (configurable per farm; never hard-coded) — open decision #8
+  fssaiLicenseNo    String?
+  fssaiTier         FssaiTier?
+  gstin             String?
+  gstThresholdPaise BigInt? // money as integer paise; a setting, not hard-coded
+
+  extra Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Unit {
+  id       String   @id @default(cuid())
+  farmId   String
+  farm     Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name     String
+  type     UnitType
+  code     String?
+  isActive Boolean  @default(true)
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([farmId, name])
+  @@index([farmId])
+}
+
+model Membership {
+  id     String           @id @default(cuid())
+  userId String
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farmId String
+  farm   Farm             @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  role   Role
+  status MembershipStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, farmId]) // one role per user per farm in Phase 0
+  @@index([farmId])
+}
+
+model AuditLog {
+  id       String  @id @default(cuid())
+  farmId   String? // null = global/system action
+  userId   String?
+  action   String // e.g. "farm.create", "user.login"
+  entity   String
+  entityId String?
+  before   Json?
+  after    Json?
+  ip       String?
+
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}

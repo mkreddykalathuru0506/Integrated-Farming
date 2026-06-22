@@ -131,23 +131,25 @@ One agent is active at a time per slice. Work in **thin vertical slices** (one u
 
 ## 7. Common commands
 
-> TBD — fill in once the repo is scaffolded in Phase 0. Keep this in sync.
+> Monorepo = pnpm workspaces (`@ifm/web`, `@ifm/api`, `@ifm/shared`). Run from repo root. Keep this in sync.
 
 | Purpose | Command |
 |---|---|
-| Install deps | _TBD_ |
-| Dev (web) | _TBD_ |
-| Dev (api) | _TBD_ |
-| Typecheck | _TBD_ |
-| Lint | _TBD_ |
-| Unit tests | _TBD_ |
-| API tests | _TBD_ |
-| E2E tests | _TBD_ |
-| Build | _TBD_ |
-| Prisma migrate (dev) | _TBD_ |
-| Prisma migrate (down/rollback) | _TBD_ |
-| Seed (idempotent) | _TBD_ |
-| Local stack (Docker Compose) | _TBD_ |
+| Install deps (+ generates Prisma client) | `pnpm install` |
+| Dev (api :4000 + web :5180) | `pnpm dev` |
+| Typecheck (all) | `pnpm typecheck` |
+| Lint (all) | `pnpm lint` |
+| Unit + API tests (all) | `pnpm test` |
+| E2E tests (Playwright) | _added in a later slice_ |
+| Build (all) | `pnpm build` |
+| Prisma migrate (dev) | `pnpm db:migrate` |
+| Prisma migrate (deploy/prod) | `pnpm db:migrate:deploy` |
+| Rollback (dev) | `pnpm db:reset` · (prod: backup-first + `down.sql`, see ADR-0001) |
+| Seed (idempotent) | `pnpm db:seed` |
+| Local infra (Postgres + Redis) | `pnpm docker:up` / `pnpm docker:down` |
+
+**Ports (this machine):** api `4000`, web `5180`, Postgres `5432`, Redis `6382` (6379–6381 taken by other projects). Host ports are overridable in `.env` (`POSTGRES_PORT`, `REDIS_PORT`); web port in `apps/web/vite.config.ts`.
+**Env:** root `.env` (gitignored) loaded into api/Prisma via `dotenv-cli` (`-e ../../.env`). Template: `.env.example`.
 
 ---
 
@@ -193,5 +195,7 @@ One agent is active at a time per slice. Work in **thin vertical slices** (one u
 
 ## 11. Current status
 
-- **Phase:** 0 (Foundation) — open decisions resolved; **awaiting owner APPROVE of the Phase 0 plan + initial Prisma schema** (schema + structure checkpoint).
-- **Repo:** working dir is **not yet a git repo**; git + monorepo scaffold is the first Phase 0 slice (DevOps).
+- **Phase:** 0 (Foundation), in progress.
+- **Repo:** live at `github.com/mkreddykalathuru0506/Integrated-Farming`; `main` protected by convention (feature-branch → PR per slice).
+- **Slice 0.1 (skeleton + CI):** built & verified locally (all gates green, migration applied, seed idempotent, health endpoint live) — on branch `phase-0/slice-0.1-skeleton`, **awaiting checkpoint + merge**.
+- **Next:** 0.2 auth, 0.3 RBAC + farm-scoping, 0.4 farm/unit CRUD, 0.5 app shell/PWA, 0.6 staging deploy.
