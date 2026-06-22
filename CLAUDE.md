@@ -196,6 +196,8 @@ One agent is active at a time per slice. Work in **thin vertical slices** (one u
 ## 11. Current status
 
 - **Phase:** 0 (Foundation), in progress.
-- **Repo:** live at `github.com/mkreddykalathuru0506/Integrated-Farming`; `main` protected by convention (feature-branch → PR per slice).
-- **Slice 0.1 (skeleton + CI):** built & verified locally (all gates green, migration applied, seed idempotent, health endpoint live) — on branch `phase-0/slice-0.1-skeleton`, **awaiting checkpoint + merge**.
-- **Next:** 0.2 auth, 0.3 RBAC + farm-scoping, 0.4 farm/unit CRUD, 0.5 app shell/PWA, 0.6 staging deploy.
+- **Repo:** public at `github.com/mkreddykalathuru0506/Integrated-Farming`; feature-branch → PR per slice; CI green on `main`.
+- **Slice 0.1 (skeleton + CI):** ✅ merged to `main`.
+- **Slice 0.2 (auth):** built & verified (gates green, 10 tests incl. auth integration flow, live login/me/refresh/logout, audit-on-login) — on branch `phase-0/slice-0.2-auth`, **awaiting auth §1.4 checkpoint + merge**.
+- **Auth design:** Argon2id passwords; JWT access (15m) via `jose`; opaque refresh tokens stored SHA-256-hashed in `RefreshToken`, rotated on use + revocable; tokens in JSON body (httpOnly-cookie = future hardening); CI runs a Postgres service + `migrate deploy` for integration tests.
+- **Next:** 0.3 RBAC + farm-scoping, 0.4 farm/unit CRUD, 0.5 app shell/PWA, 0.6 staging deploy.
