@@ -85,6 +85,7 @@ model Farm {
   species         Species[]
   breeds          Breed[]
   lifecycleStages LifecycleStage[]
+  batches         Batch[]
 
   createdBy String?
   updatedBy String?
@@ -123,6 +124,8 @@ model Unit {
   type     UnitType
   code     String?
   isActive Boolean  @default(true)
+
+  batches Batch[]
 
   createdBy String?
   updatedBy String?
@@ -183,8 +186,9 @@ model Species {
   trackingMode    TrackingMode
   isSystemDefault Boolean      @default(false)
 
-  breeds Breed[]
-  stages LifecycleStage[]
+  breeds  Breed[]
+  stages  LifecycleStage[]
+  batches Batch[]
 
   createdBy String?
   updatedBy String?
@@ -205,6 +209,8 @@ model Breed {
   name            String
   isSystemDefault Boolean @default(false)
 
+  batches Batch[]
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -224,10 +230,56 @@ model LifecycleStage {
   isTerminal      Boolean @default(false)
   isSystemDefault Boolean @default(false)
 
+  batches Batch[] @relation("BatchStage")
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@unique([farmId, speciesId, name])
   @@index([speciesId])
+}
+
+// ---------- Livestock core (Phase 1) ----------
+enum BatchStatus {
+  ACTIVE
+  CLOSED
+}
+
+model Batch {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  unitId String?
+  unit   Unit?   @relation(fields: [unitId], references: [id])
+
+  speciesId String
+  species   Species @relation(fields: [speciesId], references: [id])
+  breedId   String?
+  breed     Breed?  @relation(fields: [breedId], references: [id])
+
+  code String
+  name String?
+
+  currentStageId String?
+  currentStage   LifecycleStage? @relation("BatchStage", fields: [currentStageId], references: [id])
+
+  initialCount Int
+  currentCount Int
+  status       BatchStatus @default(ACTIVE)
+  acquiredAt   DateTime?
+  source       String?
+  qrCode       String?     @unique
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([farmId, code])
+  @@index([farmId])
+  @@index([speciesId])
+  @@index([unitId])
 }

@@ -81,3 +81,32 @@ export const listSpecies = (token: string, farmId: string) =>
 
 export const getSpecies = (token: string, farmId: string, id: string) =>
   authed<{ species: SpeciesDetail }>(`/api/farm/species/${id}`, token, farmId);
+
+export type Batch = {
+  id: string;
+  code: string;
+  name: string | null;
+  initialCount: number;
+  currentCount: number;
+  status: 'ACTIVE' | 'CLOSED';
+  qrCode: string | null;
+  species: { id: string; code: string; name: string };
+  breed: { id: string; name: string } | null;
+  unit: { id: string; name: string } | null;
+  currentStage: { id: string; name: string; sequence: number; isTerminal: boolean } | null;
+};
+
+export const listBatches = (token: string, farmId: string) =>
+  authed<{ batches: Batch[] }>('/api/farm/batches', token, farmId);
+
+export const createBatch = (
+  token: string,
+  farmId: string,
+  data: { speciesId: string; code: string; initialCount: number; breedId?: string; unitId?: string; name?: string },
+) => authed<{ batch: Batch }>('/api/farm/batches', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const advanceBatch = (token: string, farmId: string, id: string) =>
+  authed<{ batch: Batch }>(`/api/farm/batches/${id}/advance`, token, farmId, { method: 'POST' });
+
+export const closeBatch = (token: string, farmId: string, id: string) =>
+  authed<{ batch: Batch }>(`/api/farm/batches/${id}/close`, token, farmId, { method: 'POST' });
