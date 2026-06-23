@@ -94,6 +94,8 @@ model Farm {
   scheduleTemplates ScheduleTemplate[]
   tasks             Task[]
   dailyLogs         DailyLog[]
+  healthRecords     HealthRecord[]
+  medicationLogs    MedicationLog[]
 
   createdBy String?
   updatedBy String?
@@ -287,6 +289,10 @@ model Batch {
   movements       Movement[]
   mortalityEvents MortalityEvent[]
   dailyLogs       DailyLog[]
+  healthRecords   HealthRecord[]
+  medicationLogs  MedicationLog[]
+
+  saleReadyAt DateTime?
 
   createdBy String?
   updatedBy String?
@@ -339,6 +345,10 @@ model Animal {
   movements       Movement[]
   mortalityEvents MortalityEvent[]
   dailyLogs       DailyLog[]
+  healthRecords   HealthRecord[]
+  medicationLogs  MedicationLog[]
+
+  saleReadyAt DateTime?
 
   createdBy String?
   updatedBy String?
@@ -572,4 +582,62 @@ model DailyLog {
 
   @@index([farmId])
   @@index([type])
+}
+
+// ---------- Health & breeding (Phase 3) ----------
+enum HealthEventType {
+  CHECKUP
+  SYMPTOM
+  TREATMENT
+  VET_VISIT
+  VACCINATION
+  DEWORMING
+}
+
+model HealthRecord {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  animalId String?
+  animal   Animal? @relation(fields: [animalId], references: [id])
+  batchId  String?
+  batch    Batch?  @relation(fields: [batchId], references: [id])
+
+  type        HealthEventType
+  occurredAt  DateTime        @default(now())
+  description String?
+  vetName     String?
+  diagnosis   String?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
+  @@index([animalId])
+  @@index([batchId])
+}
+
+model MedicationLog {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  animalId String?
+  animal   Animal? @relation(fields: [animalId], references: [id])
+  batchId  String?
+  batch    Batch?  @relation(fields: [batchId], references: [id])
+
+  drugName        String
+  dose            String?
+  route           String?
+  administeredAt  DateTime @default(now())
+  withdrawalDays  Int
+  withdrawalUntil DateTime // = administeredAt + withdrawalDays
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
+  @@index([withdrawalUntil])
 }

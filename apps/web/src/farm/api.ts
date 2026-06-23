@@ -223,3 +223,20 @@ export const createLog = (
   farmId: string,
   data: { type: string; batchId?: string; quantity: number; unit: string; clientLogId?: string },
 ) => authed<{ log: DailyLog }>('/api/farm/logs', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export type WithdrawalStatus = { underWithdrawal: boolean; until: string | null };
+
+export const getWithdrawal = (token: string, farmId: string, batchId: string) =>
+  authed<WithdrawalStatus>(`/api/farm/health/withdrawal?batchId=${batchId}`, token, farmId);
+
+export const recordMedication = (
+  token: string,
+  farmId: string,
+  data: { batchId: string; drugName: string; withdrawalDays: number },
+) => authed('/api/farm/health/medications', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const markSaleReady = (token: string, farmId: string, data: { batchId: string }) =>
+  authed<{ result: { saleReadyAt: string } }>('/api/farm/health/sale-ready', token, farmId, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
