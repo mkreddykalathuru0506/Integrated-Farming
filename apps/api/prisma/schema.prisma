@@ -96,6 +96,8 @@ model Farm {
   dailyLogs         DailyLog[]
   healthRecords     HealthRecord[]
   medicationLogs    MedicationLog[]
+  vaccinationItems  VaccinationScheduleItem[]
+  vaccinationEvents VaccinationEvent[]
 
   createdBy String?
   updatedBy String?
@@ -197,10 +199,11 @@ model Species {
   trackingMode    TrackingMode
   isSystemDefault Boolean      @default(false)
 
-  breeds  Breed[]
-  stages  LifecycleStage[]
-  batches Batch[]
-  animals Animal[]
+  breeds           Breed[]
+  stages           LifecycleStage[]
+  batches          Batch[]
+  animals          Animal[]
+  vaccinationItems VaccinationScheduleItem[]
 
   createdBy String?
   updatedBy String?
@@ -288,9 +291,10 @@ model Batch {
 
   movements       Movement[]
   mortalityEvents MortalityEvent[]
-  dailyLogs       DailyLog[]
-  healthRecords   HealthRecord[]
-  medicationLogs  MedicationLog[]
+  dailyLogs         DailyLog[]
+  healthRecords     HealthRecord[]
+  medicationLogs    MedicationLog[]
+  vaccinationEvents VaccinationEvent[]
 
   saleReadyAt DateTime?
 
@@ -344,9 +348,10 @@ model Animal {
 
   movements       Movement[]
   mortalityEvents MortalityEvent[]
-  dailyLogs       DailyLog[]
-  healthRecords   HealthRecord[]
-  medicationLogs  MedicationLog[]
+  dailyLogs         DailyLog[]
+  healthRecords     HealthRecord[]
+  medicationLogs    MedicationLog[]
+  vaccinationEvents VaccinationEvent[]
 
   saleReadyAt DateTime?
 
@@ -640,4 +645,42 @@ model MedicationLog {
 
   @@index([farmId])
   @@index([withdrawalUntil])
+}
+
+model VaccinationScheduleItem {
+  id          String          @id @default(cuid())
+  farmId      String
+  farm        Farm            @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  speciesId   String
+  species     Species         @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+  vaccineName String
+  type        HealthEventType @default(VACCINATION)
+  ageDays     Int
+  isSystemDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([farmId, speciesId, vaccineName, ageDays])
+  @@index([speciesId])
+}
+
+model VaccinationEvent {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  animalId String?
+  animal   Animal? @relation(fields: [animalId], references: [id])
+  batchId  String?
+  batch    Batch?  @relation(fields: [batchId], references: [id])
+
+  vaccineName    String
+  administeredAt DateTime @default(now())
+  scheduleItemId String?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
+  @@index([batchId])
 }

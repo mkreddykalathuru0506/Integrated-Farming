@@ -35,6 +35,12 @@ export const SaleReadySchema = z
   })
   .refine(exactlyOneTarget, TARGET_MSG);
 
+export const RecordVaccinationSchema = z.object({
+  batchId: z.string().min(1),
+  vaccineName: z.string().min(1).max(120),
+  scheduleItemId: z.string().min(1).optional(),
+});
+
 export type CreateHealthRecordInput = z.infer<typeof CreateHealthRecordSchema>;
 export type RecordMedicationInput = z.infer<typeof RecordMedicationSchema>;
 export type SaleReadyInput = z.infer<typeof SaleReadySchema>;

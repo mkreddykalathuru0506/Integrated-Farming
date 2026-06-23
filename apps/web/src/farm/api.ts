@@ -240,3 +240,12 @@ export const markSaleReady = (token: string, farmId: string, data: { batchId: st
     method: 'POST',
     body: JSON.stringify(data),
   });
+
+export type VaxItem = { id: string; vaccineName: string; type: string; ageDays: number };
+export type Vaccinations = { ageDays: number; due: VaxItem[]; upcoming: VaxItem[]; done: VaxItem[] };
+
+export const getVaccinations = (token: string, farmId: string, batchId: string) =>
+  authed<Vaccinations>(`/api/farm/health/vaccinations?batchId=${batchId}`, token, farmId);
+
+export const recordVaccination = (token: string, farmId: string, data: { batchId: string; vaccineName: string }) =>
+  authed('/api/farm/health/vaccinations', token, farmId, { method: 'POST', body: JSON.stringify(data) });

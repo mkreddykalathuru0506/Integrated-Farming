@@ -1,8 +1,13 @@
 import { Router } from 'express';
-import { asyncHandler } from '../errors';
+import { asyncHandler, AppError } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
-import { CreateHealthRecordSchema, RecordMedicationSchema, SaleReadySchema } from './schemas';
+import {
+  CreateHealthRecordSchema,
+  RecordMedicationSchema,
+  RecordVaccinationSchema,
+  SaleReadySchema,
+} from './schemas';
 import * as health from './service';
 
 const q = (v: unknown) => (typeof v === 'string' ? v : undefined);
@@ -59,5 +64,23 @@ healthRouter.post(
   asyncHandler(async (req, res) => {
     const input = SaleReadySchema.parse(req.body);
     res.json({ result: await health.markSaleReady(farmScope(req).farmId, req.userId!, input) });
+  }),
+);
+
+healthRouter.get(
+  '/vaccinations',
+  asyncHandler(async (req, res) => {
+    const batchId = q(req.query.batchId);
+    if (!batchId) throw new AppError(400, 'BATCH_REQUIRED', 'batchId query is required');
+    res.json(await health.listVaccinations(farmScope(req).farmId, batchId));
+  }),
+);
+
+healthRouter.post(
+  '/vaccinations',
+  requireRole('OWNER', 'MANAGER', 'VETERINARIAN'),
+  asyncHandler(async (req, res) => {
+    const input = RecordVaccinationSchema.parse(req.body);
+    res.status(201).json({ event: await health.recordVaccination(farmScope(req).farmId, req.userId!, input) });
   }),
 );

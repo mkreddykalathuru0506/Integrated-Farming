@@ -20,9 +20,20 @@ export const DEFAULT_SPECIES = [
   stages: readonly string[];
 }>;
 
+/** System-default vaccination schedule templates per species code (Brief §6). */
+const VAX_TEMPLATES: Record<string, ReadonlyArray<{ vaccineName: string; ageDays: number }>> = {
+  CHICKEN: [
+    { vaccineName: "Marek's", ageDays: 1 },
+    { vaccineName: 'Ranikhet (NDV) F1', ageDays: 7 },
+    { vaccineName: 'IBD (Gumboro)', ageDays: 14 },
+    { vaccineName: 'Ranikhet (NDV) booster', ageDays: 28 },
+    { vaccineName: 'Fowl Pox', ageDays: 42 },
+  ],
+};
+
 /**
- * Idempotently seed the system-default species/breeds/stages into a farm.
- * Uses `update: {}` so re-runs never clobber user edits (Brief §1.5/§6).
+ * Idempotently seed the system-default species/breeds/stages/vaccination templates
+ * into a farm. Uses `update: {}` so re-runs never clobber user edits (Brief §1.5/§6).
  */
 export async function seedFarmReference(db: PrismaClient, farmId: string): Promise<void> {
   for (const s of DEFAULT_SPECIES) {
@@ -50,6 +61,28 @@ export async function seedFarmReference(db: PrismaClient, farmId: string): Promi
           name,
           sequence: i + 1,
           isTerminal: i === s.stages.length - 1,
+          isSystemDefault: true,
+        },
+      });
+    }
+
+    for (const v of VAX_TEMPLATES[s.code] ?? []) {
+      await db.vaccinationScheduleItem.upsert({
+        where: {
+          farmId_speciesId_vaccineName_ageDays: {
+            farmId,
+            speciesId: species.id,
+            vaccineName: v.vaccineName,
+            ageDays: v.ageDays,
+          },
+        },
+        update: {},
+        create: {
+          farmId,
+          speciesId: species.id,
+          vaccineName: v.vaccineName,
+          ageDays: v.ageDays,
+          type: 'VACCINATION',
           isSystemDefault: true,
         },
       });
