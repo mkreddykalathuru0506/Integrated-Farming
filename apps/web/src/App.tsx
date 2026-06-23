@@ -28,6 +28,7 @@ import { ProcessingPanel } from './farm/ProcessingPanel';
 import { DispatchPanel } from './farm/DispatchPanel';
 import { AssetsPanel } from './farm/AssetsPanel';
 import { ByproductPanel } from './farm/ByproductPanel';
+import { CircularityPanel } from './farm/CircularityPanel';
 import { Button, Card } from './ui';
 
 function Dashboard() {
@@ -152,6 +153,9 @@ function Dashboard() {
           </Card>
           <Card>
             <ByproductPanel key={`bp-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
+          </Card>
+          <Card>
+            <CircularityPanel key={`ci-${selectedId}`} farmId={selectedId} />
           </Card>
           <Card>
             <UnitsPanel key={`u-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />

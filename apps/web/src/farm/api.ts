@@ -669,3 +669,14 @@ export const createByproductTransfer = (
   farmId: string,
   data: { byproductType: string; fromUnitId?: string; toUnitId?: string; quantity: number; unit?: string; creditPaise?: string },
 ) => authed<{ transfer: ByproductTransfer }>('/api/farm/byproducts', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export type Circularity = {
+  totalCreditPaise: string;
+  totalQuantity: number;
+  transferCount: number;
+  byType: { type: string; creditPaise: string; quantity: number; count: number }[];
+  byDestination: { unitId: string | null; unitName: string | null; creditPaise: string; count: number }[];
+};
+
+export const getCircularity = (token: string, farmId: string) =>
+  authed<Circularity>('/api/farm/byproducts/circularity', token, farmId);
