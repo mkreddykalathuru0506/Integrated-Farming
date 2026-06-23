@@ -4,7 +4,13 @@ import helmet from 'helmet';
 import { authRouter } from './auth/routes';
 import { meRouter, farmRouter } from './rbac/routes';
 import { farmsRouter, farmCrudRouter } from './farms/routes';
-import { speciesRouter, batchRouter, animalRouter } from './livestock/routes';
+import {
+  speciesRouter,
+  batchRouter,
+  animalRouter,
+  mortalityRouter,
+  movementRouter,
+} from './livestock/routes';
 import { errorHandler } from './errors';
 
 /** Builds the Express app. Exported separately so tests can mount it without listening. */
@@ -31,6 +37,8 @@ export function createApp(): Express {
   app.use('/api/farm/species', speciesRouter);
   app.use('/api/farm/batches', batchRouter);
   app.use('/api/farm/animals', animalRouter);
+  app.use('/api/farm/mortality', mortalityRouter);
+  app.use('/api/farm/movements', movementRouter);
 
   // JSON 404 fallback — no dead ends, consistent error shape.
   app.use((_req, res) => {

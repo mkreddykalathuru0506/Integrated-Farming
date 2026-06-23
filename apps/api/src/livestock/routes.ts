@@ -7,12 +7,15 @@ import {
   CreateBatchSchema,
   CreateBreedSchema,
   CreateSpeciesSchema,
+  RecordMortalitySchema,
+  RecordMovementSchema,
   UpdateAnimalSchema,
   UpdateBatchSchema,
 } from './schemas';
 import * as species from './species.service';
 import * as batches from './batch.service';
 import * as animals from './animal.service';
+import * as events from './events.service';
 
 /** /api/farm/species — livestock reference (member reads; OWNER/MANAGER writes). */
 export const speciesRouter = Router();
@@ -135,5 +138,27 @@ animalRouter.patch(
   asyncHandler(async (req, res) => {
     const input = UpdateAnimalSchema.parse(req.body);
     res.json({ animal: await animals.updateAnimal(farmScope(req).farmId, req.params.id!, req.userId!, input) });
+  }),
+);
+
+/** /api/farm/mortality — record mortality/culling (OWNER/MANAGER). */
+export const mortalityRouter = Router();
+mortalityRouter.use(requireAuth, requireFarmAccess, requireRole('OWNER', 'MANAGER'));
+mortalityRouter.post(
+  '/',
+  asyncHandler(async (req, res) => {
+    const input = RecordMortalitySchema.parse(req.body);
+    res.status(201).json(await events.recordMortality(farmScope(req).farmId, req.userId!, input));
+  }),
+);
+
+/** /api/farm/movements — relocate an animal/batch (OWNER/MANAGER). */
+export const movementRouter = Router();
+movementRouter.use(requireAuth, requireFarmAccess, requireRole('OWNER', 'MANAGER'));
+movementRouter.post(
+  '/',
+  asyncHandler(async (req, res) => {
+    const input = RecordMovementSchema.parse(req.body);
+    res.status(201).json({ movement: await events.recordMovement(farmScope(req).farmId, req.userId!, input) });
   }),
 );

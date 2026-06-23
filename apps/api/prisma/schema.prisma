@@ -87,6 +87,8 @@ model Farm {
   lifecycleStages LifecycleStage[]
   batches         Batch[]
   animals         Animal[]
+  movements       Movement[]
+  mortalityEvents MortalityEvent[]
 
   createdBy String?
   updatedBy String?
@@ -277,6 +279,9 @@ model Batch {
   source       String?
   qrCode       String?     @unique
 
+  movements       Movement[]
+  mortalityEvents MortalityEvent[]
+
   createdBy String?
   updatedBy String?
   createdAt DateTime  @default(now())
@@ -325,6 +330,9 @@ model Animal {
   currentStage   LifecycleStage? @relation("AnimalStage", fields: [currentStageId], references: [id])
   status         AnimalStatus    @default(ACTIVE)
 
+  movements       Movement[]
+  mortalityEvents MortalityEvent[]
+
   createdBy String?
   updatedBy String?
   createdAt DateTime  @default(now())
@@ -335,4 +343,57 @@ model Animal {
   @@index([farmId])
   @@index([speciesId])
   @@index([unitId])
+}
+
+enum EventType {
+  MORTALITY
+  CULL
+}
+
+model Movement {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  animalId String?
+  animal   Animal? @relation(fields: [animalId], references: [id])
+  batchId  String?
+  batch    Batch?  @relation(fields: [batchId], references: [id])
+
+  fromUnitId String?
+  toUnitId   String?
+  count      Int?
+  reason     String?
+  movedAt    DateTime @default(now())
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
+  @@index([animalId])
+  @@index([batchId])
+}
+
+model MortalityEvent {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  animalId String?
+  animal   Animal? @relation(fields: [animalId], references: [id])
+  batchId  String?
+  batch    Batch?  @relation(fields: [batchId], references: [id])
+
+  type       EventType
+  count      Int       @default(1)
+  cause      String?
+  occurredAt DateTime  @default(now())
+  notes      String?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
+  @@index([batchId])
+  @@index([animalId])
 }

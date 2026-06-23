@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TrackingMode, Sex } from '@prisma/client';
+import { TrackingMode, Sex, EventType } from '@prisma/client';
 
 export const CreateSpeciesSchema = z.object({
   code: z
@@ -50,8 +50,33 @@ export const UpdateAnimalSchema = z.object({
   dob: z.string().datetime().nullable().optional(),
 });
 
+const exactlyOneTarget = (d: { animalId?: string; batchId?: string }) => !!d.animalId !== !!d.batchId;
+
+export const RecordMortalitySchema = z
+  .object({
+    animalId: z.string().min(1).optional(),
+    batchId: z.string().min(1).optional(),
+    type: z.nativeEnum(EventType),
+    count: z.number().int().positive().optional(),
+    cause: z.string().max(200).optional(),
+    notes: z.string().max(500).optional(),
+    occurredAt: z.string().datetime().optional(),
+  })
+  .refine(exactlyOneTarget, { message: 'Provide exactly one of animalId or batchId' });
+
+export const RecordMovementSchema = z
+  .object({
+    animalId: z.string().min(1).optional(),
+    batchId: z.string().min(1).optional(),
+    toUnitId: z.string().min(1),
+    reason: z.string().max(200).optional(),
+  })
+  .refine(exactlyOneTarget, { message: 'Provide exactly one of animalId or batchId' });
+
 export type CreateSpeciesInput = z.infer<typeof CreateSpeciesSchema>;
 export type CreateBatchInput = z.infer<typeof CreateBatchSchema>;
 export type UpdateBatchInput = z.infer<typeof UpdateBatchSchema>;
 export type CreateAnimalInput = z.infer<typeof CreateAnimalSchema>;
 export type UpdateAnimalInput = z.infer<typeof UpdateAnimalSchema>;
+export type RecordMortalityInput = z.infer<typeof RecordMortalitySchema>;
+export type RecordMovementInput = z.infer<typeof RecordMovementSchema>;
