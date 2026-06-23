@@ -18,6 +18,8 @@ export type FarmSettings = {
   fssaiTier: string | null;
   gstin: string | null;
   gstThresholdPaise: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 async function authed<T>(
@@ -680,3 +682,29 @@ export type Circularity = {
 
 export const getCircularity = (token: string, farmId: string) =>
   authed<Circularity>('/api/farm/byproducts/circularity', token, farmId);
+
+// ---------- Intelligence: weather + risk (Phase 7) ----------
+export type Weather = {
+  weather: { tempC: number; humidityPct: number | null; condition: string | null; source: string; observedAt: string; fetchedAt: string };
+  cached?: boolean;
+  risk?: { atRisk: boolean; severity: string; reason: string };
+};
+export type RiskFlag = {
+  id: string;
+  type: string;
+  severity: string;
+  reason: string;
+  status: string;
+  source: string | null;
+  createdAt: string;
+  acknowledgedAt: string | null;
+};
+
+export const getWeather = (token: string, farmId: string, refresh = false) =>
+  authed<Weather>(`/api/farm/weather${refresh ? '?refresh=1' : ''}`, token, farmId);
+
+export const listRisks = (token: string, farmId: string, status?: string) =>
+  authed<{ risks: RiskFlag[] }>(`/api/farm/risk${status ? `?status=${status}` : ''}`, token, farmId);
+
+export const acknowledgeRisk = (token: string, farmId: string, id: string) =>
+  authed<{ risk: RiskFlag }>(`/api/farm/risk/${id}/ack`, token, farmId, { method: 'POST', body: JSON.stringify({}) });

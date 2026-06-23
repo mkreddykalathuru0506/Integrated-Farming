@@ -19,6 +19,8 @@ type SettingRow = {
   fssaiTier: string | null;
   gstin: string | null;
   gstThresholdPaise: bigint | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 type UnitRow = {
   id: string;
@@ -50,6 +52,8 @@ function settingToDTO(s: SettingRow) {
     gstin: s.gstin,
     // money: integer paise transported as a string (avoids BigInt JSON + precision issues)
     gstThresholdPaise: s.gstThresholdPaise === null ? null : s.gstThresholdPaise.toString(),
+    latitude: s.latitude,
+    longitude: s.longitude,
   };
 }
 
@@ -113,6 +117,8 @@ export async function updateSettings(farmId: string, input: UpdateSettingsInput)
     data.gstThresholdPaise =
       input.gstThresholdPaise === null ? null : BigInt(input.gstThresholdPaise);
   }
+  if (input.latitude !== undefined) data.latitude = input.latitude;
+  if (input.longitude !== undefined) data.longitude = input.longitude;
   const s = await prisma.farmSetting.update({ where: { farmId }, data });
   return settingToDTO(s);
 }

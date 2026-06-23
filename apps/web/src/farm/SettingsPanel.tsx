@@ -31,6 +31,8 @@ export function SettingsPanel({ farmId, canWrite }: { farmId: string; canWrite: 
         fssaiLicenseNo: settings.fssaiLicenseNo,
         fssaiTier: settings.fssaiTier,
         gstin: settings.gstin,
+        latitude: settings.latitude,
+        longitude: settings.longitude,
       });
       setSettings(r.settings);
       setSaved(true);
@@ -88,6 +90,29 @@ export function SettingsPanel({ farmId, canWrite }: { farmId: string; canWrite: 
           disabled={!canWrite}
         />
       </label>
+
+      <div className="flex gap-2">
+        <label className="block flex-1 space-y-1 text-sm text-slate-700">
+          <span>{t('settings.latitude')}</span>
+          <Input
+            type="number"
+            step="0.0001"
+            value={settings.latitude ?? ''}
+            onChange={(e) => set({ latitude: e.target.value === '' ? null : Number(e.target.value) })}
+            disabled={!canWrite}
+          />
+        </label>
+        <label className="block flex-1 space-y-1 text-sm text-slate-700">
+          <span>{t('settings.longitude')}</span>
+          <Input
+            type="number"
+            step="0.0001"
+            value={settings.longitude ?? ''}
+            onChange={(e) => set({ longitude: e.target.value === '' ? null : Number(e.target.value) })}
+            disabled={!canWrite}
+          />
+        </label>
+      </div>
 
       {saved && <p className="text-sm text-green-700">{t('settings.saved')}</p>}
       {error && (
