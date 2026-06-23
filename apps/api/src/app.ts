@@ -26,6 +26,7 @@ import { coldStorageRouter } from './cold/routes';
 import { processingRouter, lotRouter } from './processing/routes';
 import { dispatchRouter } from './dispatch/routes';
 import { assetRouter } from './assets/routes';
+import { byproductRouter } from './byproducts/routes';
 import { errorHandler } from './errors';
 
 /** Builds the Express app. Exported separately so tests can mount it without listening. */
@@ -76,6 +77,7 @@ export function createApp(): Express {
   app.use('/api/farm/lots', lotRouter);
   app.use('/api/farm/dispatches', dispatchRouter);
   app.use('/api/farm/assets', assetRouter);
+  app.use('/api/farm/byproducts', byproductRouter);
 
   // JSON 404 fallback — no dead ends, consistent error shape.
   app.use((_req, res) => {

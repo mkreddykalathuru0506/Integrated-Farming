@@ -118,6 +118,7 @@ model Farm {
   assets               Asset[]
   maintenanceSchedules MaintenanceSchedule[]
   maintenanceRecords   MaintenanceRecord[]
+  byproductTransfers   ByproductTransfer[]
 
   createdBy String?
   updatedBy String?
@@ -1396,4 +1397,40 @@ model MaintenanceRecord {
 
   @@index([farmId])
   @@index([assetId])
+}
+
+// ---------- Byproducts & circularity (Phase 6) ----------
+enum ByproductType {
+  LITTER
+  MANURE
+  COMPOST
+  SLURRY
+  EGGSHELL
+  SLAUGHTER_WASTE
+  CROP_RESIDUE
+  OTHER
+}
+
+// Internal transfer of a byproduct between units (e.g. litter → compost → nursery).
+// creditPaise = internal value / cost avoided, fed into the circularity savings rollup.
+model ByproductTransfer {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  byproductType ByproductType
+  fromUnitId    String?
+  sourceBatchId String?
+  toUnitId      String?
+
+  quantity      Decimal
+  unit          String   @default("kg")
+  creditPaise   BigInt   @default(0)
+  transferredAt DateTime @default(now())
+  notes         String?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
 }

@@ -646,3 +646,26 @@ export const recordMaintenance = (
 
 export const maintenanceReminders = (token: string, farmId: string) =>
   authed<{ due: MaintReminder[] }>('/api/farm/assets/reminders', token, farmId);
+
+// ---------- Byproducts & circularity (Phase 6) ----------
+export type ByproductTransfer = {
+  id: string;
+  byproductType: string;
+  fromUnitId: string | null;
+  toUnitId: string | null;
+  sourceBatchId: string | null;
+  quantity: string;
+  unit: string;
+  creditPaise: string;
+  transferredAt: string;
+  notes: string | null;
+};
+
+export const listByproducts = (token: string, farmId: string) =>
+  authed<{ transfers: ByproductTransfer[] }>('/api/farm/byproducts', token, farmId);
+
+export const createByproductTransfer = (
+  token: string,
+  farmId: string,
+  data: { byproductType: string; fromUnitId?: string; toUnitId?: string; quantity: number; unit?: string; creditPaise?: string },
+) => authed<{ transfer: ByproductTransfer }>('/api/farm/byproducts', token, farmId, { method: 'POST', body: JSON.stringify(data) });
