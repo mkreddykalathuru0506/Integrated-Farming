@@ -606,3 +606,43 @@ export const createDispatch = (
     lines: { productLotId?: string; batchId?: string; qtyKg?: number; count?: number }[];
   },
 ) => authed<{ dispatch: Dispatch }>('/api/farm/dispatches', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+// ---------- Assets & maintenance (Phase 6) ----------
+export type MaintSchedule = { id: string; name: string; intervalDays: number; nextDueDate: string; isActive: boolean };
+export type Asset = {
+  id: string;
+  name: string;
+  type: string;
+  code: string | null;
+  status: string;
+  purchaseDate: string | null;
+  purchaseCostPaise: string | null;
+  schedules: MaintSchedule[];
+};
+export type MaintReminder = { id: string; name: string; nextDueDate: string; asset: { id: string; name: string } };
+
+export const listAssets = (token: string, farmId: string) =>
+  authed<{ assets: Asset[] }>('/api/farm/assets', token, farmId);
+
+export const createAsset = (
+  token: string,
+  farmId: string,
+  data: { name: string; type?: string; purchaseCostPaise?: string },
+) => authed<{ asset: Asset }>('/api/farm/assets', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const createMaintenanceSchedule = (
+  token: string,
+  farmId: string,
+  assetId: string,
+  data: { name: string; intervalDays: number; nextDueDate: string },
+) => authed<{ schedule: MaintSchedule }>(`/api/farm/assets/${assetId}/schedules`, token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const recordMaintenance = (
+  token: string,
+  farmId: string,
+  assetId: string,
+  data: { scheduleId?: string; type?: string; costPaise?: string; vendor?: string },
+) => authed(`/api/farm/assets/${assetId}/maintenance`, token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const maintenanceReminders = (token: string, farmId: string) =>
+  authed<{ due: MaintReminder[] }>('/api/farm/assets/reminders', token, farmId);

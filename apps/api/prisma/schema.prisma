@@ -115,6 +115,9 @@ model Farm {
   processingRuns    ProcessingRun[]
   productLots       ProductLot[]
   dispatches        Dispatch[]
+  assets               Asset[]
+  maintenanceSchedules MaintenanceSchedule[]
+  maintenanceRecords   MaintenanceRecord[]
 
   createdBy String?
   updatedBy String?
@@ -1296,4 +1299,101 @@ model DispatchLine {
 
   @@index([dispatchId])
   @@index([productLotId])
+}
+
+// ---------- Maintenance & assets (Phase 6) ----------
+enum AssetType {
+  EQUIPMENT
+  VEHICLE
+  MACHINERY
+  BUILDING
+  TOOL
+  OTHER
+}
+
+enum AssetStatus {
+  ACTIVE
+  UNDER_REPAIR
+  RETIRED
+}
+
+enum MaintenanceType {
+  SERVICE
+  REPAIR
+  INSPECTION
+  CALIBRATION
+  OTHER
+}
+
+model Asset {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  name              String
+  type              AssetType   @default(EQUIPMENT)
+  code              String?
+  unitId            String?
+  purchaseDate      DateTime?
+  purchaseCostPaise BigInt?
+  status            AssetStatus @default(ACTIVE)
+  notes             String?
+
+  maintenanceSchedules MaintenanceSchedule[]
+  maintenanceRecords   MaintenanceRecord[]
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([farmId])
+}
+
+model MaintenanceSchedule {
+  id      String @id @default(cuid())
+  farmId  String
+  farm    Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  assetId String
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  name         String
+  intervalDays Int
+  nextDueDate  DateTime
+  isActive     Boolean  @default(true)
+
+  records MaintenanceRecord[]
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([farmId])
+  @@index([assetId])
+}
+
+model MaintenanceRecord {
+  id      String @id @default(cuid())
+  farmId  String
+  farm    Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  assetId String
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  scheduleId String?
+  schedule   MaintenanceSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  type        MaintenanceType @default(SERVICE)
+  performedAt DateTime        @default(now())
+  costPaise   BigInt          @default(0)
+  vendor      String?
+  notes       String?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
+  @@index([assetId])
 }
