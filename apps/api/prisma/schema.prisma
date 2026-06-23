@@ -109,6 +109,7 @@ model Farm {
   vendors           Vendor[]
   customers         Customer[]
   invoices          Invoice[]
+  salesOrders       SalesOrder[]
 
   createdBy String?
   updatedBy String?
@@ -1011,7 +1012,8 @@ model Customer {
   state   String?
   address String?
 
-  invoices Invoice[]
+  invoices    Invoice[]
+  salesOrders SalesOrder[]
 
   createdBy String?
   updatedBy String?
@@ -1070,5 +1072,58 @@ model InvoiceLineItem {
   batchId        String?
 
   @@index([invoiceId])
+  @@index([batchId])
+}
+
+// ---------- Sales & frozen meat (Phase 5) ----------
+enum SalesOrderStatus {
+  DRAFT
+  CONFIRMED
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+}
+
+model SalesOrder {
+  id          String           @id @default(cuid())
+  farmId      String
+  farm        Farm             @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  orderNumber String
+  customerId  String
+  customer    Customer         @relation(fields: [customerId], references: [id])
+  status      SalesOrderStatus @default(DRAFT)
+  orderDate   DateTime         @default(now())
+  expectedDate DateTime?
+  totalPaise  BigInt           @default(0)
+  notes       String?
+
+  lines SalesOrderLine[]
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([farmId, orderNumber])
+  @@index([farmId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model SalesOrderLine {
+  id      String     @id @default(cuid())
+  orderId String
+  order   SalesOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  description    String
+  qty            Decimal
+  unit           String  @default("kg")
+  unitPricePaise BigInt
+  lineTotalPaise BigInt
+  batchId        String? // direct-from-batch sale (live)
+  productLotId   String? // processed-lot sale (Phase 5.3+)
+
+  @@index([orderId])
   @@index([batchId])
 }

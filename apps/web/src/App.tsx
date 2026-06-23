@@ -22,6 +22,7 @@ import { FeedPanel } from './farm/FeedPanel';
 import { ExpensesPanel } from './farm/ExpensesPanel';
 import { EmiInsurancePanel } from './farm/EmiInsurancePanel';
 import { InvoicePanel } from './farm/InvoicePanel';
+import { OrdersPanel } from './farm/OrdersPanel';
 import { Button, Card } from './ui';
 
 function Dashboard() {
@@ -127,6 +128,9 @@ function Dashboard() {
           </Card>
           <Card>
             <InvoicePanel key={`inv-${selectedId}`} farmId={selectedId} canWrite={canBill} />
+          </Card>
+          <Card>
+            <OrdersPanel key={`ord-${selectedId}`} farmId={selectedId} canWrite={canWriteFinance} />
           </Card>
           <Card>
             <UnitsPanel key={`u-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
