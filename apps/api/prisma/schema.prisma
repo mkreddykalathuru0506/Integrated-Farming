@@ -86,6 +86,7 @@ model Farm {
   breeds          Breed[]
   lifecycleStages LifecycleStage[]
   batches         Batch[]
+  animals         Animal[]
 
   createdBy String?
   updatedBy String?
@@ -126,6 +127,7 @@ model Unit {
   isActive Boolean  @default(true)
 
   batches Batch[]
+  animals Animal[]
 
   createdBy String?
   updatedBy String?
@@ -189,6 +191,7 @@ model Species {
   breeds  Breed[]
   stages  LifecycleStage[]
   batches Batch[]
+  animals Animal[]
 
   createdBy String?
   updatedBy String?
@@ -210,6 +213,7 @@ model Breed {
   isSystemDefault Boolean @default(false)
 
   batches Batch[]
+  animals Animal[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -231,6 +235,7 @@ model LifecycleStage {
   isSystemDefault Boolean @default(false)
 
   batches Batch[] @relation("BatchStage")
+  animals Animal[] @relation("AnimalStage")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -279,6 +284,54 @@ model Batch {
   deletedAt DateTime?
 
   @@unique([farmId, code])
+  @@index([farmId])
+  @@index([speciesId])
+  @@index([unitId])
+}
+
+enum AnimalStatus {
+  ACTIVE
+  SOLD
+  DEAD
+  CULLED
+}
+
+enum Sex {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+model Animal {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  unitId String?
+  unit   Unit?  @relation(fields: [unitId], references: [id])
+
+  speciesId String
+  species   Species @relation(fields: [speciesId], references: [id])
+  breedId   String?
+  breed     Breed?  @relation(fields: [breedId], references: [id])
+
+  tagNumber String?
+  qrCode    String?   @unique
+  name      String?
+  sex       Sex       @default(UNKNOWN)
+  dob       DateTime?
+
+  currentStageId String?
+  currentStage   LifecycleStage? @relation("AnimalStage", fields: [currentStageId], references: [id])
+  status         AnimalStatus    @default(ACTIVE)
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([farmId, tagNumber])
   @@index([farmId])
   @@index([speciesId])
   @@index([unitId])

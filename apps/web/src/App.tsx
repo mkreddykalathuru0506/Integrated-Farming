@@ -10,6 +10,7 @@ import { UnitsPanel } from './farm/UnitsPanel';
 import { SettingsPanel } from './farm/SettingsPanel';
 import { SpeciesPanel } from './farm/SpeciesPanel';
 import { BatchesPanel } from './farm/BatchesPanel';
+import { AnimalsPanel } from './farm/AnimalsPanel';
 import { Button, Card } from './ui';
 
 function Dashboard() {
@@ -77,6 +78,9 @@ function Dashboard() {
           </Card>
           <Card>
             <BatchesPanel key={`b-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
+          </Card>
+          <Card>
+            <AnimalsPanel key={`a-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
           </Card>
           <Card>
             <UnitsPanel key={`u-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />

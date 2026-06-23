@@ -3,13 +3,16 @@ import { asyncHandler } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
 import {
+  CreateAnimalSchema,
   CreateBatchSchema,
   CreateBreedSchema,
   CreateSpeciesSchema,
+  UpdateAnimalSchema,
   UpdateBatchSchema,
 } from './schemas';
 import * as species from './species.service';
 import * as batches from './batch.service';
+import * as animals from './animal.service';
 
 /** /api/farm/species — livestock reference (member reads; OWNER/MANAGER writes). */
 export const speciesRouter = Router();
@@ -96,5 +99,41 @@ batchRouter.post(
   requireRole('OWNER', 'MANAGER'),
   asyncHandler(async (req, res) => {
     res.json({ batch: await batches.closeBatch(farmScope(req).farmId, req.params.id!, req.userId!) });
+  }),
+);
+
+/** /api/farm/animals — individual animals (member reads; OWNER/MANAGER writes). */
+export const animalRouter = Router();
+animalRouter.use(requireAuth, requireFarmAccess);
+
+animalRouter.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    res.json({ animals: await animals.listAnimals(farmScope(req).farmId) });
+  }),
+);
+
+animalRouter.post(
+  '/',
+  requireRole('OWNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const input = CreateAnimalSchema.parse(req.body);
+    res.status(201).json({ animal: await animals.createAnimal(farmScope(req).farmId, req.userId!, input) });
+  }),
+);
+
+animalRouter.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    res.json({ animal: await animals.getAnimal(farmScope(req).farmId, req.params.id!) });
+  }),
+);
+
+animalRouter.patch(
+  '/:id',
+  requireRole('OWNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const input = UpdateAnimalSchema.parse(req.body);
+    res.json({ animal: await animals.updateAnimal(farmScope(req).farmId, req.params.id!, req.userId!, input) });
   }),
 );
