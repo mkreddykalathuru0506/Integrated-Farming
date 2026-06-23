@@ -165,6 +165,16 @@ const en = {
       pending: '{{count}} to sync',
       type: { FEED: 'Feed', EGGS: 'Eggs', WEIGHT: 'Weight' },
     },
+    breeding: {
+      title: 'Breeding',
+      loading: 'Loading…',
+      error: 'Could not load breeding records',
+      empty: 'No breeding records yet',
+      record: 'Record',
+      complete: 'Complete',
+      due: 'Expected due',
+      status: { PLANNED: 'Planned', CONFIRMED: 'Confirmed', COMPLETED: 'Completed', FAILED: 'Failed' },
+    },
     vax: {
       title: 'Vaccinations',
       noBatches: 'Add a batch first',

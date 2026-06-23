@@ -98,6 +98,7 @@ model Farm {
   medicationLogs    MedicationLog[]
   vaccinationItems  VaccinationScheduleItem[]
   vaccinationEvents VaccinationEvent[]
+  breedingRecords   BreedingRecord[]
 
   createdBy String?
   updatedBy String?
@@ -198,12 +199,15 @@ model Species {
   name            String
   trackingMode    TrackingMode
   isSystemDefault Boolean      @default(false)
+  gestationDays   Int?
+  incubationDays  Int?
 
   breeds           Breed[]
   stages           LifecycleStage[]
   batches          Batch[]
   animals          Animal[]
   vaccinationItems VaccinationScheduleItem[]
+  breedingRecords  BreedingRecord[]
 
   createdBy String?
   updatedBy String?
@@ -352,6 +356,8 @@ model Animal {
   healthRecords     HealthRecord[]
   medicationLogs    MedicationLog[]
   vaccinationEvents VaccinationEvent[]
+  breedingsAsDam    BreedingRecord[] @relation("DamBreeding")
+  breedingsAsSire   BreedingRecord[] @relation("SireBreeding")
 
   saleReadyAt DateTime?
 
@@ -683,4 +689,38 @@ model VaccinationEvent {
 
   @@index([farmId])
   @@index([batchId])
+}
+
+enum BreedingStatus {
+  PLANNED
+  CONFIRMED
+  COMPLETED
+  FAILED
+}
+
+model BreedingRecord {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  speciesId String?
+  species   Species? @relation(fields: [speciesId], references: [id])
+  damId     String?
+  dam       Animal?  @relation("DamBreeding", fields: [damId], references: [id])
+  sireId    String?
+  sire      Animal?  @relation("SireBreeding", fields: [sireId], references: [id])
+
+  method          String?
+  breedingDate    DateTime
+  expectedDueDate DateTime?
+  status          BreedingStatus @default(PLANNED)
+  offspringCount  Int?
+  notes           String?
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([farmId])
 }

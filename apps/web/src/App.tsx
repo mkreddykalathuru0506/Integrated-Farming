@@ -16,6 +16,7 @@ import { TasksPanel } from './farm/TasksPanel';
 import { DailyLogPanel } from './farm/DailyLogPanel';
 import { HealthPanel } from './farm/HealthPanel';
 import { VaccinationPanel } from './farm/VaccinationPanel';
+import { BreedingPanel } from './farm/BreedingPanel';
 import { Button, Card } from './ui';
 
 function Dashboard() {
@@ -101,6 +102,9 @@ function Dashboard() {
           </Card>
           <Card>
             <VaccinationPanel key={`vx-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
+          </Card>
+          <Card>
+            <BreedingPanel key={`br-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
           </Card>
           <Card>
             <UnitsPanel key={`u-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />

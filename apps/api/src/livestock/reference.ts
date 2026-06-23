@@ -20,6 +20,10 @@ export const DEFAULT_SPECIES = [
   stages: readonly string[];
 }>;
 
+/** Gestation (mammals) + incubation (poultry) day defaults per species code (Brief §6). */
+const GESTATION_DAYS: Record<string, number> = { CATTLE: 283, BUFFALO: 310, GOAT: 150, SHEEP: 152, RABBIT: 31 };
+const INCUBATION_DAYS: Record<string, number> = { CHICKEN: 21, QUAIL: 18, DUCK: 28, TURKEY: 28 };
+
 /** System-default vaccination schedule templates per species code (Brief §6). */
 const VAX_TEMPLATES: Record<string, ReadonlyArray<{ vaccineName: string; ageDays: number }>> = {
   CHICKEN: [
@@ -37,10 +41,14 @@ const VAX_TEMPLATES: Record<string, ReadonlyArray<{ vaccineName: string; ageDays
  */
 export async function seedFarmReference(db: PrismaClient, farmId: string): Promise<void> {
   for (const s of DEFAULT_SPECIES) {
+    const days = {
+      ...(GESTATION_DAYS[s.code] ? { gestationDays: GESTATION_DAYS[s.code] } : {}),
+      ...(INCUBATION_DAYS[s.code] ? { incubationDays: INCUBATION_DAYS[s.code] } : {}),
+    };
     const species = await db.species.upsert({
       where: { farmId_code: { farmId, code: s.code } },
-      update: {},
-      create: { farmId, code: s.code, name: s.name, trackingMode: s.trackingMode, isSystemDefault: true },
+      update: days,
+      create: { farmId, code: s.code, name: s.name, trackingMode: s.trackingMode, isSystemDefault: true, ...days },
     });
 
     for (const breed of s.breeds) {

@@ -249,3 +249,29 @@ export const getVaccinations = (token: string, farmId: string, batchId: string) 
 
 export const recordVaccination = (token: string, farmId: string, data: { batchId: string; vaccineName: string }) =>
   authed('/api/farm/health/vaccinations', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export type BreedingRecord = {
+  id: string;
+  speciesId: string | null;
+  method: string | null;
+  breedingDate: string;
+  expectedDueDate: string | null;
+  status: string;
+  offspringCount: number | null;
+};
+
+export const listBreeding = (token: string, farmId: string) =>
+  authed<{ records: BreedingRecord[] }>('/api/farm/breeding', token, farmId);
+
+export const createBreeding = (
+  token: string,
+  farmId: string,
+  data: { speciesId?: string; method?: string; breedingDate: string },
+) => authed<{ record: BreedingRecord }>('/api/farm/breeding', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const updateBreeding = (
+  token: string,
+  farmId: string,
+  id: string,
+  data: { status?: string; offspringCount?: number },
+) => authed<{ record: BreedingRecord }>(`/api/farm/breeding/${id}`, token, farmId, { method: 'PATCH', body: JSON.stringify(data) });
