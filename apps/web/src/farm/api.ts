@@ -204,3 +204,22 @@ export const createSchedule = (
   farmId: string,
   data: { name: string; taskType: string; frequency: string },
 ) => authed<{ schedule: Schedule }>('/api/farm/schedules', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export type DailyLog = {
+  id: string;
+  type: string;
+  quantity: number;
+  unit: string;
+  loggedAt: string;
+  batchId: string | null;
+  clientLogId: string | null;
+};
+
+export const listLogs = (token: string, farmId: string, type?: string) =>
+  authed<{ logs: DailyLog[] }>(`/api/farm/logs${type ? `?type=${type}` : ''}`, token, farmId);
+
+export const createLog = (
+  token: string,
+  farmId: string,
+  data: { type: string; batchId?: string; quantity: number; unit: string; clientLogId?: string },
+) => authed<{ log: DailyLog }>('/api/farm/logs', token, farmId, { method: 'POST', body: JSON.stringify(data) });
