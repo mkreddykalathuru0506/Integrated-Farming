@@ -41,7 +41,6 @@ suite('Batch records + stage machine (integration)', () => {
   afterAll(async () => {
     await prisma.user.deleteMany({ where: { email: { in: Object.values(emails) } } });
     await prisma.farm.deleteMany({ where: { id: { in: [farm1, farm2] } } });
-    await prisma.$disconnect();
   });
 
   let batchId = '';

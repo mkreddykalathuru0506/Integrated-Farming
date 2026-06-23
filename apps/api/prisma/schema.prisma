@@ -99,6 +99,8 @@ model Farm {
   vaccinationItems  VaccinationScheduleItem[]
   vaccinationEvents VaccinationEvent[]
   breedingRecords   BreedingRecord[]
+  hatcheryBatches   HatcheryBatch[]
+  incubationLogs    IncubationLog[]
 
   createdBy String?
   updatedBy String?
@@ -208,6 +210,7 @@ model Species {
   animals          Animal[]
   vaccinationItems VaccinationScheduleItem[]
   breedingRecords  BreedingRecord[]
+  hatcheryBatches  HatcheryBatch[]
 
   createdBy String?
   updatedBy String?
@@ -228,8 +231,9 @@ model Breed {
   name            String
   isSystemDefault Boolean @default(false)
 
-  batches Batch[]
-  animals Animal[]
+  batches         Batch[]
+  animals         Animal[]
+  hatcheryBatches HatcheryBatch[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -723,4 +727,73 @@ model BreedingRecord {
   updatedAt DateTime @updatedAt
 
   @@index([farmId])
+}
+
+enum HatchStatus {
+  SET
+  INCUBATING
+  CANDLED
+  LOCKDOWN
+  HATCHED
+  CLOSED
+}
+
+enum IncubationEventType {
+  CANDLING
+  LOCKDOWN
+  HATCH
+  TEMP_LOG
+  TURN
+  OTHER
+}
+
+model HatcheryBatch {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  speciesId String
+  species   Species @relation(fields: [speciesId], references: [id])
+  breedId   String?
+  breed     Breed?  @relation(fields: [breedId], references: [id])
+
+  code              String
+  setDate           DateTime
+  eggCount          Int
+  incubationDays    Int
+  expectedHatchDate DateTime
+  candlingDate      DateTime?
+  lockdownDate      DateTime?
+  status            HatchStatus @default(SET)
+  fertileCount      Int?
+  hatchedCount      Int?
+
+  incubationLogs IncubationLog[]
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([farmId, code])
+  @@index([farmId])
+}
+
+model IncubationLog {
+  id              String        @id @default(cuid())
+  farmId          String
+  farm            Farm          @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  hatcheryBatchId String
+  hatcheryBatch   HatcheryBatch @relation(fields: [hatcheryBatchId], references: [id], onDelete: Cascade)
+
+  occurredAt   DateTime            @default(now())
+  event        IncubationEventType
+  temperatureC Float?
+  humidityPct  Float?
+  notes        String?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([hatcheryBatchId])
 }

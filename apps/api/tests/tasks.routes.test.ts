@@ -38,7 +38,6 @@ suite('Task engine (integration)', () => {
   afterAll(async () => {
     await prisma.user.deleteMany({ where: { email: { in: Object.values(emails) } } });
     await prisma.farm.deleteMany({ where: { id: farm } });
-    await prisma.$disconnect();
   });
 
   it('generates daily tasks idempotently', async () => {

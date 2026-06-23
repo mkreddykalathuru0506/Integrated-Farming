@@ -35,7 +35,6 @@ suite('Workers + attendance (integration)', () => {
   afterAll(async () => {
     await prisma.user.deleteMany({ where: { email: { in: Object.values(emails) } } });
     await prisma.farm.deleteMany({ where: { id: { in: [farm, farm2] } } });
-    await prisma.$disconnect();
   });
 
   let workerId = '';

@@ -43,7 +43,6 @@ suite('RBAC + farm scoping (integration)', () => {
   afterAll(async () => {
     await prisma.user.deleteMany({ where: { email: { in: Object.values(users) } } });
     await prisma.farm.deleteMany({ where: { id: { in: [farmA, farmB] } } });
-    await prisma.$disconnect();
   });
 
   it('OWNER of farm A can list members', async () => {

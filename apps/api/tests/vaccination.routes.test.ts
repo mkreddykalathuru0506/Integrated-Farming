@@ -39,7 +39,6 @@ suite('Vaccination schedules (integration)', () => {
   afterAll(async () => {
     await prisma.user.deleteMany({ where: { email: { in: Object.values(emails) } } });
     await prisma.farm.deleteMany({ where: { id: farm } });
-    await prisma.$disconnect();
   });
 
   it('a 30-day-old batch has overdue vaccinations due + Fowl Pox upcoming', async () => {
