@@ -448,3 +448,44 @@ export async function openInvoicePdf(token: string, farmId: string, id: string):
   window.open(url, '_blank');
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
+
+// ---------- Sales orders (Phase 5) ----------
+export type OrderLine = {
+  id: string;
+  description: string;
+  qty: string;
+  unit: string;
+  unitPricePaise: string;
+  lineTotalPaise: string;
+  batchId: string | null;
+  productLotId: string | null;
+};
+export type SalesOrder = {
+  id: string;
+  orderNumber: string;
+  status: 'DRAFT' | 'CONFIRMED' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED';
+  orderDate: string;
+  expectedDate: string | null;
+  totalPaise: string;
+  notes: string | null;
+  customer: { id: string; name: string; state: string | null };
+  lines: OrderLine[];
+};
+
+export const listOrders = (token: string, farmId: string) =>
+  authed<{ orders: SalesOrder[] }>('/api/farm/orders', token, farmId);
+
+export const createOrder = (
+  token: string,
+  farmId: string,
+  data: {
+    customerId: string;
+    lines: { description: string; qty: number; unit?: string; unitPricePaise: string; batchId?: string; productLotId?: string }[];
+  },
+) => authed<{ order: SalesOrder }>('/api/farm/orders', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const setOrderStatus = (token: string, farmId: string, id: string, status: 'CONFIRMED' | 'CANCELLED') =>
+  authed<{ order: SalesOrder }>(`/api/farm/orders/${id}/status`, token, farmId, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
