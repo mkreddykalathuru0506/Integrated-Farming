@@ -196,6 +196,7 @@ One agent is active at a time per slice. Work in **thin vertical slices** (one u
 ## 11. Current status
 
 - **Phase 0:** ✅ complete. Staging deploy infra ready; live VPS cutover owner-gated (register `ifm-vps` runner + `/opt/ifm/.env`).
+- **Phase 2 (daily ops):** ✅ complete (2.1–2.4 merged). Workers + attendance (wage paise); ScheduleTemplate + Task with BullMQ/Redis recurring generator (+ on-demand endpoint), idempotent generation + missed-sweep; DailyLog with `clientLogId` idempotency; **offline IndexedDB write-queue** + flush-on-reconnect; **Playwright e2e** (offline→sync) + deterministic queue unit test. Endpoints: `/api/farm/{workers,attendance,schedules,tasks,logs}`. api vitest runs single-fork. 80 tests. Manual `e2e.yml` workflow.
 - **Phase 1 (livestock core):** ✅ complete (slices 1.1–1.4 merged). **Workflow:** auto-merge green non-§1.4 slices, stop only at §1.4 + end-of-phase (owner directive — see memory).
   - Entities: `Species`/`Breed`/`LifecycleStage` (farm-scoped, `isSystemDefault`, 10 seeded + auto-seeded on farm creation), `Batch`, `Animal`, `Movement`, `MortalityEvent`.
   - Endpoints under `/api/farm/*`: `species`(+`/:id`,`/breeds`), `batches` (CRUD + `/advance` + `/close`), `animals` (CRUD), `mortality`, `movements`. Member reads; OWNER/MANAGER writes.
