@@ -308,3 +308,27 @@ export const updateHatchery = (
   id: string,
   data: { status?: string; hatchedCount?: number; fertileCount?: number },
 ) => authed<{ batch: HatcheryBatch }>(`/api/farm/hatchery/${id}`, token, farmId, { method: 'PATCH', body: JSON.stringify(data) });
+
+export type FeedItem = {
+  id: string;
+  name: string;
+  unit: string;
+  stockQty: string;
+  reorderThreshold: string | null;
+  lastUnitPricePaise: string | null;
+};
+
+export const listFeedItems = (token: string, farmId: string) =>
+  authed<{ items: FeedItem[] }>('/api/farm/feed', token, farmId);
+
+export const createFeedItem = (
+  token: string,
+  farmId: string,
+  data: { name: string; unit?: string; reorderThreshold?: number },
+) => authed<{ item: FeedItem }>('/api/farm/feed', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const purchaseFeed = (
+  token: string,
+  farmId: string,
+  data: { feedItemId: string; qty: number; unitPricePaise: string },
+) => authed('/api/farm/feed/purchase', token, farmId, { method: 'POST', body: JSON.stringify(data) });

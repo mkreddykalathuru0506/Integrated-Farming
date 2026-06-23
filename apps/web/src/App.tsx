@@ -18,6 +18,7 @@ import { HealthPanel } from './farm/HealthPanel';
 import { VaccinationPanel } from './farm/VaccinationPanel';
 import { BreedingPanel } from './farm/BreedingPanel';
 import { HatcheryPanel } from './farm/HatcheryPanel';
+import { FeedPanel } from './farm/FeedPanel';
 import { Button, Card } from './ui';
 
 function Dashboard() {
@@ -45,6 +46,7 @@ function Dashboard() {
   const selected = farms?.find((f) => f.farmId === selectedId);
   const canWriteUnits = selected?.role === 'OWNER' || selected?.role === 'MANAGER';
   const canWriteSettings = selected?.role === 'OWNER';
+  const canWriteFinance = canWriteUnits || selected?.role === 'ACCOUNTANT';
 
   return (
     <div className="space-y-4">
@@ -109,6 +111,9 @@ function Dashboard() {
           </Card>
           <Card>
             <HatcheryPanel key={`hx-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
+          </Card>
+          <Card>
+            <FeedPanel key={`fd-${selectedId}`} farmId={selectedId} canWrite={canWriteFinance} />
           </Card>
           <Card>
             <UnitsPanel key={`u-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
