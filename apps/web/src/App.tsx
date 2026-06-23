@@ -25,6 +25,7 @@ import { InvoicePanel } from './farm/InvoicePanel';
 import { OrdersPanel } from './farm/OrdersPanel';
 import { ColdStoragePanel } from './farm/ColdStoragePanel';
 import { ProcessingPanel } from './farm/ProcessingPanel';
+import { DispatchPanel } from './farm/DispatchPanel';
 import { Button, Card } from './ui';
 
 function Dashboard() {
@@ -140,6 +141,9 @@ function Dashboard() {
           </Card>
           <Card>
             <ProcessingPanel key={`pr-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
+          </Card>
+          <Card>
+            <DispatchPanel key={`dp-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
           </Card>
           <Card>
             <UnitsPanel key={`u-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />

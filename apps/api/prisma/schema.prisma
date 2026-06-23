@@ -114,6 +114,7 @@ model Farm {
   temperatureLogs   TemperatureLog[]
   processingRuns    ProcessingRun[]
   productLots       ProductLot[]
+  dispatches        Dispatch[]
 
   createdBy String?
   updatedBy String?
@@ -1105,7 +1106,8 @@ model SalesOrder {
   totalPaise  BigInt           @default(0)
   notes       String?
 
-  lines SalesOrderLine[]
+  lines      SalesOrderLine[]
+  dispatches Dispatch[]
 
   createdBy String?
   updatedBy String?
@@ -1243,6 +1245,8 @@ model ProductLot {
 
   status ProductLotStatus @default(AVAILABLE)
 
+  dispatchLines DispatchLine[]
+
   createdBy String?
   updatedBy String?
   createdAt DateTime  @default(now())
@@ -1253,4 +1257,43 @@ model ProductLot {
   @@index([farmId])
   @@index([sourceBatchId])
   @@index([coldStorageId])
+}
+
+// ---------- Dispatch w/ cold-chain (Phase 5) ----------
+model Dispatch {
+  id           String     @id @default(cuid())
+  farmId       String
+  farm         Farm       @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  salesOrderId String
+  salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id])
+
+  dispatchedAt          DateTime @default(now())
+  refrigeratedTransport Boolean  @default(false)
+  vehicleNumber         String?
+  dispatchTempC         Float?
+  coldChainOk           Boolean  @default(true)
+  notes                 String?
+
+  lines DispatchLine[]
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
+  @@index([salesOrderId])
+}
+
+model DispatchLine {
+  id         String   @id @default(cuid())
+  dispatchId String
+  dispatch   Dispatch @relation(fields: [dispatchId], references: [id], onDelete: Cascade)
+
+  productLotId String?
+  productLot   ProductLot? @relation(fields: [productLotId], references: [id])
+  batchId      String? // direct-from-batch dispatch (live)
+  qtyKg        Decimal?
+  count        Int?
+
+  @@index([dispatchId])
+  @@index([productLotId])
 }
