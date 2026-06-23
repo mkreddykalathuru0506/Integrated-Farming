@@ -343,3 +343,25 @@ export type Fcr = { feedConsumedKg: number; weightGainKg: number; feedCostPaise:
 
 export const getFcr = (token: string, farmId: string, batchId: string) =>
   authed<Fcr>(`/api/farm/feed/fcr?batchId=${batchId}`, token, farmId);
+
+export type Expense = {
+  id: string;
+  category: string;
+  amountPaise: string;
+  occurredAt: string;
+  batchId: string | null;
+  description: string | null;
+};
+export type BatchCost = { totalPaise: string; costPerBirdPaise: string; currentCount: number; byCategory: Record<string, string> };
+
+export const listExpenses = (token: string, farmId: string, batchId?: string) =>
+  authed<{ expenses: Expense[] }>(`/api/farm/expenses${batchId ? `?batchId=${batchId}` : ''}`, token, farmId);
+
+export const createExpense = (
+  token: string,
+  farmId: string,
+  data: { category: string; amountPaise: string; batchId?: string; description?: string },
+) => authed<{ expense: Expense }>('/api/farm/expenses', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const getBatchCost = (token: string, farmId: string, batchId: string) =>
+  authed<BatchCost>(`/api/farm/expenses/batch-cost?batchId=${batchId}`, token, farmId);

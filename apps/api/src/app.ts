@@ -18,6 +18,7 @@ import { healthRouter } from './health/routes';
 import { breedingRouter } from './breeding/routes';
 import { hatcheryRouter } from './hatchery/routes';
 import { feedRouter } from './feed/routes';
+import { expenseRouter } from './finance/routes';
 import { errorHandler } from './errors';
 
 /** Builds the Express app. Exported separately so tests can mount it without listening. */
@@ -55,6 +56,7 @@ export function createApp(): Express {
   app.use('/api/farm/breeding', breedingRouter);
   app.use('/api/farm/hatchery', hatcheryRouter);
   app.use('/api/farm/feed', feedRouter);
+  app.use('/api/farm/expenses', expenseRouter);
 
   // JSON 404 fallback — no dead ends, consistent error shape.
   app.use((_req, res) => {

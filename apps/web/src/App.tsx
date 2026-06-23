@@ -19,6 +19,7 @@ import { VaccinationPanel } from './farm/VaccinationPanel';
 import { BreedingPanel } from './farm/BreedingPanel';
 import { HatcheryPanel } from './farm/HatcheryPanel';
 import { FeedPanel } from './farm/FeedPanel';
+import { ExpensesPanel } from './farm/ExpensesPanel';
 import { Button, Card } from './ui';
 
 function Dashboard() {
@@ -114,6 +115,9 @@ function Dashboard() {
           </Card>
           <Card>
             <FeedPanel key={`fd-${selectedId}`} farmId={selectedId} canWrite={canWriteFinance} />
+          </Card>
+          <Card>
+            <ExpensesPanel key={`ex-${selectedId}`} farmId={selectedId} canWrite={canWriteFinance} />
           </Card>
           <Card>
             <UnitsPanel key={`u-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
