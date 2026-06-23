@@ -23,6 +23,7 @@ import { ExpensesPanel } from './farm/ExpensesPanel';
 import { EmiInsurancePanel } from './farm/EmiInsurancePanel';
 import { InvoicePanel } from './farm/InvoicePanel';
 import { OrdersPanel } from './farm/OrdersPanel';
+import { ColdStoragePanel } from './farm/ColdStoragePanel';
 import { Button, Card } from './ui';
 
 function Dashboard() {
@@ -52,6 +53,7 @@ function Dashboard() {
   const canWriteSettings = selected?.role === 'OWNER';
   const canWriteFinance = canWriteUnits || selected?.role === 'ACCOUNTANT';
   const canBill = selected?.role === 'OWNER' || selected?.role === 'ACCOUNTANT';
+  const canLogTemp = canWriteUnits || selected?.role === 'LABOUR';
 
   return (
     <div className="space-y-4">
@@ -131,6 +133,9 @@ function Dashboard() {
           </Card>
           <Card>
             <OrdersPanel key={`ord-${selectedId}`} farmId={selectedId} canWrite={canWriteFinance} />
+          </Card>
+          <Card>
+            <ColdStoragePanel key={`cs-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} canLog={canLogTemp} />
           </Card>
           <Card>
             <UnitsPanel key={`u-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
