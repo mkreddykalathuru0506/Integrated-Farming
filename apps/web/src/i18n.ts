@@ -178,6 +178,11 @@ const en = {
       addItem: 'Add feed item',
       name: 'Feed name (e.g. Broiler Starter)',
       reorder: 'Reorder threshold (optional)',
+      consume: 'Record consumption (to a batch)',
+      recordConsume: 'Consume',
+      consumeError: 'Could not record consumption',
+      insufficient: 'Not enough stock',
+      fcrLine: 'Feed {{feed}}kg · gain {{gain}}kg · FCR {{fcr}}',
     },
     hatchery: {
       title: 'Hatchery',

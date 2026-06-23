@@ -3,7 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { formatPaise, rupeesToPaise } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
 import { Badge, Button, Input } from '../ui';
-import { createFeedItem, listFeedItems, purchaseFeed, type FeedItem } from './api';
+import {
+  consumeFeed,
+  createFeedItem,
+  getFcr,
+  listBatches,
+  listFeedItems,
+  purchaseFeed,
+  type Batch,
+  type FeedItem,
+  type Fcr,
+} from './api';
 
 type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; items: FeedItem[] };
 const isLow = (i: FeedItem) => i.reorderThreshold !== null && Number(i.stockQty) < Number(i.reorderThreshold);
@@ -17,6 +27,11 @@ export function FeedPanel({ farmId, canWrite }: { farmId: string; canWrite: bool
   const [buyId, setBuyId] = useState('');
   const [qty, setQty] = useState('');
   const [price, setPrice] = useState('');
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [consBatch, setConsBatch] = useState('');
+  const [consQty, setConsQty] = useState('');
+  const [fcr, setFcr] = useState<Fcr | null>(null);
+  const [consError, setConsError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     if (!accessToken) return;
@@ -30,6 +45,38 @@ export function FeedPanel({ farmId, canWrite }: { farmId: string; canWrite: bool
   }, [accessToken, farmId]);
 
   useEffect(refresh, [refresh]);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    listBatches(accessToken, farmId)
+      .then((r) => {
+        const active = r.batches.filter((b) => b.status === 'ACTIVE');
+        setBatches(active);
+        setConsBatch((prev) => prev || active[0]?.id || '');
+      })
+      .catch(() => undefined);
+  }, [accessToken, farmId]);
+
+  useEffect(() => {
+    if (!accessToken || !consBatch) return;
+    getFcr(accessToken, farmId, consBatch)
+      .then(setFcr)
+      .catch(() => setFcr(null));
+  }, [accessToken, farmId, consBatch]);
+
+  async function onConsume(e: FormEvent) {
+    e.preventDefault();
+    if (!accessToken || !buyId || !consBatch) return;
+    setConsError(null);
+    try {
+      await consumeFeed(accessToken, farmId, { feedItemId: buyId, batchId: consBatch, qty: Number(consQty) });
+      setConsQty('');
+      refresh();
+      getFcr(accessToken, farmId, consBatch).then(setFcr).catch(() => undefined);
+    } catch (err) {
+      setConsError(err instanceof Error && err.message === 'INSUFFICIENT_STOCK' ? t('feed.insufficient') : t('feed.consumeError'));
+    }
+  }
 
   async function onAddItem(e: FormEvent) {
     e.preventDefault();
@@ -104,6 +151,41 @@ export function FeedPanel({ farmId, canWrite }: { farmId: string; canWrite: bool
               <Button type="submit" full>
                 {t('feed.recordPurchase')}
               </Button>
+            </form>
+          )}
+          {load.status === 'ready' && load.items.length > 0 && batches.length > 0 && (
+            <form onSubmit={onConsume} className="space-y-2 rounded-lg bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">{t('feed.consume')}</p>
+              <div className="flex gap-2">
+                <select value={buyId} onChange={(e) => setBuyId(e.target.value)} className="block min-h-11 flex-1 rounded-lg border border-slate-300 bg-white px-3">
+                  {load.items.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.name}
+                    </option>
+                  ))}
+                </select>
+                <select value={consBatch} onChange={(e) => setConsBatch(e.target.value)} className="block min-h-11 flex-1 rounded-lg border border-slate-300 bg-white px-3">
+                  {batches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input type="number" min={0.01} step="0.01" value={consQty} onChange={(e) => setConsQty(e.target.value)} placeholder={t('feed.qty')} required className="flex-1" />
+                <Button type="submit">{t('feed.recordConsume')}</Button>
+              </div>
+              {consError && (
+                <p role="alert" className="text-sm text-red-600">
+                  {consError}
+                </p>
+              )}
+              {fcr && (
+                <p className="text-xs text-slate-600">
+                  {t('feed.fcrLine', { feed: fcr.feedConsumedKg, gain: fcr.weightGainKg, fcr: fcr.fcr ?? '—' })}
+                </p>
+              )}
             </form>
           )}
           <form onSubmit={onAddItem} className="space-y-2 rounded-lg bg-slate-50 p-3">
