@@ -103,6 +103,7 @@ model Farm {
   incubationLogs    IncubationLog[]
   feedItems         FeedItem[]
   feedTransactions  FeedTransaction[]
+  expenses          Expense[]
 
   createdBy String?
   updatedBy String?
@@ -307,6 +308,7 @@ model Batch {
   vaccinationEvents VaccinationEvent[]
 
   saleReadyAt DateTime?
+  expenses    Expense[]
 
   createdBy String?
   updatedBy String?
@@ -849,5 +851,36 @@ model FeedTransaction {
 
   @@index([farmId])
   @@index([feedItemId])
+  @@index([batchId])
+}
+
+enum ExpenseCategory {
+  FEED
+  LABOUR
+  MEDICINE
+  UTILITIES
+  MAINTENANCE
+  CAPITAL
+  OTHER
+}
+
+model Expense {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  category    ExpenseCategory
+  amountPaise BigInt
+  occurredAt  DateTime        @default(now())
+  description String?
+  batchId     String?
+  batch       Batch?          @relation(fields: [batchId], references: [id])
+  unitId      String?
+  vendorId    String?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
   @@index([batchId])
 }
