@@ -23,6 +23,7 @@ import { loanRouter, insuranceRouter, financeRouter } from './finance/loan.route
 import { customerRouter, vendorRouter, invoiceRouter } from './invoices/routes';
 import { orderRouter } from './sales/routes';
 import { coldStorageRouter } from './cold/routes';
+import { processingRouter, lotRouter } from './processing/routes';
 import { errorHandler } from './errors';
 
 /** Builds the Express app. Exported separately so tests can mount it without listening. */
@@ -69,6 +70,8 @@ export function createApp(): Express {
   app.use('/api/farm/invoices', invoiceRouter);
   app.use('/api/farm/orders', orderRouter);
   app.use('/api/farm/coldstorage', coldStorageRouter);
+  app.use('/api/farm/processing', processingRouter);
+  app.use('/api/farm/lots', lotRouter);
 
   // JSON 404 fallback — no dead ends, consistent error shape.
   app.use((_req, res) => {
