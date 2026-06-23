@@ -1,6 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
 export type PublicUser = { id: string; email: string; name: string; locale: string };
+export type MyFarm = { farmId: string; farmName: string; role: string };
 
 async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -25,5 +26,11 @@ export function logoutRequest(refreshToken: string) {
   return jsonFetch<{ ok: true }>('/api/auth/logout', {
     method: 'POST',
     body: JSON.stringify({ refreshToken }),
+  });
+}
+
+export function myFarmsRequest(accessToken: string) {
+  return jsonFetch<{ farms: MyFarm[] }>('/api/me/farms', {
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 }

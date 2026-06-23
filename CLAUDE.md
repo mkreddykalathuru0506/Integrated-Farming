@@ -198,6 +198,7 @@ One agent is active at a time per slice. Work in **thin vertical slices** (one u
 - **Phase:** 0 (Foundation), in progress.
 - **Repo:** public at `github.com/mkreddykalathuru0506/Integrated-Farming`; feature-branch → PR per slice; CI green on `main`.
 - **Slice 0.1 (skeleton + CI):** ✅ merged to `main`.
-- **Slice 0.2 (auth):** built & verified (gates green, 10 tests incl. auth integration flow, live login/me/refresh/logout, audit-on-login) — on branch `phase-0/slice-0.2-auth`, **awaiting auth §1.4 checkpoint + merge**.
-- **Auth design:** Argon2id passwords; JWT access (15m) via `jose`; opaque refresh tokens stored SHA-256-hashed in `RefreshToken`, rotated on use + revocable; tokens in JSON body (httpOnly-cookie = future hardening); CI runs a Postgres service + `migrate deploy` for integration tests.
-- **Next:** 0.3 RBAC + farm-scoping, 0.4 farm/unit CRUD, 0.5 app shell/PWA, 0.6 staging deploy.
+- **Slice 0.2 (auth):** ✅ merged. Argon2id passwords; JWT access (15m) via `jose`; opaque refresh tokens stored SHA-256-hashed, rotated + revocable; CI runs a Postgres service + `migrate deploy` for integration tests.
+- **Slice 0.3 (RBAC + farm-scoping):** built & verified (18 tests; live owner→200 / labour→403 / cross-farm→403 / missing-header→400 / scoped /me/farms) — on branch `phase-0/slice-0.3-rbac`, **awaiting RBAC §1.4 checkpoint + merge**.
+- **Tenant convention (ADR-0002):** tenant routes under `/api/farm/*` require `Authorization: Bearer` + `X-Farm-Id` header → `requireFarmAccess` (membership) sets `req.farmId`+`req.role`; `requireRole(...)` gates; `farmScope(req)` for queries. User routes under `/api/me/*`. Seed: 6 role users on demo-farm + a second farm; dev password `Passw0rd!`.
+- **Next:** 0.4 farm/unit CRUD, 0.5 app shell/PWA, 0.6 staging deploy.

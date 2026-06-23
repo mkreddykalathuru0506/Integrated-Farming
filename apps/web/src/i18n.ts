@@ -26,6 +26,20 @@ export const resources = {
         welcome: 'Welcome, {{name}}',
         logout: 'Sign out',
       },
+      farms: {
+        title: 'Your farms',
+        loading: 'Loading farms…',
+        error: 'Could not load your farms',
+        empty: 'You are not a member of any farm yet',
+      },
+      roles: {
+        OWNER: 'Owner',
+        MANAGER: 'Manager',
+        VETERINARIAN: 'Veterinarian',
+        ACCOUNTANT: 'Accountant',
+        LABOUR: 'Labour',
+        BUYER: 'Buyer',
+      },
     },
   },
 } as const;
