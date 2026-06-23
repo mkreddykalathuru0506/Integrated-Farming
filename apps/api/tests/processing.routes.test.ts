@@ -56,9 +56,11 @@ suite('Processing → lots + traceability + withdrawal gate (integration)', () =
       });
     expect(res.status).toBe(201);
     expect(res.body.run.lots).toHaveLength(2);
-    expect(res.body.run.lots[0].lotCode).toMatch(/^IFM-L-/);
-    expect(res.body.run.lots[0].qrCode).toMatch(/^IFM-L-/);
-    expect(res.body.run.lots[0].quantityKg).toBe('60');
+    // order is not guaranteed — match by product name
+    const whole = res.body.run.lots.find((l: { productName: string }) => l.productName === 'Whole dressed chicken');
+    expect(whole.lotCode).toMatch(/^IFM-L-/);
+    expect(whole.qrCode).toMatch(/^IFM-L-/);
+    expect(whole.quantityKg).toBe('60');
 
     const batch = (await request(app).get('/api/farm/batches').set(h(ownerToken))).body.batches.find((b: { id: string }) => b.id === batchId);
     expect(batch.currentCount).toBe(60); // 100 − 40
