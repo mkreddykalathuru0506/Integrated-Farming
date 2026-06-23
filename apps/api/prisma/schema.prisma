@@ -101,6 +101,8 @@ model Farm {
   breedingRecords   BreedingRecord[]
   hatcheryBatches   HatcheryBatch[]
   incubationLogs    IncubationLog[]
+  feedItems         FeedItem[]
+  feedTransactions  FeedTransaction[]
 
   createdBy String?
   updatedBy String?
@@ -796,4 +798,56 @@ model IncubationLog {
   createdAt DateTime @default(now())
 
   @@index([hatcheryBatchId])
+}
+
+// ---------- Feed & finance (Phase 4) ----------
+enum FeedTxnType {
+  PURCHASE
+  CONSUMPTION
+}
+
+model FeedItem {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  name               String
+  unit               String   @default("kg")
+  stockQty           Decimal  @default(0)
+  reorderThreshold   Decimal?
+  lastUnitPricePaise BigInt?
+
+  transactions FeedTransaction[]
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([farmId, name])
+  @@index([farmId])
+}
+
+model FeedTransaction {
+  id         String      @id @default(cuid())
+  farmId     String
+  farm       Farm        @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  feedItemId String
+  feedItem   FeedItem    @relation(fields: [feedItemId], references: [id], onDelete: Cascade)
+  type       FeedTxnType
+
+  qty            Decimal
+  unitPricePaise BigInt?
+  totalPaise     BigInt?
+  batchId        String? // consumption → attribute cost to a batch
+  vendorId       String?
+  occurredAt     DateTime @default(now())
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
+  @@index([feedItemId])
+  @@index([batchId])
 }
