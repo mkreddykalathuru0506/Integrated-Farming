@@ -1,0 +1,93 @@
+name: Deploy to VPS (staging)
+
+# Mirrors the company-portal deploy: a SELF-HOSTED runner ON the VPS rsyncs the
+# repo into /opt/ifm and runs docker compose. Hostinger drops inbound SSH from
+# GitHub-hosted runners, so the runner connects OUTBOUND to GitHub over 443 — no
+# inbound port / SSH key needed. Register the runner with label `ifm-vps`.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  checks: read
+  actions: read
+
+# Per-repo: never run two IFM deploys at once.
+concurrency:
+  group: ifm-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, ifm-vps]
+    steps:
+      - uses: actions/checkout@v4
+
+      # Hold the deploy until the CI `build` check passes for this commit.
+      - name: Wait for gating check (build)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          check=build
+          for i in $(seq 1 120); do
+            out=$(curl -fsS \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs?check_name=$check&filter=latest" \
+              | python3 -c 'import sys,json; rs=json.load(sys.stdin)["check_runs"]; print(rs[0]["status"], rs[0]["conclusion"] or "") if rs else print("absent","")')
+            status=$(echo "$out" | cut -d" " -f1)
+            conclusion=$(echo "$out" | cut -d" " -f2)
+            if [ "$status" = "completed" ]; then
+              [ "$conclusion" = "success" ] && { echo "$check: success"; break; }
+              echo "::error::$check concluded: $conclusion"; exit 1
+            fi
+            echo "  $check is $status ($i/120)"; sleep 15
+          done
+          [ "$status" = "completed" ] || { echo "::error::$check did not complete in time"; exit 1; }
+
+      # Sync source into /opt/ifm. The VPS dir is NOT a git checkout; docker
+      # compose builds it. .env / .env.* are VPS-only secrets — excluded so
+      # --delete never wipes them.
+      - name: Sync source to /opt/ifm
+        run: |
+          mkdir -p /opt/ifm
+          rsync -rltD --delete \
+            --exclude=/.git/ \
+            --exclude=/node_modules/ \
+            --exclude='**/node_modules/' \
+            --exclude='**/dist/' \
+            --exclude=/.idea/ \
+            --exclude=/.vscode/ \
+            --exclude=/.claude/ \
+            --exclude=.env \
+            --exclude='.env.*' \
+            ./ /opt/ifm/
+
+      - name: Build & restart
+        run: |
+          set -e
+          # Cross-repo build lock — the 2-CPU VPS is shared with other apps.
+          exec 9>/tmp/vps-deploy.lock
+          flock -w 3600 9
+          cd /opt/ifm
+          # Build sequentially (2-CPU box serving live traffic).
+          docker compose -f infra/docker/docker-compose.prod.yml --env-file .env build api
+          docker compose -f infra/docker/docker-compose.prod.yml --env-file .env build web
+          docker compose -f infra/docker/docker-compose.prod.yml --env-file .env up -d
+          docker image prune -f
+
+      - name: Smoke test
+        run: |
+          set -e
+          PORT=$(grep -E '^WEB_PORT=' /opt/ifm/.env | cut -d= -f2)
+          PORT=${PORT:-8095}
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 "http://localhost:$PORT/api/health" || echo 000)
+            [ "$code" = "200" ] && { echo "smoke ok (HTTP 200)"; exit 0; }
+            echo "  waiting for /api/health ($i/30, last $code)"; sleep 5
+          done
+          echo "::error::smoke failed — /api/health never returned 200"; exit 1
