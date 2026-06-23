@@ -30,6 +30,7 @@ import { AssetsPanel } from './farm/AssetsPanel';
 import { ByproductPanel } from './farm/ByproductPanel';
 import { CircularityPanel } from './farm/CircularityPanel';
 import { WeatherPanel } from './farm/WeatherPanel';
+import { MarketPanel } from './farm/MarketPanel';
 import { Button, Card } from './ui';
 
 function Dashboard() {
@@ -97,6 +98,9 @@ function Dashboard() {
         <>
           <Card>
             <WeatherPanel key={`wx-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
+          </Card>
+          <Card>
+            <MarketPanel key={`mk-${selectedId}`} farmId={selectedId} canWrite={canWriteFinance} />
           </Card>
           <Card>
             <SpeciesPanel key={`sp-${selectedId}`} farmId={selectedId} />
