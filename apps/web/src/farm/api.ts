@@ -145,3 +145,33 @@ export const recordMovement = (
   farmId: string,
   data: { animalId?: string; batchId?: string; toUnitId: string },
 ) => authed('/api/farm/movements', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export type Worker = {
+  id: string;
+  name: string;
+  phone: string | null;
+  designation: string | null;
+  wageType: string;
+  dailyWageRatePaise: string | null;
+  isActive: boolean;
+  userId: string | null;
+};
+export type AttendanceRow = { id: string; workerId: string; date: string; status: string; notes: string | null };
+
+export const listWorkers = (token: string, farmId: string) =>
+  authed<{ workers: Worker[] }>('/api/farm/workers', token, farmId);
+
+export const createWorker = (
+  token: string,
+  farmId: string,
+  data: { name: string; designation?: string; wageType?: string; dailyWageRatePaise?: string },
+) => authed<{ worker: Worker }>('/api/farm/workers', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const listAttendance = (token: string, farmId: string, date: string) =>
+  authed<{ attendance: AttendanceRow[] }>(`/api/farm/attendance?date=${date}`, token, farmId);
+
+export const markAttendance = (
+  token: string,
+  farmId: string,
+  data: { workerId: string; date: string; status: string },
+) => authed('/api/farm/attendance', token, farmId, { method: 'POST', body: JSON.stringify(data) });
