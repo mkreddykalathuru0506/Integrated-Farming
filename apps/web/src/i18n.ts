@@ -165,6 +165,17 @@ const en = {
       pending: '{{count}} to sync',
       type: { FEED: 'Feed', EGGS: 'Eggs', WEIGHT: 'Weight' },
     },
+    vax: {
+      title: 'Vaccinations',
+      noBatches: 'Add a batch first',
+      batch: 'Batch',
+      age: 'Batch age: {{days}} days',
+      due: 'Due / overdue',
+      upcoming: 'Upcoming',
+      done: 'Done',
+      none: 'No schedule for this species',
+      give: 'Mark given',
+    },
     health: {
       title: 'Health & withdrawal',
       noBatches: 'Add a batch first',

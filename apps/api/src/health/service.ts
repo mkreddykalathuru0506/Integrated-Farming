@@ -1,6 +1,7 @@
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
 import { activeUntil, isUnderWithdrawal } from './withdrawal';
+import { ageInDays, categorizeVaccinations } from './vaccination';
 import type { CreateHealthRecordInput, RecordMedicationInput, SaleReadyInput } from './schemas';
 
 type Target = { animalId?: string; batchId?: string };
@@ -95,5 +96,45 @@ export async function markSaleReady(farmId: string, userId: string, input: SaleR
     where: { id: input.batchId },
     data: { saleReadyAt: now, updatedBy: userId },
     select: { id: true, saleReadyAt: true },
+  });
+}
+
+export async function listVaccinations(farmId: string, batchId: string) {
+  const batch = await prisma.batch.findFirst({
+    where: { id: batchId, farmId, deletedAt: null },
+    select: { id: true, speciesId: true, acquiredAt: true, createdAt: true },
+  });
+  if (!batch) throw new AppError(404, 'NOT_FOUND', 'Batch not found');
+
+  const [items, events] = await Promise.all([
+    prisma.vaccinationScheduleItem.findMany({
+      where: { farmId, speciesId: batch.speciesId },
+      orderBy: { ageDays: 'asc' },
+      select: { id: true, vaccineName: true, type: true, ageDays: true },
+    }),
+    prisma.vaccinationEvent.findMany({ where: { farmId, batchId }, select: { vaccineName: true } }),
+  ]);
+
+  const done = new Set(events.map((e) => e.vaccineName));
+  const age = ageInDays(batch.acquiredAt ?? batch.createdAt, new Date());
+  return { ageDays: age, ...categorizeVaccinations(items, age, done) };
+}
+
+export async function recordVaccination(
+  farmId: string,
+  userId: string,
+  input: { batchId: string; vaccineName: string; scheduleItemId?: string },
+) {
+  const batch = await prisma.batch.findFirst({ where: { id: input.batchId, farmId, deletedAt: null } });
+  if (!batch) throw new AppError(422, 'INVALID_TARGET', 'Batch does not belong to this farm');
+  return prisma.vaccinationEvent.create({
+    data: {
+      farmId,
+      batchId: input.batchId,
+      vaccineName: input.vaccineName,
+      scheduleItemId: input.scheduleItemId,
+      createdBy: userId,
+    },
+    select: { id: true, vaccineName: true, administeredAt: true },
   });
 }
