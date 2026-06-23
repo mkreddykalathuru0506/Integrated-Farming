@@ -30,6 +30,7 @@ import { byproductRouter } from './byproducts/routes';
 import { weatherRouter, riskRouter } from './intelligence/routes';
 import { marketRouter } from './market/routes';
 import { alertRouter, dashboardRouter } from './notifications/routes';
+import { reportRouter } from './reports/routes';
 import { errorHandler } from './errors';
 
 /** Builds the Express app. Exported separately so tests can mount it without listening. */
@@ -86,6 +87,7 @@ export function createApp(): Express {
   app.use('/api/farm/market', marketRouter);
   app.use('/api/farm/alerts', alertRouter);
   app.use('/api/farm/dashboard', dashboardRouter);
+  app.use('/api/farm/reports', reportRouter);
 
   // JSON 404 fallback — no dead ends, consistent error shape.
   app.use((_req, res) => {

@@ -759,3 +759,20 @@ export const listAlerts = (token: string, farmId: string) =>
 
 export const dispatchAlerts = (token: string, farmId: string) =>
   authed<{ dispatched: number }>('/api/farm/alerts/dispatch', token, farmId, { method: 'POST', body: JSON.stringify({}) });
+
+// ---------- Reports (Phase 8) ----------
+/** Fetch a report (auth + farm header) and trigger a download in the browser. */
+export async function downloadReport(token: string, farmId: string, format: 'pdf' | 'xlsx'): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/farm/reports/summary.${format}`, {
+    headers: { Authorization: `Bearer ${token}`, 'X-Farm-Id': farmId },
+  });
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `farm-summary.${format}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
