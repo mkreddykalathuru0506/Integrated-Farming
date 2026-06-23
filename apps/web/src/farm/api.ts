@@ -404,3 +404,47 @@ export const createInsurance = (
 
 export const financeReminders = (token: string, farmId: string) =>
   authed<FinanceReminders>('/api/farm/finance/reminders', token, farmId);
+
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+
+export type Customer = { id: string; name: string; gstin: string | null; state: string | null };
+export type Invoice = {
+  id: string;
+  invoiceNumber: string;
+  status: string;
+  issueDate: string;
+  subtotalPaise: string;
+  cgstPaise: string;
+  sgstPaise: string;
+  igstPaise: string;
+  totalPaise: string;
+  fssaiLicenseNo: string | null;
+};
+export type Pnl = { revenuePaise: string; costPaise: string; profitPaise: string };
+
+export const listCustomers = (token: string, farmId: string) =>
+  authed<{ customers: Customer[] }>('/api/farm/customers', token, farmId);
+export const createCustomer = (token: string, farmId: string, data: { name: string; state?: string; gstin?: string }) =>
+  authed<{ customer: Customer }>('/api/farm/customers', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const listInvoices = (token: string, farmId: string) =>
+  authed<{ invoices: Invoice[] }>('/api/farm/invoices', token, farmId);
+export const createInvoice = (
+  token: string,
+  farmId: string,
+  data: { customerId: string; lines: { description: string; qty: number; unitPricePaise: string; gstRateBps: number; batchId?: string }[] },
+) => authed<{ invoice: Invoice }>('/api/farm/invoices', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const farmPnl = (token: string, farmId: string) =>
+  authed<Pnl>('/api/farm/invoices/pnl/farm', token, farmId);
+
+/** Fetch the invoice PDF (auth + farm header) and open it in a new tab. */
+export async function openInvoicePdf(token: string, farmId: string, id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/farm/invoices/${id}/pdf`, {
+    headers: { Authorization: `Bearer ${token}`, 'X-Farm-Id': farmId },
+  });
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
