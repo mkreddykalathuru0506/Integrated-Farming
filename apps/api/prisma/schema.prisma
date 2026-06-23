@@ -110,6 +110,8 @@ model Farm {
   customers         Customer[]
   invoices          Invoice[]
   salesOrders       SalesOrder[]
+  coldStorages      ColdStorage[]
+  temperatureLogs   TemperatureLog[]
 
   createdBy String?
   updatedBy String?
@@ -1126,4 +1128,55 @@ model SalesOrderLine {
 
   @@index([orderId])
   @@index([batchId])
+}
+
+// Cold-chain product state (§6: fresh 0–7°C, frozen ≤ −18°C). Reused by ProductLot (5.3).
+enum ProductState {
+  FRESH
+  FROZEN
+}
+
+model ColdStorage {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  name     String
+  unitId   String?
+  mode     ProductState @default(FROZEN)
+  minTempC Float        @default(-30)
+  maxTempC Float        @default(-18)
+  isActive Boolean      @default(true)
+
+  temperatureLogs TemperatureLog[]
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([farmId, name])
+  @@index([farmId])
+}
+
+model TemperatureLog {
+  id            String      @id @default(cuid())
+  farmId        String
+  farm          Farm        @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  coldStorageId String
+  coldStorage   ColdStorage @relation(fields: [coldStorageId], references: [id], onDelete: Cascade)
+
+  recordedAt   DateTime @default(now())
+  temperatureC Float
+  isOutOfRange Boolean  @default(false)
+  source       String? // "manual" | "sensor"
+  notes        String?
+
+  recordedBy String?
+  createdAt  DateTime @default(now())
+
+  @@index([farmId])
+  @@index([coldStorageId])
+  @@index([recordedAt])
 }

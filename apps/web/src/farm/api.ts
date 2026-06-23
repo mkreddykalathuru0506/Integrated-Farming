@@ -489,3 +489,32 @@ export const setOrderStatus = (token: string, farmId: string, id: string, status
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
+
+// ---------- Cold storage (Phase 5) ----------
+export type ColdStorage = {
+  id: string;
+  name: string;
+  mode: 'FRESH' | 'FROZEN';
+  minTempC: number;
+  maxTempC: number;
+  isActive: boolean;
+  latest: { temperatureC: number; isOutOfRange: boolean; recordedAt: string } | null;
+  breachCount: number;
+};
+export type TempLog = {
+  id: string;
+  temperatureC: number;
+  isOutOfRange: boolean;
+  recordedAt: string;
+  source: string | null;
+  notes?: string | null;
+};
+
+export const listColdStorages = (token: string, farmId: string) =>
+  authed<{ stores: ColdStorage[] }>('/api/farm/coldstorage', token, farmId);
+
+export const createColdStorage = (token: string, farmId: string, data: { name: string; mode: 'FRESH' | 'FROZEN' }) =>
+  authed<{ store: ColdStorage }>('/api/farm/coldstorage', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const recordTemp = (token: string, farmId: string, id: string, data: { temperatureC: number }) =>
+  authed<{ temp: TempLog }>(`/api/farm/coldstorage/${id}/temps`, token, farmId, { method: 'POST', body: JSON.stringify(data) });
