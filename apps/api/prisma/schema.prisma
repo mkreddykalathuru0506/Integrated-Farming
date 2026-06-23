@@ -104,6 +104,8 @@ model Farm {
   feedItems         FeedItem[]
   feedTransactions  FeedTransaction[]
   expenses          Expense[]
+  loans             Loan[]
+  insurances        Insurance[]
 
   createdBy String?
   updatedBy String?
@@ -883,4 +885,89 @@ model Expense {
 
   @@index([farmId])
   @@index([batchId])
+}
+
+enum LoanStatus {
+  ACTIVE
+  CLOSED
+  DEFAULTED
+}
+
+enum InsuranceType {
+  LIVESTOCK
+  ASSET
+  CROP
+  OTHER
+}
+
+enum InsuranceStatus {
+  ACTIVE
+  EXPIRED
+  CLAIMED
+  CANCELLED
+}
+
+model Loan {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  lender          String
+  principalPaise  BigInt
+  emiAmountPaise  BigInt?
+  interestRateBps Int?
+  tenureMonths    Int?
+  startDate       DateTime
+  nextDueDate     DateTime?
+  status          LoanStatus @default(ACTIVE)
+  notes           String?
+
+  payments LoanPayment[]
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([farmId])
+}
+
+model LoanPayment {
+  id     String @id @default(cuid())
+  farmId String
+  loanId String
+  loan   Loan   @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  amountPaise BigInt
+  paidAt      DateTime @default(now())
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([loanId])
+}
+
+model Insurance {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  provider        String
+  policyNumber    String?
+  type            InsuranceType
+  premiumPaise    BigInt
+  sumInsuredPaise BigInt?
+  startDate       DateTime
+  endDate         DateTime
+  status          InsuranceStatus @default(ACTIVE)
+  notes           String?
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([farmId])
 }

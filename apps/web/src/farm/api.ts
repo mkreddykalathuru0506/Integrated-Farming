@@ -365,3 +365,42 @@ export const createExpense = (
 
 export const getBatchCost = (token: string, farmId: string, batchId: string) =>
   authed<BatchCost>(`/api/farm/expenses/batch-cost?batchId=${batchId}`, token, farmId);
+
+export type Loan = {
+  id: string;
+  lender: string;
+  principalPaise: string;
+  emiAmountPaise: string | null;
+  startDate: string;
+  nextDueDate: string | null;
+  status: string;
+};
+export type InsurancePolicy = {
+  id: string;
+  provider: string;
+  type: string;
+  premiumPaise: string;
+  endDate: string;
+  status: string;
+  policyNumber: string | null;
+};
+export type FinanceReminders = { emiDue: Loan[]; policiesExpiring: InsurancePolicy[] };
+
+export const listLoans = (token: string, farmId: string) =>
+  authed<{ loans: Loan[] }>('/api/farm/loans', token, farmId);
+export const createLoan = (
+  token: string,
+  farmId: string,
+  data: { lender: string; principalPaise: string; emiAmountPaise?: string; startDate: string; nextDueDate?: string },
+) => authed<{ loan: Loan }>('/api/farm/loans', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const listInsurance = (token: string, farmId: string) =>
+  authed<{ policies: InsurancePolicy[] }>('/api/farm/insurance', token, farmId);
+export const createInsurance = (
+  token: string,
+  farmId: string,
+  data: { provider: string; type: string; premiumPaise: string; startDate: string; endDate: string },
+) => authed<{ policy: InsurancePolicy }>('/api/farm/insurance', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const financeReminders = (token: string, farmId: string) =>
+  authed<FinanceReminders>('/api/farm/finance/reminders', token, farmId);
