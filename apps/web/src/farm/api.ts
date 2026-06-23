@@ -566,3 +566,43 @@ export const createProcessing = (
     lots: { productName: string; state?: 'FRESH' | 'FROZEN'; quantityKg: number; coldStorageId?: string }[];
   },
 ) => authed('/api/farm/processing', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+// ---------- Dispatch w/ cold-chain (Phase 5) ----------
+export type DispatchLineView = {
+  id: string;
+  qtyKg: string | null;
+  count: number | null;
+  batchId: string | null;
+  productLot: {
+    id: string;
+    lotCode: string;
+    productName: string;
+    state: 'FRESH' | 'FROZEN';
+    sourceBatch: { id: string; code: string; species: { name: string } } | null;
+  } | null;
+};
+export type Dispatch = {
+  id: string;
+  dispatchedAt: string;
+  refrigeratedTransport: boolean;
+  vehicleNumber: string | null;
+  dispatchTempC: number | null;
+  coldChainOk: boolean;
+  salesOrder: { id: string; orderNumber: string; status: string };
+  lines: DispatchLineView[];
+};
+
+export const listDispatches = (token: string, farmId: string) =>
+  authed<{ dispatches: Dispatch[] }>('/api/farm/dispatches', token, farmId);
+
+export const createDispatch = (
+  token: string,
+  farmId: string,
+  data: {
+    salesOrderId: string;
+    refrigeratedTransport?: boolean;
+    dispatchTempC?: number;
+    vehicleNumber?: string;
+    lines: { productLotId?: string; batchId?: string; qtyKg?: number; count?: number }[];
+  },
+) => authed<{ dispatch: Dispatch }>('/api/farm/dispatches', token, farmId, { method: 'POST', body: JSON.stringify(data) });
