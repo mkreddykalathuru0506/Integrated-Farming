@@ -195,9 +195,13 @@ One agent is active at a time per slice. Work in **thin vertical slices** (one u
 
 ## 11. Current status
 
-- **Phase 0:** ✅ complete (all 6 slices merged). Staging deploy infra ready; live VPS cutover owner-gated (register `ifm-vps` runner + `/opt/ifm/.env`).
-- **Phase 1 (livestock core):** in progress. Plan + schema owner-approved.
-  - **Slice 1.1 (species/breed/lifecycle reference):** built & verified (41 tests; live species list/detail) — on branch `phase-1/slice-1.1-species-reference`, **awaiting end-of-slice checkpoint + merge**. `Species`/`Breed`/`LifecycleStage` (farm-scoped, `isSystemDefault`); 10 seeded species auto-seeded on farm creation + via seed; `GET /api/farm/species`(+`/:id`), OWNER/MANAGER create species/breed; web Species panel.
+- **Phase 0:** ✅ complete. Staging deploy infra ready; live VPS cutover owner-gated (register `ifm-vps` runner + `/opt/ifm/.env`).
+- **Phase 1 (livestock core):** ✅ complete (slices 1.1–1.4 merged). **Workflow:** auto-merge green non-§1.4 slices, stop only at §1.4 + end-of-phase (owner directive — see memory).
+  - Entities: `Species`/`Breed`/`LifecycleStage` (farm-scoped, `isSystemDefault`, 10 seeded + auto-seeded on farm creation), `Batch`, `Animal`, `Movement`, `MortalityEvent`.
+  - Endpoints under `/api/farm/*`: `species`(+`/:id`,`/breeds`), `batches` (CRUD + `/advance` + `/close`), `animals` (CRUD), `mortality`, `movements`. Member reads; OWNER/MANAGER writes.
+  - Domain: tracking-mode gating (batch vs individual), forward-only stage machine (`stage-machine.ts`), loss-count validation (`counts.ts`), auto QR (`IFM-B-…`/`IFM-A-…`), atomic mortality/move transactions. Tests: 61.
+  - Web: SpeciesPanel, BatchesPanel (create/advance/close/mortality/move), AnimalsPanel (create/QR/cull/move) on the dashboard.
+  - **Known debt:** `/api/farm/*` sub-routers each re-run farm-access middleware once extra (centralize the farm-scoped router later); GitHub Actions Node-20 deprecation warning (bump action versions).
 - _(historical Phase 0 detail below kept for reference.)_
 - **Repo:** public at `github.com/mkreddykalathuru0506/Integrated-Farming`; feature-branch → PR per slice; CI green on `main`.
 - **Slice 0.1 (skeleton + CI):** ✅ merged to `main`.
