@@ -14,6 +14,11 @@ byproductRouter.get(
   asyncHandler(async (req, res) => res.json({ transfers: await byproducts.listTransfers(farmScope(req).farmId) })),
 );
 
+byproductRouter.get(
+  '/circularity',
+  asyncHandler(async (req, res) => res.json(await byproducts.circularity(farmScope(req).farmId))),
+);
+
 byproductRouter.post(
   '/',
   requireRole('OWNER', 'MANAGER'),

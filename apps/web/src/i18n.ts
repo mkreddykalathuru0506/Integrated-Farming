@@ -165,6 +165,13 @@ const en = {
       pending: '{{count}} to sync',
       type: { FEED: 'Feed', EGGS: 'Eggs', WEIGHT: 'Weight' },
     },
+    circularity: {
+      title: 'Circularity & savings',
+      empty: 'Record byproduct transfers to see circular savings',
+      totalSaved: 'Total value recycled',
+      summary: '{{count}} transfer(s) · {{qty}}kg reused',
+      byType: 'By byproduct',
+    },
     byproducts: {
       title: 'Byproducts',
       empty: 'No byproduct transfers yet',

@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
+import { rollup } from './circularity';
 import type { CreateTransferInput } from './schemas';
 
 const TRANSFER_SELECT = {
@@ -66,4 +67,38 @@ export async function createTransfer(farmId: string, userId: string, input: Crea
 export async function listTransfers(farmId: string) {
   const rows = await prisma.byproductTransfer.findMany({ where: { farmId }, orderBy: { transferredAt: 'desc' }, select: TRANSFER_SELECT });
   return rows.map(transferDTO);
+}
+
+/** Circularity savings rollup: total + by type + by destination unit (with names). */
+export async function circularity(farmId: string) {
+  const [rows, units] = await Promise.all([
+    prisma.byproductTransfer.findMany({
+      where: { farmId },
+      select: { byproductType: true, toUnitId: true, quantity: true, creditPaise: true },
+    }),
+    prisma.unit.findMany({ where: { farmId, deletedAt: null }, select: { id: true, name: true } }),
+  ]);
+  const unitName = new Map(units.map((u) => [u.id, u.name]));
+
+  const agg = rollup(
+    rows.map((r) => ({
+      byproductType: r.byproductType,
+      toUnitId: r.toUnitId,
+      quantity: Number(r.quantity),
+      creditPaise: r.creditPaise,
+    })),
+  );
+
+  return {
+    totalCreditPaise: agg.totalCreditPaise.toString(),
+    totalQuantity: agg.totalQuantity,
+    transferCount: agg.transferCount,
+    byType: agg.byType.map((t) => ({ type: t.type, creditPaise: t.creditPaise.toString(), quantity: t.quantity, count: t.count })),
+    byDestination: agg.byDestination.map((d) => ({
+      unitId: d.unitId,
+      unitName: d.unitId ? unitName.get(d.unitId) ?? null : null,
+      creditPaise: d.creditPaise.toString(),
+      count: d.count,
+    })),
+  };
 }

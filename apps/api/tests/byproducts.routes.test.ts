@@ -70,4 +70,15 @@ suite('Byproduct transfers (integration)', () => {
     expect(list.body.transfers.length).toBeGreaterThanOrEqual(2);
     expect(list.body.transfers[0].byproductType).toBe('COMPOST');
   });
+
+  it('circularity rollup sums savings + resolves destination unit names', async () => {
+    // From the two transfers above: LITTER 36000 + COMPOST 10000 = 46000 paise into Nursery.
+    const c = await request(app).get('/api/farm/byproducts/circularity').set(h(ownerToken));
+    expect(c.status).toBe(200);
+    expect(c.body.totalCreditPaise).toBe('46000');
+    expect(c.body.transferCount).toBe(2);
+    const nursery = c.body.byDestination.find((d: { unitId: string }) => d.unitId === nurseryUnit);
+    expect(nursery.unitName).toBe('Nursery');
+    expect(nursery.creditPaise).toBe('46000');
+  });
 });
