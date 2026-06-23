@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { myFarmsRequest, type MyFarm } from './auth/api';
+import { AppShell } from './components/AppShell';
 import { LoginForm } from './components/LoginForm';
 import { FarmsPanel } from './components/FarmsPanel';
 import { CreateFarm } from './farm/CreateFarm';
 import { UnitsPanel } from './farm/UnitsPanel';
 import { SettingsPanel } from './farm/SettingsPanel';
+import { Button, Card } from './ui';
 
 function Dashboard() {
   const { t } = useTranslation();
@@ -35,20 +37,23 @@ function Dashboard() {
   const canWriteSettings = selected?.role === 'OWNER';
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-slate-700">{t('auth.welcome', { name: user?.name })}</p>
-          <p className="text-sm text-slate-500">{user?.email}</p>
+    <div className="space-y-4">
+      <Card>
+        <div className="flex items-start justify-between gap-2">
+          <div className="truncate">
+            <p className="font-medium text-slate-800">{t('auth.welcome', { name: user?.name })}</p>
+            <p className="truncate text-sm text-slate-500">{user?.email}</p>
+          </div>
+          <Button variant="secondary" onClick={() => void logout()}>
+            {t('auth.logout')}
+          </Button>
         </div>
-        <button
-          type="button"
-          onClick={() => void logout()}
-          className="min-h-11 shrink-0 rounded-lg border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          {t('auth.logout')}
-        </button>
-      </div>
+        {farms && farms.length > 0 && selectedId && (
+          <div className="mt-4">
+            <FarmsPanel farms={farms} selectedId={selectedId} onSelect={setSelectedId} />
+          </div>
+        )}
+      </Card>
 
       {error && !farms && (
         <p role="alert" className="text-sm text-red-600">
@@ -57,37 +62,45 @@ function Dashboard() {
       )}
       {!error && farms === null && <p className="text-sm text-slate-500">{t('farms.loading')}</p>}
 
-      {farms && farms.length === 0 && <CreateFarm onCreated={loadFarms} />}
+      {farms && farms.length === 0 && (
+        <Card>
+          <CreateFarm onCreated={loadFarms} />
+        </Card>
+      )}
 
       {farms && farms.length > 0 && selectedId && (
         <>
-          <FarmsPanel farms={farms} selectedId={selectedId} onSelect={setSelectedId} />
-          <UnitsPanel key={`u-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
-          <SettingsPanel key={`s-${selectedId}`} farmId={selectedId} canWrite={canWriteSettings} />
+          <Card>
+            <UnitsPanel key={`u-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
+          </Card>
+          <Card>
+            <SettingsPanel key={`s-${selectedId}`} farmId={selectedId} canWrite={canWriteSettings} />
+          </Card>
         </>
       )}
     </div>
   );
 }
 
-function Shell() {
-  const { t } = useTranslation();
+function Root() {
   const { user } = useAuth();
   return (
-    <main className="flex min-h-screen items-start justify-center bg-slate-50 p-4">
-      <div className="mt-6 w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-900">{t('app.title')}</h1>
-        <p className="mt-1 text-sm text-slate-500">{t('app.tagline')}</p>
-        {user ? <div className="mt-6">{<Dashboard />}</div> : <LoginForm />}
-      </div>
-    </main>
+    <AppShell>
+      {user ? (
+        <Dashboard />
+      ) : (
+        <Card className="mx-auto max-w-sm">
+          <LoginForm />
+        </Card>
+      )}
+    </AppShell>
   );
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <Shell />
+      <Root />
     </AuthProvider>
   );
 }

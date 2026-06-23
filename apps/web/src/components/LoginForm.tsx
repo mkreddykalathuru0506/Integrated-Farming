@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
+import { Button, Input } from '../ui';
 
 export function LoginForm() {
   const { t } = useTranslation();
@@ -24,30 +25,28 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
+    <form onSubmit={onSubmit} className="space-y-4" noValidate>
       <h2 className="text-lg font-semibold text-slate-900">{t('auth.login.title')}</h2>
 
-      <label className="block text-sm font-medium text-slate-700">
-        {t('auth.login.email')}
-        <input
+      <label className="block space-y-1 text-sm font-medium text-slate-700">
+        <span>{t('auth.login.email')}</span>
+        <Input
           type="email"
           autoComplete="username"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
         />
       </label>
 
-      <label className="block text-sm font-medium text-slate-700">
-        {t('auth.login.password')}
-        <input
+      <label className="block space-y-1 text-sm font-medium text-slate-700">
+        <span>{t('auth.login.password')}</span>
+        <Input
           type="password"
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 px-3 text-slate-900 focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
         />
       </label>
 
@@ -57,13 +56,9 @@ export function LoginForm() {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="min-h-11 w-full rounded-lg bg-green-600 font-semibold text-white hover:bg-green-700 disabled:opacity-60"
-      >
+      <Button type="submit" full disabled={loading}>
         {loading ? t('auth.login.submitting') : t('auth.login.submit')}
-      </button>
+      </Button>
     </form>
   );
 }

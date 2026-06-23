@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UNIT_TYPES } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
+import { Button, Input, Select } from '../ui';
 import { createUnit, deleteUnit, listUnits, type Unit } from './api';
 
 type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; units: Unit[] };
@@ -33,13 +34,19 @@ export function UnitsPanel({ farmId, canWrite }: { farmId: string; canWrite: boo
       setName('');
       refresh();
     } catch (err) {
-      setFormError(err instanceof Error && err.message === 'UNIT_NAME_TAKEN' ? t('units.duplicate') : t('units.addError'));
+      setFormError(
+        err instanceof Error && err.message === 'UNIT_NAME_TAKEN'
+          ? t('units.duplicate')
+          : t('units.addError'),
+      );
     }
   }
 
   async function onDelete(id: string) {
     if (!accessToken) return;
-    await deleteUnit(accessToken, farmId, id).then(refresh).catch(() => undefined);
+    await deleteUnit(accessToken, farmId, id)
+      .then(refresh)
+      .catch(() => undefined);
   }
 
   return (
@@ -68,13 +75,9 @@ export function UnitsPanel({ farmId, canWrite }: { farmId: string; canWrite: boo
                 {u.name} <span className="text-xs text-slate-400">· {t(`unitTypes.${u.type}`)}</span>
               </span>
               {canWrite && (
-                <button
-                  type="button"
-                  onClick={() => void onDelete(u.id)}
-                  className="text-sm text-red-600 hover:underline"
-                >
+                <Button variant="danger" size="sm" onClick={() => void onDelete(u.id)}>
                   {t('common.delete')}
-                </button>
+                </Button>
               )}
             </li>
           ))}
@@ -83,35 +86,27 @@ export function UnitsPanel({ farmId, canWrite }: { farmId: string; canWrite: boo
 
       {canWrite && (
         <form onSubmit={onAdd} className="space-y-2 rounded-lg bg-slate-50 p-3">
-          <input
+          <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t('units.namePlaceholder')}
             required
-            className="block min-h-11 w-full rounded-lg border border-slate-300 px-3"
           />
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            className="block min-h-11 w-full rounded-lg border border-slate-300 px-3"
-          >
+          <Select value={type} onChange={(e) => setType(e.target.value)}>
             {UNIT_TYPES.map((ut) => (
               <option key={ut} value={ut}>
                 {t(`unitTypes.${ut}`)}
               </option>
             ))}
-          </select>
+          </Select>
           {formError && (
             <p role="alert" className="text-sm text-red-600">
               {formError}
             </p>
           )}
-          <button
-            type="submit"
-            className="min-h-11 w-full rounded-lg bg-green-600 font-semibold text-white hover:bg-green-700"
-          >
+          <Button type="submit" full>
             {t('units.add')}
-          </button>
+          </Button>
         </form>
       )}
     </section>
