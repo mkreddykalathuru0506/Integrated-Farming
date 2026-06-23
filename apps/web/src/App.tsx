@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { myFarmsRequest, type MyFarm } from './auth/api';
@@ -6,34 +6,36 @@ import { AppShell } from './components/AppShell';
 import { LoginForm } from './components/LoginForm';
 import { FarmsPanel } from './components/FarmsPanel';
 import { CreateFarm } from './farm/CreateFarm';
-import { UnitsPanel } from './farm/UnitsPanel';
-import { SettingsPanel } from './farm/SettingsPanel';
-import { SpeciesPanel } from './farm/SpeciesPanel';
-import { BatchesPanel } from './farm/BatchesPanel';
-import { AnimalsPanel } from './farm/AnimalsPanel';
-import { WorkersPanel } from './farm/WorkersPanel';
-import { TasksPanel } from './farm/TasksPanel';
-import { DailyLogPanel } from './farm/DailyLogPanel';
-import { HealthPanel } from './farm/HealthPanel';
-import { VaccinationPanel } from './farm/VaccinationPanel';
-import { BreedingPanel } from './farm/BreedingPanel';
-import { HatcheryPanel } from './farm/HatcheryPanel';
-import { FeedPanel } from './farm/FeedPanel';
-import { ExpensesPanel } from './farm/ExpensesPanel';
-import { EmiInsurancePanel } from './farm/EmiInsurancePanel';
-import { InvoicePanel } from './farm/InvoicePanel';
-import { OrdersPanel } from './farm/OrdersPanel';
-import { ColdStoragePanel } from './farm/ColdStoragePanel';
-import { ProcessingPanel } from './farm/ProcessingPanel';
-import { DispatchPanel } from './farm/DispatchPanel';
-import { AssetsPanel } from './farm/AssetsPanel';
-import { ByproductPanel } from './farm/ByproductPanel';
-import { CircularityPanel } from './farm/CircularityPanel';
-import { WeatherPanel } from './farm/WeatherPanel';
-import { MarketPanel } from './farm/MarketPanel';
-import { DashboardPanel } from './farm/DashboardPanel';
-import { ReportsPanel } from './farm/ReportsPanel';
 import { Button, Card } from './ui';
+
+// Feature panels are code-split (lazy) so the initial bundle stays small (perf).
+const UnitsPanel = lazy(() => import('./farm/UnitsPanel').then((m) => ({ default: m.UnitsPanel })));
+const SettingsPanel = lazy(() => import('./farm/SettingsPanel').then((m) => ({ default: m.SettingsPanel })));
+const SpeciesPanel = lazy(() => import('./farm/SpeciesPanel').then((m) => ({ default: m.SpeciesPanel })));
+const BatchesPanel = lazy(() => import('./farm/BatchesPanel').then((m) => ({ default: m.BatchesPanel })));
+const AnimalsPanel = lazy(() => import('./farm/AnimalsPanel').then((m) => ({ default: m.AnimalsPanel })));
+const WorkersPanel = lazy(() => import('./farm/WorkersPanel').then((m) => ({ default: m.WorkersPanel })));
+const TasksPanel = lazy(() => import('./farm/TasksPanel').then((m) => ({ default: m.TasksPanel })));
+const DailyLogPanel = lazy(() => import('./farm/DailyLogPanel').then((m) => ({ default: m.DailyLogPanel })));
+const HealthPanel = lazy(() => import('./farm/HealthPanel').then((m) => ({ default: m.HealthPanel })));
+const VaccinationPanel = lazy(() => import('./farm/VaccinationPanel').then((m) => ({ default: m.VaccinationPanel })));
+const BreedingPanel = lazy(() => import('./farm/BreedingPanel').then((m) => ({ default: m.BreedingPanel })));
+const HatcheryPanel = lazy(() => import('./farm/HatcheryPanel').then((m) => ({ default: m.HatcheryPanel })));
+const FeedPanel = lazy(() => import('./farm/FeedPanel').then((m) => ({ default: m.FeedPanel })));
+const ExpensesPanel = lazy(() => import('./farm/ExpensesPanel').then((m) => ({ default: m.ExpensesPanel })));
+const EmiInsurancePanel = lazy(() => import('./farm/EmiInsurancePanel').then((m) => ({ default: m.EmiInsurancePanel })));
+const InvoicePanel = lazy(() => import('./farm/InvoicePanel').then((m) => ({ default: m.InvoicePanel })));
+const OrdersPanel = lazy(() => import('./farm/OrdersPanel').then((m) => ({ default: m.OrdersPanel })));
+const ColdStoragePanel = lazy(() => import('./farm/ColdStoragePanel').then((m) => ({ default: m.ColdStoragePanel })));
+const ProcessingPanel = lazy(() => import('./farm/ProcessingPanel').then((m) => ({ default: m.ProcessingPanel })));
+const DispatchPanel = lazy(() => import('./farm/DispatchPanel').then((m) => ({ default: m.DispatchPanel })));
+const AssetsPanel = lazy(() => import('./farm/AssetsPanel').then((m) => ({ default: m.AssetsPanel })));
+const ByproductPanel = lazy(() => import('./farm/ByproductPanel').then((m) => ({ default: m.ByproductPanel })));
+const CircularityPanel = lazy(() => import('./farm/CircularityPanel').then((m) => ({ default: m.CircularityPanel })));
+const WeatherPanel = lazy(() => import('./farm/WeatherPanel').then((m) => ({ default: m.WeatherPanel })));
+const MarketPanel = lazy(() => import('./farm/MarketPanel').then((m) => ({ default: m.MarketPanel })));
+const DashboardPanel = lazy(() => import('./farm/DashboardPanel').then((m) => ({ default: m.DashboardPanel })));
+const ReportsPanel = lazy(() => import('./farm/ReportsPanel').then((m) => ({ default: m.ReportsPanel })));
 
 function Dashboard() {
   const { t } = useTranslation();
@@ -97,7 +99,7 @@ function Dashboard() {
       )}
 
       {farms && farms.length > 0 && selectedId && (
-        <>
+        <Suspense fallback={<p className="text-sm text-slate-500">{t('farms.loading')}</p>}>
           <Card>
             <DashboardPanel key={`db-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
           </Card>
@@ -179,7 +181,7 @@ function Dashboard() {
           <Card>
             <SettingsPanel key={`s-${selectedId}`} farmId={selectedId} canWrite={canWriteSettings} />
           </Card>
-        </>
+        </Suspense>
       )}
     </div>
   );

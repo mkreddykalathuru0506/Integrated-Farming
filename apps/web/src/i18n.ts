@@ -461,6 +461,8 @@ const en = {
 };
 
 // Hindi seed (partial — proves the bilingual structure; rest falls back to English).
+// Hindi — complete for the CORE_NS namespaces (see i18n.parity.test); other namespaces
+// fall back to English by design until translated.
 const hi = {
   translation: {
     app: { title: 'समग्र कृषि', tagline: 'एकीकृत फार्म प्रबंधक' },
@@ -477,10 +479,105 @@ const hi = {
       welcome: 'स्वागत है, {{name}}',
       logout: 'साइन आउट',
     },
-    farms: { title: 'आपके फार्म', loading: 'फार्म लोड हो रहे हैं…' },
-    units: { title: 'इकाइयाँ', add: 'इकाई जोड़ें', empty: 'अभी कोई इकाई नहीं' },
-    settings: { title: 'फार्म सेटिंग्स' },
-    roles: { OWNER: 'मालिक', MANAGER: 'प्रबंधक', LABOUR: 'श्रमिक' },
+    farms: {
+      title: 'आपके फार्म',
+      loading: 'फार्म लोड हो रहे हैं…',
+      error: 'आपके फार्म लोड नहीं हो सके',
+      empty: 'आप अभी किसी फार्म के सदस्य नहीं हैं',
+    },
+    farm: {
+      create: {
+        prompt: 'शुरू करने के लिए अपना पहला फार्म बनाएँ।',
+        name: 'फार्म का नाम',
+        state: 'राज्य (वैकल्पिक)',
+        submit: 'फार्म बनाएँ',
+        error: 'फार्म नहीं बनाया जा सका',
+      },
+    },
+    units: {
+      title: 'इकाइयाँ',
+      loading: 'इकाइयाँ लोड हो रही हैं…',
+      error: 'इकाइयाँ लोड नहीं हो सकीं',
+      empty: 'अभी कोई इकाई नहीं',
+      namePlaceholder: 'इकाई का नाम (जैसे पोल्ट्री शेड 1)',
+      add: 'इकाई जोड़ें',
+      addError: 'इकाई नहीं जोड़ी जा सकी',
+      duplicate: 'इस नाम की इकाई पहले से मौजूद है',
+    },
+    settings: {
+      title: 'फार्म सेटिंग्स',
+      loading: 'सेटिंग्स लोड हो रही हैं…',
+      error: 'सेटिंग्स लोड नहीं हो सकीं',
+      saved: 'सेटिंग्स सहेजी गईं',
+      fssai: 'FSSAI लाइसेंस संख्या',
+      tier: 'FSSAI श्रेणी',
+      tierNone: '— निर्धारित नहीं —',
+      gstin: 'GSTIN',
+      latitude: 'अक्षांश',
+      longitude: 'देशांतर',
+    },
+    roles: {
+      OWNER: 'मालिक',
+      MANAGER: 'प्रबंधक',
+      VETERINARIAN: 'पशु चिकित्सक',
+      ACCOUNTANT: 'लेखाकार',
+      LABOUR: 'श्रमिक',
+      BUYER: 'खरीदार',
+    },
+    weather: {
+      title: 'मौसम और चेतावनियाँ',
+      loading: 'मौसम लोड हो रहा है…',
+      needLocation: 'मौसम देखने के लिए सेटिंग्स में फार्म का अक्षांश/देशांतर सेट करें',
+      asOf: '{{ts}} तक, स्रोत {{source}}',
+      refresh: 'ताज़ा करें',
+      alerts: 'जोखिम चेतावनियाँ',
+      noAlerts: 'कोई खुली चेतावनी नहीं',
+      ack: 'स्वीकार करें',
+    },
+    market: {
+      title: 'बाज़ार भाव',
+      empty: 'अभी कोई बाज़ार भाव नहीं',
+      record: 'भाव दर्ज करें',
+      commodity: 'वस्तु (जैसे ब्रॉयलर, अंडा)',
+      price: 'भाव (₹)',
+      unit: 'इकाई (किग्रा…)',
+      save: 'भाव सहेजें',
+      asOf: '{{ts}} तक, स्रोत {{source}}',
+    },
+    dashboard: {
+      title: 'डैशबोर्ड',
+      loading: 'डैशबोर्ड लोड हो रहा है…',
+      critical: 'गंभीर',
+      warning: 'चेतावनी',
+      alertsSent: 'भेजी गई चेतावनियाँ',
+      weatherLine: 'मौसम: {{temp}}°C (स्रोत {{source}})',
+      dispatch: 'खुले जोखिमों के लिए चेतावनी भेजें',
+      recentAlerts: 'हाल की चेतावनियाँ',
+    },
+    reports: {
+      title: 'रिपोर्ट',
+      blurb: 'फार्म सारांश डाउनलोड करें (वित्त, पशुधन, चारा, बाज़ार, जोखिम)।',
+      pdf: 'PDF डाउनलोड करें',
+      xlsx: 'Excel डाउनलोड करें',
+      schedules: 'निर्धारित रिपोर्ट',
+      noSchedules: 'कोई निर्धारित रिपोर्ट नहीं',
+      schedule: 'रिपोर्ट निर्धारित करें',
+      scheduleName: 'नाम (जैसे साप्ताहिक सारांश)',
+      recipient: 'प्राप्तकर्ता (ईमेल/फ़ोन)',
+      addSchedule: 'शेड्यूल जोड़ें',
+      runNow: 'अभी चलाएँ',
+      next: 'अगली {{date}}',
+      freq: { DAILY: 'दैनिक', WEEKLY: 'साप्ताहिक', MONTHLY: 'मासिक' },
+    },
+    risk: {
+      type: {
+        HEAT_STRESS: 'गर्मी का तनाव',
+        COLD_STRESS: 'ठंड का तनाव',
+        PRICE_DROP: 'भाव गिरावट',
+        LOW_STOCK: 'कम स्टॉक',
+        OTHER: 'चेतावनी',
+      },
+    },
   },
 };
 
@@ -489,11 +586,37 @@ export const SUPPORTED_LANGS = [
   { code: 'hi', label: 'हि' },
 ] as const;
 
+// Namespaces fully translated into every supported language (enforced by i18n.parity.test).
+export const CORE_NS = [
+  'app',
+  'common',
+  'auth',
+  'farms',
+  'farm',
+  'units',
+  'settings',
+  'roles',
+  'weather',
+  'market',
+  'dashboard',
+  'reports',
+  'risk',
+] as const;
+
+export const resources = { en, hi };
+
 void i18n.use(initReactI18next).init({
-  resources: { en, hi },
+  resources,
   lng: 'en',
   fallbackLng: 'en',
   interpolation: { escapeValue: false },
 });
+
+// A11y: keep <html lang> in sync with the active language for screen readers.
+function syncHtmlLang(lng: string) {
+  if (typeof document !== 'undefined') document.documentElement.lang = lng;
+}
+syncHtmlLang(i18n.resolvedLanguage ?? 'en');
+i18n.on('languageChanged', syncHtmlLang);
 
 export default i18n;
