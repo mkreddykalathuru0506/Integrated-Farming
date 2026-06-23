@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
+import { Button, Input } from '../ui';
 import { createFarm } from './api';
 
 export function CreateFarm({ onCreated }: { onCreated: () => void }) {
@@ -27,33 +28,27 @@ export function CreateFarm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-6 space-y-3">
+    <form onSubmit={onSubmit} className="space-y-3">
       <p className="text-sm text-slate-500">{t('farm.create.prompt')}</p>
-      <input
+      <Input
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder={t('farm.create.name')}
         required
-        className="block min-h-11 w-full rounded-lg border border-slate-300 px-3"
       />
-      <input
+      <Input
         value={state}
         onChange={(e) => setState(e.target.value)}
         placeholder={t('farm.create.state')}
-        className="block min-h-11 w-full rounded-lg border border-slate-300 px-3"
       />
       {error && (
         <p role="alert" className="text-sm text-red-600">
           {t('farm.create.error')}
         </p>
       )}
-      <button
-        type="submit"
-        disabled={saving}
-        className="min-h-11 w-full rounded-lg bg-green-600 font-semibold text-white hover:bg-green-700 disabled:opacity-60"
-      >
+      <Button type="submit" full disabled={saving}>
         {saving ? t('common.saving') : t('farm.create.submit')}
-      </button>
+      </Button>
     </form>
   );
 }

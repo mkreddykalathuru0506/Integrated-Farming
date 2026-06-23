@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
+import { Button, Input, Select } from '../ui';
 import { getSettings, updateSettings, type FarmSettings } from './api';
 
 const TIERS = ['', 'BASIC', 'STATE', 'CENTRAL'] as const;
@@ -55,39 +56,36 @@ export function SettingsPanel({ farmId, canWrite }: { farmId: string; canWrite: 
         {t('settings.title')}
       </h2>
 
-      <label className="block text-sm text-slate-700">
-        {t('settings.fssai')}
-        <input
+      <label className="block space-y-1 text-sm text-slate-700">
+        <span>{t('settings.fssai')}</span>
+        <Input
           value={settings.fssaiLicenseNo ?? ''}
           onChange={(e) => set({ fssaiLicenseNo: e.target.value || null })}
           disabled={!canWrite}
-          className="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 px-3 disabled:bg-slate-100"
         />
       </label>
 
-      <label className="block text-sm text-slate-700">
-        {t('settings.tier')}
-        <select
+      <label className="block space-y-1 text-sm text-slate-700">
+        <span>{t('settings.tier')}</span>
+        <Select
           value={settings.fssaiTier ?? ''}
           onChange={(e) => set({ fssaiTier: e.target.value || null })}
           disabled={!canWrite}
-          className="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 px-3 disabled:bg-slate-100"
         >
           {TIERS.map((tier) => (
             <option key={tier} value={tier}>
               {tier === '' ? t('settings.tierNone') : tier}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
-      <label className="block text-sm text-slate-700">
-        {t('settings.gstin')}
-        <input
+      <label className="block space-y-1 text-sm text-slate-700">
+        <span>{t('settings.gstin')}</span>
+        <Input
           value={settings.gstin ?? ''}
           onChange={(e) => set({ gstin: e.target.value || null })}
           disabled={!canWrite}
-          className="mt-1 block min-h-11 w-full rounded-lg border border-slate-300 px-3 disabled:bg-slate-100"
         />
       </label>
 
@@ -99,12 +97,9 @@ export function SettingsPanel({ farmId, canWrite }: { farmId: string; canWrite: 
       )}
 
       {canWrite && (
-        <button
-          type="submit"
-          className="min-h-11 w-full rounded-lg bg-green-600 font-semibold text-white hover:bg-green-700"
-        >
+        <Button type="submit" full>
           {t('common.save')}
-        </button>
+        </Button>
       )}
     </form>
   );
