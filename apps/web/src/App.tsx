@@ -102,7 +102,7 @@ function Dashboard() {
             <DashboardPanel key={`db-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
           </Card>
           <Card>
-            <ReportsPanel key={`rp-${selectedId}`} farmId={selectedId} />
+            <ReportsPanel key={`rp-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
           </Card>
           <Card>
             <WeatherPanel key={`wx-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />

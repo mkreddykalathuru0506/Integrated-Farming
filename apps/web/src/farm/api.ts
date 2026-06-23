@@ -776,3 +776,27 @@ export async function downloadReport(token: string, farmId: string, format: 'pdf
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
+
+export type ReportSchedule = {
+  id: string;
+  name: string;
+  frequency: string;
+  format: string;
+  channel: string;
+  recipient: string;
+  isActive: boolean;
+  lastRunAt: string | null;
+  nextRunAt: string;
+};
+
+export const listReportSchedules = (token: string, farmId: string) =>
+  authed<{ schedules: ReportSchedule[] }>('/api/farm/reports/schedules', token, farmId);
+
+export const createReportSchedule = (
+  token: string,
+  farmId: string,
+  data: { name: string; frequency: string; format?: string; recipient: string },
+) => authed<{ schedule: ReportSchedule }>('/api/farm/reports/schedules', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const runReportSchedule = (token: string, farmId: string, id: string) =>
+  authed<{ delivered: boolean }>(`/api/farm/reports/schedules/${id}/run`, token, farmId, { method: 'POST', body: JSON.stringify({}) });
