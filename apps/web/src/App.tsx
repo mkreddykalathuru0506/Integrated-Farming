@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { LoginForm } from './components/LoginForm';
+import { FarmsPanel } from './components/FarmsPanel';
 
 function Dashboard() {
   const { t } = useTranslation();
@@ -9,6 +10,14 @@ function Dashboard() {
     <div className="mt-6 space-y-4">
       <p className="text-slate-700">{t('auth.welcome', { name: user?.name })}</p>
       <p className="text-sm text-slate-500">{user?.email}</p>
+
+      <div className="space-y-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+          {t('farms.title')}
+        </h2>
+        <FarmsPanel />
+      </div>
+
       <button
         type="button"
         onClick={() => void logout()}
