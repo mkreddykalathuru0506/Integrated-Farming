@@ -13,6 +13,7 @@ import { BatchesPanel } from './farm/BatchesPanel';
 import { AnimalsPanel } from './farm/AnimalsPanel';
 import { WorkersPanel } from './farm/WorkersPanel';
 import { TasksPanel } from './farm/TasksPanel';
+import { DailyLogPanel } from './farm/DailyLogPanel';
 import { Button, Card } from './ui';
 
 function Dashboard() {
@@ -89,6 +90,9 @@ function Dashboard() {
           </Card>
           <Card>
             <TasksPanel key={`tk-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
+          </Card>
+          <Card>
+            <DailyLogPanel key={`dl-${selectedId}`} farmId={selectedId} />
           </Card>
           <Card>
             <UnitsPanel key={`u-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />

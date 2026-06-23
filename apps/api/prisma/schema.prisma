@@ -93,6 +93,7 @@ model Farm {
   attendance        Attendance[]
   scheduleTemplates ScheduleTemplate[]
   tasks             Task[]
+  dailyLogs         DailyLog[]
 
   createdBy String?
   updatedBy String?
@@ -285,6 +286,7 @@ model Batch {
 
   movements       Movement[]
   mortalityEvents MortalityEvent[]
+  dailyLogs       DailyLog[]
 
   createdBy String?
   updatedBy String?
@@ -336,6 +338,7 @@ model Animal {
 
   movements       Movement[]
   mortalityEvents MortalityEvent[]
+  dailyLogs       DailyLog[]
 
   createdBy String?
   updatedBy String?
@@ -538,4 +541,35 @@ model Task {
   @@index([farmId])
   @@index([dueDate])
   @@index([status])
+}
+
+enum LogType {
+  FEED
+  EGGS
+  WEIGHT
+}
+
+model DailyLog {
+  id     String  @id @default(cuid())
+  farmId String
+  farm   Farm    @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  type   LogType
+
+  batchId  String?
+  batch    Batch?  @relation(fields: [batchId], references: [id])
+  animalId String?
+  animal   Animal? @relation(fields: [animalId], references: [id])
+  unitId   String?
+
+  quantity Int
+  unit     String
+  loggedAt DateTime @default(now())
+  notes    String?
+
+  clientLogId String? @unique // idempotency key for offline sync
+  recordedBy  String?
+  createdAt   DateTime @default(now())
+
+  @@index([farmId])
+  @@index([type])
 }
