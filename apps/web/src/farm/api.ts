@@ -275,3 +275,36 @@ export const updateBreeding = (
   id: string,
   data: { status?: string; offspringCount?: number },
 ) => authed<{ record: BreedingRecord }>(`/api/farm/breeding/${id}`, token, farmId, { method: 'PATCH', body: JSON.stringify(data) });
+
+export type HatcheryBatch = {
+  id: string;
+  code: string;
+  speciesId: string;
+  setDate: string;
+  eggCount: number;
+  incubationDays: number;
+  expectedHatchDate: string;
+  candlingDate: string | null;
+  lockdownDate: string | null;
+  status: string;
+  hatchedCount: number | null;
+  fertileCount: number | null;
+  hatchRate: number;
+  fertilityRate: number;
+};
+
+export const listHatchery = (token: string, farmId: string) =>
+  authed<{ batches: HatcheryBatch[] }>('/api/farm/hatchery', token, farmId);
+
+export const createHatchery = (
+  token: string,
+  farmId: string,
+  data: { speciesId: string; code: string; setDate: string; eggCount: number },
+) => authed<{ batch: HatcheryBatch }>('/api/farm/hatchery', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const updateHatchery = (
+  token: string,
+  farmId: string,
+  id: string,
+  data: { status?: string; hatchedCount?: number; fertileCount?: number },
+) => authed<{ batch: HatcheryBatch }>(`/api/farm/hatchery/${id}`, token, farmId, { method: 'PATCH', body: JSON.stringify(data) });

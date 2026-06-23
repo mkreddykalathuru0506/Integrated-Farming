@@ -16,7 +16,6 @@ suite('auth flow (integration)', () => {
   });
   afterAll(async () => {
     await prisma.user.deleteMany({ where: { email } });
-    await prisma.$disconnect();
   });
 
   it('register → login → me → refresh(rotate) → logout', async () => {

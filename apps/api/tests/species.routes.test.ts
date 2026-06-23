@@ -40,7 +40,6 @@ suite('Species reference (integration)', () => {
   afterAll(async () => {
     await prisma.user.deleteMany({ where: { email: { in: Object.values(emails) } } });
     await prisma.farm.deleteMany({ where: { id: { in: [farm1, farm2] } } });
-    await prisma.$disconnect();
   });
 
   it('seeds 10 system-default species on farm creation', async () => {

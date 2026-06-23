@@ -57,7 +57,6 @@ suite('Farm & Unit CRUD (integration)', () => {
   afterAll(async () => {
     await prisma.user.deleteMany({ where: { email: { in: Object.values(emails) } } });
     await prisma.farm.deleteMany({ where: { id: { in: [farm1, farm2] } } });
-    await prisma.$disconnect();
   });
 
   it('creator becomes OWNER of the new farm', async () => {

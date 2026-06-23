@@ -48,7 +48,6 @@ suite('Mortality + movement (integration)', () => {
   afterAll(async () => {
     await prisma.user.deleteMany({ where: { email: { in: Object.values(emails) } } });
     await prisma.farm.deleteMany({ where: { id: farm } });
-    await prisma.$disconnect();
   });
 
   it('batch mortality decrements currentCount', async () => {
