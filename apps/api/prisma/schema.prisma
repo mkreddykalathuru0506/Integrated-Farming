@@ -112,6 +112,8 @@ model Farm {
   salesOrders       SalesOrder[]
   coldStorages      ColdStorage[]
   temperatureLogs   TemperatureLog[]
+  processingRuns    ProcessingRun[]
+  productLots       ProductLot[]
 
   createdBy String?
   updatedBy String?
@@ -318,6 +320,9 @@ model Batch {
   saleReadyAt DateTime?
   expenses    Expense[]
 
+  processingRuns ProcessingRun[] @relation("BatchProcessing")
+  productLots    ProductLot[]    @relation("BatchLot")
+
   createdBy String?
   updatedBy String?
   createdAt DateTime  @default(now())
@@ -374,6 +379,7 @@ model Animal {
   vaccinationEvents VaccinationEvent[]
   breedingsAsDam    BreedingRecord[] @relation("DamBreeding")
   breedingsAsSire   BreedingRecord[] @relation("SireBreeding")
+  processingRuns    ProcessingRun[]  @relation("AnimalProcessing")
 
   saleReadyAt DateTime?
 
@@ -1149,6 +1155,7 @@ model ColdStorage {
   isActive Boolean      @default(true)
 
   temperatureLogs TemperatureLog[]
+  lots            ProductLot[]
 
   createdBy String?
   updatedBy String?
@@ -1179,4 +1186,71 @@ model TemperatureLog {
   @@index([farmId])
   @@index([coldStorageId])
   @@index([recordedAt])
+}
+
+enum ProductLotStatus {
+  AVAILABLE
+  DEPLETED
+  DISCARDED
+}
+
+// Slaughter/processing event — source batch/animal → product lots (traceable origin).
+model ProcessingRun {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  sourceBatchId  String?
+  sourceBatch    Batch?  @relation("BatchProcessing", fields: [sourceBatchId], references: [id])
+  sourceAnimalId String?
+  sourceAnimal   Animal? @relation("AnimalProcessing", fields: [sourceAnimalId], references: [id])
+
+  processedAt DateTime @default(now())
+  inputCount  Int?
+  notes       String?
+
+  lots ProductLot[]
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
+  @@index([sourceBatchId])
+}
+
+model ProductLot {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  lotCode String
+  qrCode  String? @unique
+
+  processingRunId String?
+  processingRun   ProcessingRun? @relation(fields: [processingRunId], references: [id], onDelete: SetNull)
+  sourceBatchId   String? // denormalized for fast trace
+  sourceBatch     Batch?  @relation("BatchLot", fields: [sourceBatchId], references: [id])
+
+  productName       String
+  state             ProductState @default(FRESH)
+  initialQuantityKg Decimal
+  quantityKg        Decimal // remaining
+  producedAt        DateTime     @default(now())
+  expiryDate        DateTime?
+
+  coldStorageId String?
+  coldStorage   ColdStorage? @relation(fields: [coldStorageId], references: [id])
+
+  status ProductLotStatus @default(AVAILABLE)
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([farmId, lotCode])
+  @@index([farmId])
+  @@index([sourceBatchId])
+  @@index([coldStorageId])
 }

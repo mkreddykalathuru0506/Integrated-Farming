@@ -518,3 +518,51 @@ export const createColdStorage = (token: string, farmId: string, data: { name: s
 
 export const recordTemp = (token: string, farmId: string, id: string, data: { temperatureC: number }) =>
   authed<{ temp: TempLog }>(`/api/farm/coldstorage/${id}/temps`, token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+// ---------- Processing → lots + traceability (Phase 5) ----------
+export type ProductLot = {
+  id: string;
+  lotCode: string;
+  qrCode: string | null;
+  productName: string;
+  state: 'FRESH' | 'FROZEN';
+  initialQuantityKg: string;
+  quantityKg: string;
+  status: 'AVAILABLE' | 'DEPLETED' | 'DISCARDED';
+  producedAt: string;
+  expiryDate: string | null;
+  coldStorageId: string | null;
+  sourceBatchId: string | null;
+  sourceBatch?: { id: string; code: string; species: { name: string } } | null;
+  coldStorage?: { id: string; name: string } | null;
+};
+
+export type LotTrace = {
+  lot: { id: string; lotCode: string; productName: string; state: string; quantityKg: string; producedAt: string };
+  coldStorage: { id: string; name: string; mode: string } | null;
+  processingRun: { id: string; processedAt: string; inputCount: number | null } | null;
+  sourceBatch: {
+    id: string;
+    code: string;
+    qrCode: string | null;
+    species: { id: string; name: string };
+    breed: { id: string; name: string } | null;
+  } | null;
+};
+
+export const listLots = (token: string, farmId: string) =>
+  authed<{ lots: ProductLot[] }>('/api/farm/lots', token, farmId);
+
+export const traceLot = (token: string, farmId: string, id: string) =>
+  authed<LotTrace>(`/api/farm/lots/${id}/trace`, token, farmId);
+
+export const createProcessing = (
+  token: string,
+  farmId: string,
+  data: {
+    sourceBatchId?: string;
+    sourceAnimalId?: string;
+    inputCount?: number;
+    lots: { productName: string; state?: 'FRESH' | 'FROZEN'; quantityKg: number; coldStorageId?: string }[];
+  },
+) => authed('/api/farm/processing', token, farmId, { method: 'POST', body: JSON.stringify(data) });
