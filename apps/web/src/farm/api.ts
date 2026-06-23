@@ -732,3 +732,30 @@ export const recordMarketRate = (
 
 export const refreshMarketRate = (token: string, farmId: string, data: { commodity: string; market?: string }) =>
   authed<{ rate: MarketRate }>('/api/farm/market/refresh', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+// ---------- Alerts + dashboard (Phase 7) ----------
+export type AlertLog = {
+  id: string;
+  channel: string;
+  recipient: string;
+  subject: string | null;
+  body: string;
+  status: string;
+  riskFlagId: string | null;
+  createdAt: string;
+};
+export type Dashboard = {
+  risks: { open: number; bySeverity: Record<string, number> };
+  alerts: { total: number };
+  weather: { tempC: number; humidityPct: number | null; source: string; fetchedAt: string } | null;
+  market: { commodity: string; pricePaise: string; unit: string }[];
+};
+
+export const getDashboard = (token: string, farmId: string) =>
+  authed<Dashboard>('/api/farm/dashboard', token, farmId);
+
+export const listAlerts = (token: string, farmId: string) =>
+  authed<{ alerts: AlertLog[] }>('/api/farm/alerts', token, farmId);
+
+export const dispatchAlerts = (token: string, farmId: string) =>
+  authed<{ dispatched: number }>('/api/farm/alerts/dispatch', token, farmId, { method: 'POST', body: JSON.stringify({}) });

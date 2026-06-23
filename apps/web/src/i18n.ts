@@ -167,6 +167,16 @@ const en = {
       pending: '{{count}} to sync',
       type: { FEED: 'Feed', EGGS: 'Eggs', WEIGHT: 'Weight' },
     },
+    dashboard: {
+      title: 'Dashboard',
+      loading: 'Loading dashboard…',
+      critical: 'Critical',
+      warning: 'Warning',
+      alertsSent: 'Alerts sent',
+      weatherLine: 'Weather: {{temp}}°C (source {{source}})',
+      dispatch: 'Send alerts for open risks',
+      recentAlerts: 'Recent alerts',
+    },
     market: {
       title: 'Market rates',
       empty: 'No market rates yet',

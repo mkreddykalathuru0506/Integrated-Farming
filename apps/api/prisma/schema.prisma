@@ -122,6 +122,7 @@ model Farm {
   weatherReadings      WeatherReading[]
   riskFlags            RiskFlag[]
   marketRates          MarketRate[]
+  notificationLogs     NotificationLog[]
 
   createdBy String?
   updatedBy String?
@@ -1525,4 +1526,41 @@ model MarketRate {
 
   @@index([farmId, commodity])
   @@index([fetchedAt])
+}
+
+enum NotificationChannel {
+  SMS
+  WHATSAPP
+  EMAIL
+  WEBHOOK
+  PUSH
+}
+
+enum NotificationStatus {
+  MOCKED
+  SENT
+  FAILED
+}
+
+// Outbound alert record. Real providers (Twilio/WhatsApp/email/n8n) are owner-gated (paid);
+// the default service is the Mock which records MOCKED entries without sending.
+model NotificationLog {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  channel     NotificationChannel
+  recipient   String
+  subject     String?
+  body        String
+  status      NotificationStatus  @default(MOCKED)
+  riskFlagId  String?
+  providerRef String?
+  error       String?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
+  @@index([riskFlagId])
 }
