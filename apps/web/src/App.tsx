@@ -21,6 +21,7 @@ import { HatcheryPanel } from './farm/HatcheryPanel';
 import { FeedPanel } from './farm/FeedPanel';
 import { ExpensesPanel } from './farm/ExpensesPanel';
 import { EmiInsurancePanel } from './farm/EmiInsurancePanel';
+import { InvoicePanel } from './farm/InvoicePanel';
 import { Button, Card } from './ui';
 
 function Dashboard() {
@@ -49,6 +50,7 @@ function Dashboard() {
   const canWriteUnits = selected?.role === 'OWNER' || selected?.role === 'MANAGER';
   const canWriteSettings = selected?.role === 'OWNER';
   const canWriteFinance = canWriteUnits || selected?.role === 'ACCOUNTANT';
+  const canBill = selected?.role === 'OWNER' || selected?.role === 'ACCOUNTANT';
 
   return (
     <div className="space-y-4">
@@ -122,6 +124,9 @@ function Dashboard() {
           </Card>
           <Card>
             <EmiInsurancePanel key={`emi-${selectedId}`} farmId={selectedId} canWrite={canWriteFinance} />
+          </Card>
+          <Card>
+            <InvoicePanel key={`inv-${selectedId}`} farmId={selectedId} canWrite={canBill} />
           </Card>
           <Card>
             <UnitsPanel key={`u-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />

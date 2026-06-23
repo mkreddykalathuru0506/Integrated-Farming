@@ -106,6 +106,9 @@ model Farm {
   expenses          Expense[]
   loans             Loan[]
   insurances        Insurance[]
+  vendors           Vendor[]
+  customers         Customer[]
+  invoices          Invoice[]
 
   createdBy String?
   updatedBy String?
@@ -970,4 +973,102 @@ model Insurance {
   deletedAt DateTime?
 
   @@index([farmId])
+}
+
+// ---------- Invoicing (Phase 4) ----------
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+}
+
+model Vendor {
+  id     String  @id @default(cuid())
+  farmId String
+  farm   Farm    @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name   String
+  gstin  String?
+  phone  String?
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([farmId, name])
+  @@index([farmId])
+}
+
+model Customer {
+  id      String  @id @default(cuid())
+  farmId  String
+  farm    Farm    @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name    String
+  gstin   String?
+  phone   String?
+  state   String?
+  address String?
+
+  invoices Invoice[]
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([farmId, name])
+  @@index([farmId])
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  farmId        String
+  farm          Farm          @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  invoiceNumber String
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  issueDate     DateTime      @default(now())
+  status        InvoiceStatus @default(ISSUED)
+
+  subtotalPaise BigInt
+  cgstPaise     BigInt
+  sgstPaise     BigInt
+  igstPaise     BigInt
+  totalPaise    BigInt
+
+  fssaiLicenseNo     String?
+  placeOfSupplyState String?
+  notes              String?
+
+  lines InvoiceLineItem[]
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([farmId, invoiceNumber])
+  @@index([farmId])
+}
+
+model InvoiceLineItem {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  description    String
+  hsnSac         String?
+  qty            Decimal
+  unitPricePaise BigInt
+  gstRateBps     Int
+  taxablePaise   BigInt
+  gstPaise       BigInt
+  lineTotalPaise BigInt
+  batchId        String?
+
+  @@index([invoiceId])
+  @@index([batchId])
 }
