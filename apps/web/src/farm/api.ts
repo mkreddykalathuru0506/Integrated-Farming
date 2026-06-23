@@ -133,3 +133,15 @@ export const createAnimal = (
   farmId: string,
   data: { speciesId: string; tagNumber?: string; name?: string; sex?: string; breedId?: string; unitId?: string },
 ) => authed<{ animal: Animal }>('/api/farm/animals', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const recordMortality = (
+  token: string,
+  farmId: string,
+  data: { animalId?: string; batchId?: string; type: 'MORTALITY' | 'CULL'; count?: number; cause?: string },
+) => authed('/api/farm/mortality', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const recordMovement = (
+  token: string,
+  farmId: string,
+  data: { animalId?: string; batchId?: string; toUnitId: string },
+) => authed('/api/farm/movements', token, farmId, { method: 'POST', body: JSON.stringify(data) });

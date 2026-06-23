@@ -111,6 +111,14 @@ const en = {
       sex: { MALE: 'Male', FEMALE: 'Female', UNKNOWN: 'Unknown' },
       status: { ACTIVE: 'Active', SOLD: 'Sold', DEAD: 'Dead', CULLED: 'Culled' },
     },
+    events: {
+      lossCount: 'Count',
+      mortality: 'Mortality',
+      cull: 'Cull',
+      dead: 'Dead',
+      moveTo: 'Move to…',
+      move: 'Move',
+    },
   },
 };
 

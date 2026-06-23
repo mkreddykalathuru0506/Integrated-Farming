@@ -3,7 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../auth/AuthContext';
 import { Button, Input, Select } from '../ui';
-import { createAnimal, listAnimals, listSpecies, type Animal, type SpeciesSummary } from './api';
+import {
+  createAnimal,
+  listAnimals,
+  listSpecies,
+  listUnits,
+  recordMortality,
+  recordMovement,
+  type Animal,
+  type SpeciesSummary,
+  type Unit,
+} from './api';
 
 type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; animals: Animal[] };
 const SEXES = ['UNKNOWN', 'FEMALE', 'MALE'] as const;
@@ -13,10 +23,12 @@ export function AnimalsPanel({ farmId, canWrite }: { farmId: string; canWrite: b
   const { accessToken } = useAuth();
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const [indivSpecies, setIndivSpecies] = useState<SpeciesSummary[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [speciesId, setSpeciesId] = useState('');
   const [tag, setTag] = useState('');
   const [sex, setSex] = useState<string>('UNKNOWN');
   const [formError, setFormError] = useState<string | null>(null);
+  const [moveTo, setMoveTo] = useState<Record<string, string>>({});
 
   const refresh = useCallback(() => {
     if (!accessToken) return;
@@ -37,7 +49,12 @@ export function AnimalsPanel({ farmId, canWrite }: { farmId: string; canWrite: b
         setSpeciesId((prev) => prev || indiv[0]?.id || '');
       })
       .catch(() => undefined);
+    listUnits(accessToken, farmId)
+      .then((r) => setUnits(r.units))
+      .catch(() => undefined);
   }, [accessToken, farmId]);
+
+  const act = (p: Promise<unknown>) => void p.then(refresh).catch(() => undefined);
 
   async function onAdd(e: FormEvent) {
     e.preventDefault();
@@ -70,18 +87,42 @@ export function AnimalsPanel({ farmId, canWrite }: { farmId: string; canWrite: b
       {load.status === 'ready' && load.animals.length > 0 && (
         <ul className="space-y-2">
           {load.animals.map((a) => (
-            <li key={a.id} className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2">
-              {a.qrCode && (
-                <QRCodeSVG value={a.qrCode} size={48} className="shrink-0" aria-label={a.qrCode} />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-slate-800">
-                  {a.tagNumber ?? a.name ?? a.qrCode}
-                </p>
-                <p className="truncate text-xs text-slate-500">
-                  {a.species.name} · {a.currentStage?.name ?? '—'} · {t(`animals.status.${a.status}`)}
-                </p>
+            <li key={a.id} className="space-y-2 rounded-lg border border-slate-200 px-3 py-2">
+              <div className="flex items-center gap-3">
+                {a.qrCode && (
+                  <QRCodeSVG value={a.qrCode} size={48} className="shrink-0" aria-label={a.qrCode} />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-slate-800">
+                    {a.tagNumber ?? a.name ?? a.qrCode}
+                  </p>
+                  <p className="truncate text-xs text-slate-500">
+                    {a.species.name} · {a.currentStage?.name ?? '—'} · {t(`animals.status.${a.status}`)}
+                  </p>
+                </div>
               </div>
+
+              {canWrite && a.status === 'ACTIVE' && accessToken && (
+                <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+                  <Button size="sm" variant="danger" onClick={() => act(recordMortality(accessToken, farmId, { animalId: a.id, type: 'CULL' }))}>
+                    {t('events.cull')}
+                  </Button>
+                  <Button size="sm" variant="danger" onClick={() => act(recordMortality(accessToken, farmId, { animalId: a.id, type: 'MORTALITY' }))}>
+                    {t('events.dead')}
+                  </Button>
+                  <Select value={moveTo[a.id] ?? ''} onChange={(e) => setMoveTo({ ...moveTo, [a.id]: e.target.value })} className="flex-1">
+                    <option value="">{t('events.moveTo')}</option>
+                    {units.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button size="sm" variant="secondary" disabled={!moveTo[a.id]} onClick={() => act(recordMovement(accessToken, farmId, { animalId: a.id, toUnitId: moveTo[a.id]! }))}>
+                    {t('events.move')}
+                  </Button>
+                </div>
+              )}
             </li>
           ))}
         </ul>
