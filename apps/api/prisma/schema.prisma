@@ -123,6 +123,7 @@ model Farm {
   riskFlags            RiskFlag[]
   marketRates          MarketRate[]
   notificationLogs     NotificationLog[]
+  reportSchedules      ReportSchedule[]
 
   createdBy String?
   updatedBy String?
@@ -1563,4 +1564,29 @@ model NotificationLog {
 
   @@index([farmId])
   @@index([riskFlagId])
+}
+
+// Recurring report delivery. Mock delivery by default (no spend); real channels owner-gated.
+model ReportSchedule {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  name      String
+  frequency Frequency
+  format    String              @default("pdf") // "pdf" | "xlsx"
+  channel   NotificationChannel @default(EMAIL)
+  recipient String
+  isActive  Boolean             @default(true)
+  lastRunAt DateTime?
+  nextRunAt DateTime
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([farmId])
+  @@index([nextRunAt])
 }
