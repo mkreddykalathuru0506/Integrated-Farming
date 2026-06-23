@@ -175,3 +175,32 @@ export const markAttendance = (
   farmId: string,
   data: { workerId: string; date: string; status: string },
 ) => authed('/api/farm/attendance', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export type Task = {
+  id: string;
+  title: string;
+  taskType: string;
+  dueDate: string;
+  status: string;
+  completedAt: string | null;
+  templateId: string | null;
+};
+export type Schedule = { id: string; name: string; taskType: string; frequency: string; isActive: boolean };
+
+export const listTasks = (token: string, farmId: string, date: string) =>
+  authed<{ tasks: Task[] }>(`/api/farm/tasks?date=${date}`, token, farmId);
+
+export const generateTasks = (token: string, farmId: string, date: string) =>
+  authed<{ generated: number; missed: number }>(`/api/farm/tasks/generate?date=${date}`, token, farmId, { method: 'POST' });
+
+export const completeTask = (token: string, farmId: string, id: string) =>
+  authed<{ task: Task }>(`/api/farm/tasks/${id}/complete`, token, farmId, { method: 'POST', body: JSON.stringify({}) });
+
+export const listSchedules = (token: string, farmId: string) =>
+  authed<{ schedules: Schedule[] }>('/api/farm/schedules', token, farmId);
+
+export const createSchedule = (
+  token: string,
+  farmId: string,
+  data: { name: string; taskType: string; frequency: string },
+) => authed<{ schedule: Schedule }>('/api/farm/schedules', token, farmId, { method: 'POST', body: JSON.stringify(data) });

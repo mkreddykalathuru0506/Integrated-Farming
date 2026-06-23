@@ -89,8 +89,10 @@ model Farm {
   animals         Animal[]
   movements       Movement[]
   mortalityEvents MortalityEvent[]
-  workers         Worker[]
-  attendance      Attendance[]
+  workers           Worker[]
+  attendance        Attendance[]
+  scheduleTemplates ScheduleTemplate[]
+  tasks             Task[]
 
   createdBy String?
   updatedBy String?
@@ -428,6 +430,7 @@ model Worker {
   isActive           Boolean  @default(true)
 
   attendances Attendance[]
+  tasks       Task[]
 
   createdBy String?
   updatedBy String?
@@ -456,4 +459,83 @@ model Attendance {
 
   @@unique([workerId, date])
   @@index([farmId])
+}
+
+enum TaskType {
+  FEEDING
+  CLEANING
+  EGG_COLLECTION
+  HEALTH_CHECK
+  WEIGHING
+  TEMPERATURE_LOG
+  OTHER
+}
+
+enum TaskStatus {
+  PENDING
+  DONE
+  MISSED
+  SKIPPED
+}
+
+enum Frequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+model ScheduleTemplate {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  name             String
+  taskType         TaskType
+  unitId           String?
+  frequency        Frequency
+  timeOfDay        String? // "06:00"
+  assignedWorkerId String?
+  isActive         Boolean   @default(true)
+
+  tasks Task[]
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([farmId])
+}
+
+model Task {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  templateId String?
+  template   ScheduleTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  title    String
+  taskType TaskType
+  unitId   String?
+  dueDate  DateTime
+  status   TaskStatus @default(PENDING)
+
+  assignedWorkerId String?
+  assignedWorker   Worker? @relation(fields: [assignedWorkerId], references: [id])
+
+  completedAt DateTime?
+  completedBy String?
+  notes       String?
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([templateId, dueDate])
+  @@index([farmId])
+  @@index([dueDate])
+  @@index([status])
 }
