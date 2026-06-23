@@ -195,7 +195,10 @@ One agent is active at a time per slice. Work in **thin vertical slices** (one u
 
 ## 11. Current status
 
-- **Phase:** 0 (Foundation), in progress.
+- **Phase 0:** ✅ complete (all 6 slices merged). Staging deploy infra ready; live VPS cutover owner-gated (register `ifm-vps` runner + `/opt/ifm/.env`).
+- **Phase 1 (livestock core):** in progress. Plan + schema owner-approved.
+  - **Slice 1.1 (species/breed/lifecycle reference):** built & verified (41 tests; live species list/detail) — on branch `phase-1/slice-1.1-species-reference`, **awaiting end-of-slice checkpoint + merge**. `Species`/`Breed`/`LifecycleStage` (farm-scoped, `isSystemDefault`); 10 seeded species auto-seeded on farm creation + via seed; `GET /api/farm/species`(+`/:id`), OWNER/MANAGER create species/breed; web Species panel.
+- _(historical Phase 0 detail below kept for reference.)_
 - **Repo:** public at `github.com/mkreddykalathuru0506/Integrated-Farming`; feature-branch → PR per slice; CI green on `main`.
 - **Slice 0.1 (skeleton + CI):** ✅ merged to `main`.
 - **Slice 0.2 (auth):** ✅ merged. Argon2id passwords; JWT access (15m) via `jose`; opaque refresh tokens stored SHA-256-hashed, rotated + revocable; CI runs a Postgres service + `migrate deploy` for integration tests.
