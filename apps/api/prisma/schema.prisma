@@ -121,6 +121,7 @@ model Farm {
   byproductTransfers   ByproductTransfer[]
   weatherReadings      WeatherReading[]
   riskFlags            RiskFlag[]
+  marketRates          MarketRate[]
 
   createdBy String?
   updatedBy String?
@@ -1503,4 +1504,25 @@ model RiskFlag {
   @@unique([farmId, dedupeKey])
   @@index([farmId])
   @@index([status])
+}
+
+// Market rate observation (manual entry or live provider). Money = integer paise.
+model MarketRate {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  commodity  String
+  market     String?
+  pricePaise BigInt
+  unit       String // e.g. "quintal" | "dozen" | "kg"
+  source     String // "manual" | "mock" | "agmarknet"
+  observedAt DateTime
+  fetchedAt  DateTime @default(now())
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([farmId, commodity])
+  @@index([fetchedAt])
 }

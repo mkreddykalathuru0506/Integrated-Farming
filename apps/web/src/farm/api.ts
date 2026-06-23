@@ -708,3 +708,27 @@ export const listRisks = (token: string, farmId: string, status?: string) =>
 
 export const acknowledgeRisk = (token: string, farmId: string, id: string) =>
   authed<{ risk: RiskFlag }>(`/api/farm/risk/${id}/ack`, token, farmId, { method: 'POST', body: JSON.stringify({}) });
+
+// ---------- Market rates (Phase 7) ----------
+export type MarketRate = {
+  id: string;
+  commodity: string;
+  market: string | null;
+  pricePaise: string;
+  unit: string;
+  source: string;
+  observedAt: string;
+  fetchedAt: string;
+};
+
+export const listMarketRates = (token: string, farmId: string) =>
+  authed<{ rates: MarketRate[] }>('/api/farm/market', token, farmId);
+
+export const recordMarketRate = (
+  token: string,
+  farmId: string,
+  data: { commodity: string; pricePaise: string; unit: string; market?: string },
+) => authed<{ rate: MarketRate; risk?: { atRisk: boolean; reason: string } }>('/api/farm/market', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const refreshMarketRate = (token: string, farmId: string, data: { commodity: string; market?: string }) =>
+  authed<{ rate: MarketRate }>('/api/farm/market/refresh', token, farmId, { method: 'POST', body: JSON.stringify(data) });
