@@ -332,3 +332,14 @@ export const purchaseFeed = (
   farmId: string,
   data: { feedItemId: string; qty: number; unitPricePaise: string },
 ) => authed('/api/farm/feed/purchase', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export const consumeFeed = (
+  token: string,
+  farmId: string,
+  data: { feedItemId: string; batchId: string; qty: number },
+) => authed('/api/farm/feed/consume', token, farmId, { method: 'POST', body: JSON.stringify(data) });
+
+export type Fcr = { feedConsumedKg: number; weightGainKg: number; feedCostPaise: string; fcr: number | null };
+
+export const getFcr = (token: string, farmId: string, batchId: string) =>
+  authed<Fcr>(`/api/farm/feed/fcr?batchId=${batchId}`, token, farmId);

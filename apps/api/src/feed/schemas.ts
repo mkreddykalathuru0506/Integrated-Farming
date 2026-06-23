@@ -16,5 +16,13 @@ export const PurchaseSchema = z.object({
   occurredAt: z.string().datetime().optional(),
 });
 
+export const ConsumeSchema = z.object({
+  feedItemId: z.string().min(1),
+  batchId: z.string().min(1),
+  qty: z.number().positive(),
+  occurredAt: z.string().datetime().optional(),
+});
+
 export type CreateFeedItemInput = z.infer<typeof CreateFeedItemSchema>;
 export type PurchaseInput = z.infer<typeof PurchaseSchema>;
+export type ConsumeInput = z.infer<typeof ConsumeSchema>;
