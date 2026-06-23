@@ -167,6 +167,12 @@ const en = {
       pending: '{{count}} to sync',
       type: { FEED: 'Feed', EGGS: 'Eggs', WEIGHT: 'Weight' },
     },
+    reports: {
+      title: 'Reports',
+      blurb: 'Download a farm summary (financials, livestock, feed, market, risks).',
+      pdf: 'Download PDF',
+      xlsx: 'Download Excel',
+    },
     dashboard: {
       title: 'Dashboard',
       loading: 'Loading dashboard…',

@@ -32,6 +32,7 @@ import { CircularityPanel } from './farm/CircularityPanel';
 import { WeatherPanel } from './farm/WeatherPanel';
 import { MarketPanel } from './farm/MarketPanel';
 import { DashboardPanel } from './farm/DashboardPanel';
+import { ReportsPanel } from './farm/ReportsPanel';
 import { Button, Card } from './ui';
 
 function Dashboard() {
@@ -99,6 +100,9 @@ function Dashboard() {
         <>
           <Card>
             <DashboardPanel key={`db-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
+          </Card>
+          <Card>
+            <ReportsPanel key={`rp-${selectedId}`} farmId={selectedId} />
           </Card>
           <Card>
             <WeatherPanel key={`wx-${selectedId}`} farmId={selectedId} canWrite={canWriteUnits} />
