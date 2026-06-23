@@ -162,6 +162,7 @@ const en = {
       log: 'Log',
       addError: 'Could not save the log',
       quantity: 'Qty',
+      pending: '{{count}} to sync',
       type: { FEED: 'Feed', EGGS: 'Eggs', WEIGHT: 'Weight' },
     },
   },

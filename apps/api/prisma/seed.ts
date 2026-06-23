@@ -76,6 +76,28 @@ async function main() {
   await seedFarmReference(prisma, farm.id);
   await seedFarmReference(prisma, other.id);
 
+  // A demo chicken batch on the demo farm — a target for daily logging + e2e.
+  const chicken = await prisma.species.findFirst({ where: { farmId: farm.id, code: 'CHICKEN' } });
+  if (chicken) {
+    const firstStage = await prisma.lifecycleStage.findFirst({
+      where: { farmId: farm.id, speciesId: chicken.id },
+      orderBy: { sequence: 'asc' },
+    });
+    await prisma.batch.upsert({
+      where: { farmId_code: { farmId: farm.id, code: 'DEMO-BR-1' } },
+      update: {},
+      create: {
+        farmId: farm.id,
+        code: 'DEMO-BR-1',
+        speciesId: chicken.id,
+        currentStageId: firstStage?.id,
+        initialCount: 100,
+        currentCount: 100,
+        qrCode: 'IFM-B-demo-br-1',
+      },
+    });
+  }
+
   console.log(
     `Seeded "${farm.name}" (6 roles + livestock reference) + "${other.name}" (owner@other.farm). ` +
       `Dev password for all: ${DEMO_PASSWORD} — idempotent.`,
