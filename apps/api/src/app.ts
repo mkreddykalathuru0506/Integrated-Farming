@@ -15,6 +15,7 @@ import { workerRouter, attendanceRouter } from './labour/routes';
 import { scheduleRouter, taskRouter } from './tasks/routes';
 import { logRouter } from './logs/routes';
 import { healthRouter } from './health/routes';
+import { breedingRouter } from './breeding/routes';
 import { errorHandler } from './errors';
 
 /** Builds the Express app. Exported separately so tests can mount it without listening. */
@@ -49,6 +50,7 @@ export function createApp(): Express {
   app.use('/api/farm/tasks', taskRouter);
   app.use('/api/farm/logs', logRouter);
   app.use('/api/farm/health', healthRouter);
+  app.use('/api/farm/breeding', breedingRouter);
 
   // JSON 404 fallback — no dead ends, consistent error shape.
   app.use((_req, res) => {
