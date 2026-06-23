@@ -53,6 +53,8 @@ const en = {
       tier: 'FSSAI tier',
       tierNone: '— not set —',
       gstin: 'GSTIN',
+      latitude: 'Latitude',
+      longitude: 'Longitude',
     },
     roles: {
       OWNER: 'Owner',
@@ -164,6 +166,25 @@ const en = {
       quantity: 'Qty',
       pending: '{{count}} to sync',
       type: { FEED: 'Feed', EGGS: 'Eggs', WEIGHT: 'Weight' },
+    },
+    weather: {
+      title: 'Weather & alerts',
+      loading: 'Loading weather…',
+      needLocation: 'Set farm latitude/longitude in settings to see weather',
+      asOf: 'as of {{ts}}, source {{source}}',
+      refresh: 'Refresh',
+      alerts: 'Risk alerts',
+      noAlerts: 'No open alerts',
+      ack: 'Acknowledge',
+    },
+    risk: {
+      type: {
+        HEAT_STRESS: 'Heat stress',
+        COLD_STRESS: 'Cold stress',
+        PRICE_DROP: 'Price drop',
+        LOW_STOCK: 'Low stock',
+        OTHER: 'Alert',
+      },
     },
     circularity: {
       title: 'Circularity & savings',

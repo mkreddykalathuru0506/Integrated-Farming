@@ -26,6 +26,8 @@ export const UpdateSettingsSchema = z.object({
     .union([z.number().int().nonnegative(), z.string().regex(/^\d+$/)])
     .nullable()
     .optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
 });
 
 export const CreateUnitSchema = z.object({

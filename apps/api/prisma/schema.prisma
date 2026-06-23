@@ -119,6 +119,8 @@ model Farm {
   maintenanceSchedules MaintenanceSchedule[]
   maintenanceRecords   MaintenanceRecord[]
   byproductTransfers   ByproductTransfer[]
+  weatherReadings      WeatherReading[]
+  riskFlags            RiskFlag[]
 
   createdBy String?
   updatedBy String?
@@ -142,6 +144,10 @@ model FarmSetting {
   fssaiTier         FssaiTier?
   gstin             String?
   gstThresholdPaise BigInt? // money as integer paise; a setting, not hard-coded
+
+  // Geo (for per-farm weather lookups — Phase 7)
+  latitude  Float?
+  longitude Float?
 
   extra Json?
 
@@ -1433,4 +1439,68 @@ model ByproductTransfer {
   createdAt DateTime @default(now())
 
   @@index([farmId])
+}
+
+// ---------- Intelligence (Phase 7) ----------
+enum RiskType {
+  HEAT_STRESS
+  COLD_STRESS
+  PRICE_DROP
+  LOW_STOCK
+  OTHER
+}
+
+enum RiskSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum RiskStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model WeatherReading {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  tempC       Float
+  humidityPct Float?
+  condition   String?
+  source      String // "open-meteo" | "mock" | "manual"
+  observedAt  DateTime
+  fetchedAt   DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  @@index([farmId])
+  @@index([fetchedAt])
+}
+
+model RiskFlag {
+  id     String @id @default(cuid())
+  farmId String
+  farm   Farm   @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  type      RiskType
+  severity  RiskSeverity @default(WARNING)
+  reason    String // human-readable "why"
+  detail    Json?
+  status    RiskStatus   @default(OPEN)
+  source    String?
+  dedupeKey String? // e.g. "HEAT_STRESS:2026-06-23" — one open flag per key/day
+
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([farmId, dedupeKey])
+  @@index([farmId])
+  @@index([status])
 }
