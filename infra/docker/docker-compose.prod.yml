@@ -1,0 +1,76 @@
+# IFM staging/production stack on the Hostinger VPS.
+# Bring up from /opt/ifm on the VPS:
+#   docker compose -f infra/docker/docker-compose.prod.yml --env-file .env up -d --build
+# Reachable at http://<vps-ip>:${WEB_PORT:-8095} (nginx serves the SPA + proxies /api → api).
+name: ifm
+
+# Cap container logs so a crash loop can't fill the shared VPS disk (~30 MB/service).
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ifm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-ifm}
+    volumes:
+      - ifm_pg_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ifm} -d ${POSTGRES_DB:-ifm}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    volumes:
+      - ifm_redis_prod:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.api
+    image: ifm-api:local
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      API_PORT: '4000'
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ifm}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ifm}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+    mem_limit: 768m
+    mem_reservation: 256m
+
+  web:
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.web
+    image: ifm-web:local
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      - api
+    ports:
+      - '${WEB_PORT:-8095}:80'
+
+volumes:
+  ifm_pg_prod:
+  ifm_redis_prod:
