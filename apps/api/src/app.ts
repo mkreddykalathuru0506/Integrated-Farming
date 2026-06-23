@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { authRouter } from './auth/routes';
 import { meRouter, farmRouter } from './rbac/routes';
+import { farmsRouter, farmCrudRouter } from './farms/routes';
 import { errorHandler } from './errors';
 
 /** Builds the Express app. Exported separately so tests can mount it without listening. */
@@ -23,7 +24,9 @@ export function createApp(): Express {
 
   app.use('/api/auth', authRouter);
   app.use('/api/me', meRouter);
+  app.use('/api/farms', farmsRouter);
   app.use('/api/farm', farmRouter);
+  app.use('/api/farm', farmCrudRouter);
 
   // JSON 404 fallback — no dead ends, consistent error shape.
   app.use((_req, res) => {
