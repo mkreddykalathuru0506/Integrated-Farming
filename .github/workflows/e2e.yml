@@ -1,0 +1,44 @@
+name: E2E (Playwright)
+
+# Manual trigger — keeps the gating CI fast; the deterministic offline-queue logic
+# is covered by a unit test in the main CI. Run this to exercise the full UI journey.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ifm
+          POSTGRES_PASSWORD: ifm_dev_password
+          POSTGRES_DB: ifm_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ifm -d ifm_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ifm:ifm_dev_password@localhost:5432/ifm_test?schema=public
+      JWT_ACCESS_SECRET: ci_access_secret_not_for_prod
+      API_PORT: '4000'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm --filter @ifm/api exec prisma migrate deploy
+      - run: pnpm --filter @ifm/api exec tsx prisma/seed.ts
+      - name: Install Playwright browser
+        run: pnpm --filter @ifm/web exec playwright install --with-deps chromium
+      - name: Start API + web
+        run: |
+          pnpm --filter @ifm/api start &
+          pnpm --filter @ifm/web dev &
+          npx --yes wait-on http://localhost:4000/api/health http://localhost:5180 --timeout 60000
+      - name: Run e2e
+        run: pnpm --filter @ifm/web e2e
