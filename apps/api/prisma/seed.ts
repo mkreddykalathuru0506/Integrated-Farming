@@ -1,5 +1,6 @@
 import { PrismaClient, UnitType, type Role } from '@prisma/client';
 import { hashPassword } from '../src/auth/password';
+import { seedFarmReference } from '../src/livestock/reference';
 
 const prisma = new PrismaClient();
 
@@ -71,8 +72,12 @@ async function main() {
     create: { userId: otherOwner.id, farmId: other.id, role: 'OWNER' },
   });
 
+  // Livestock reference catalogue (species/breeds/stages) for both farms.
+  await seedFarmReference(prisma, farm.id);
+  await seedFarmReference(prisma, other.id);
+
   console.log(
-    `Seeded "${farm.name}" (6 roles) + "${other.name}" (owner@other.farm). ` +
+    `Seeded "${farm.name}" (6 roles + livestock reference) + "${other.name}" (owner@other.farm). ` +
       `Dev password for all: ${DEMO_PASSWORD} — idempotent.`,
   );
 }

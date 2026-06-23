@@ -79,9 +79,12 @@ model Farm {
   state    String?
   district String?
 
-  settings    FarmSetting?
-  units       Unit[]
-  memberships Membership[]
+  settings        FarmSetting?
+  units           Unit[]
+  memberships     Membership[]
+  species         Species[]
+  breeds          Breed[]
+  lifecycleStages LifecycleStage[]
 
   createdBy String?
   updatedBy String?
@@ -163,4 +166,68 @@ model AuditLog {
   @@index([farmId])
   @@index([entity, entityId])
   @@index([createdAt])
+}
+
+// ---------- Livestock reference (Phase 1) ----------
+enum TrackingMode {
+  INDIVIDUAL
+  BATCH
+}
+
+model Species {
+  id              String       @id @default(cuid())
+  farmId          String
+  farm            Farm         @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  code            String
+  name            String
+  trackingMode    TrackingMode
+  isSystemDefault Boolean      @default(false)
+
+  breeds Breed[]
+  stages LifecycleStage[]
+
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([farmId, code])
+  @@index([farmId])
+}
+
+model Breed {
+  id              String  @id @default(cuid())
+  farmId          String
+  farm            Farm    @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  speciesId       String
+  species         Species @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+  name            String
+  isSystemDefault Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([farmId, speciesId, name])
+  @@index([speciesId])
+}
+
+model LifecycleStage {
+  id              String  @id @default(cuid())
+  farmId          String
+  farm            Farm    @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  speciesId       String
+  species         Species @relation(fields: [speciesId], references: [id], onDelete: Cascade)
+  name            String
+  sequence        Int
+  isTerminal      Boolean @default(false)
+  isSystemDefault Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([farmId, speciesId, name])
+  @@index([speciesId])
 }

@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
+import { seedFarmReference } from '../livestock/reference';
 import type {
   CreateFarmInput,
   CreateUnitInput,
@@ -55,7 +56,7 @@ function settingToDTO(s: SettingRow) {
 const unitToDTO = (u: UnitRow) => u; // already plain; Date serializes to ISO via res.json
 
 export async function createFarm(userId: string, input: CreateFarmInput): Promise<FarmRow> {
-  return prisma.farm.create({
+  const farm = await prisma.farm.create({
     data: {
       name: input.name,
       state: input.state,
@@ -66,6 +67,9 @@ export async function createFarm(userId: string, input: CreateFarmInput): Promis
     },
     select: FARM_SELECT,
   });
+  // New farms get the system-default livestock reference catalogue.
+  await seedFarmReference(prisma, farm.id);
+  return farm;
 }
 
 export async function getFarm(farmId: string) {

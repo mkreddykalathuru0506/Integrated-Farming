@@ -63,3 +63,21 @@ export const updateSettings = (token: string, farmId: string, data: Partial<Farm
     method: 'PUT',
     body: JSON.stringify(data),
   });
+
+export type SpeciesSummary = {
+  id: string;
+  code: string;
+  name: string;
+  trackingMode: 'INDIVIDUAL' | 'BATCH';
+  isSystemDefault: boolean;
+};
+export type SpeciesDetail = SpeciesSummary & {
+  breeds: { id: string; name: string; isSystemDefault: boolean }[];
+  stages: { id: string; name: string; sequence: number; isTerminal: boolean }[];
+};
+
+export const listSpecies = (token: string, farmId: string) =>
+  authed<{ species: SpeciesSummary[] }>('/api/farm/species', token, farmId);
+
+export const getSpecies = (token: string, farmId: string, id: string) =>
+  authed<{ species: SpeciesDetail }>(`/api/farm/species/${id}`, token, farmId);
