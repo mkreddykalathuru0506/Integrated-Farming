@@ -26,9 +26,9 @@ export function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
-      <h2 className="text-lg font-semibold text-slate-900">{t('auth.login.title')}</h2>
+      <h2 className="font-display text-lg font-bold text-foreground">{t('auth.login.title')}</h2>
 
-      <label className="block space-y-1 text-sm font-medium text-slate-700">
+      <label className="block space-y-1 text-sm font-medium text-foreground">
         <span>{t('auth.login.email')}</span>
         <Input
           type="email"
@@ -39,7 +39,7 @@ export function LoginForm() {
         />
       </label>
 
-      <label className="block space-y-1 text-sm font-medium text-slate-700">
+      <label className="block space-y-1 text-sm font-medium text-foreground">
         <span>{t('auth.login.password')}</span>
         <Input
           type="password"
@@ -51,7 +51,7 @@ export function LoginForm() {
       </label>
 
       {error && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}

@@ -3,18 +3,18 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from './cn';
 
 const button = cva(
-  'inline-flex items-center justify-center rounded-lg font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-60',
+  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-md font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-60 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
-        primary: 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-600',
-        secondary:
-          'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-400',
-        ghost: 'text-slate-700 hover:bg-slate-100 focus:ring-slate-300',
-        danger: 'text-red-600 hover:bg-red-50 focus:ring-red-400',
+        primary: 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90',
+        secondary: 'border border-input bg-card text-foreground hover:bg-muted',
+        ghost: 'text-foreground hover:bg-muted',
+        danger: 'text-destructive hover:bg-destructive/10',
+        accent: 'bg-accent text-accent-foreground shadow-sm hover:bg-accent/90',
       },
       size: {
-        sm: 'min-h-9 px-2 text-xs',
+        sm: 'min-h-9 px-3 text-xs',
         md: 'min-h-11 px-4 text-sm',
       },
       full: { true: 'w-full', false: '' },

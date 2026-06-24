@@ -1,3 +1,112 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Samagra Krishi design tokens — "Earth green + harvest gold".
+ * Space-separated HSL channels (shadcn convention) so colours compose via hsl(var(--x) / <alpha>).
+ * Light theme only for now; a dark block can be added under .dark without touching components.
+ */
+@layer base {
+  :root {
+    --background: 138 76% 97%; /* #F0FDF4 faint green tint */
+    --foreground: 144 61% 20%; /* #14532D deep green ink */
+
+    --card: 0 0% 100%;
+    --card-foreground: 144 61% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 144 61% 20%;
+
+    --primary: 142 72% 29%; /* #15803D earth green */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 141 78% 93%; /* soft green surface */
+    --secondary-foreground: 142 72% 22%;
+    --accent: 36 92% 33%; /* #A16207 harvest gold */
+    --accent-foreground: 0 0% 100%;
+
+    --muted: 140 22% 94%;
+    --muted-foreground: 145 12% 40%;
+
+    --destructive: 0 72% 51%; /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 69% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 142 30% 88%;
+    --input: 142 28% 86%;
+    --ring: 142 72% 29%;
+
+    /* Deep-green sidebar for a premium, distinctive admin frame */
+    --sidebar: 150 45% 13%;
+    --sidebar-foreground: 140 30% 93%;
+    --sidebar-muted: 138 18% 70%;
+    --sidebar-accent: 142 62% 24%;
+    --sidebar-border: 150 28% 22%;
+
+    --radius: 0.7rem;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: theme('fontFamily.sans');
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: theme('fontFamily.display');
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.18);
+  }
+}
+
+@layer utilities {
+  /* Tabular figures for data columns / money / counts so they don't jitter on update. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+}
+
+/* Subtle, on-theme scrollbars (desktop) */
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+/* Honour reduced-motion globally (a11y) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
