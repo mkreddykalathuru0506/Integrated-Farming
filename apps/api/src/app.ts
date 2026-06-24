@@ -31,6 +31,8 @@ import { weatherRouter, riskRouter } from './intelligence/routes';
 import { marketRouter } from './market/routes';
 import { alertRouter, dashboardRouter } from './notifications/routes';
 import { reportRouter } from './reports/routes';
+import { authLimiter } from './security/rate-limit';
+import { prisma } from './prisma';
 import { errorHandler } from './errors';
 
 /** Builds the Express app. Exported separately so tests can mount it without listening. */
@@ -49,6 +51,21 @@ export function createApp(): Express {
     });
   });
 
+  // Readiness: dependency health (DB) — 503 if a critical dependency is unreachable.
+  app.get('/api/health/ready', async (_req, res) => {
+    const checks: Record<string, boolean> = { db: false };
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      checks.db = true;
+    } catch {
+      checks.db = false;
+    }
+    const ready = checks.db;
+    res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'unavailable', checks });
+  });
+
+  // Brute-force protection on auth (no-op-ish under tests). Mounted before the auth router.
+  app.use('/api/auth', authLimiter);
   app.use('/api/auth', authRouter);
   app.use('/api/me', meRouter);
   app.use('/api/farms', farmsRouter);
