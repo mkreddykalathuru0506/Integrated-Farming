@@ -21,7 +21,10 @@
     "db:seed": "pnpm --filter @ifm/api db:seed",
     "db:reset": "pnpm --filter @ifm/api db:reset",
     "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "db:backup": "bash scripts/backup.sh",
+    "db:restore": "bash scripts/restore.sh",
+    "load:sanity": "node scripts/load-sanity.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
