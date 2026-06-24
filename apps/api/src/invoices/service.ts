@@ -168,10 +168,12 @@ export async function renderInvoicePdf(farmId: string, id: string): Promise<Buff
     },
   });
   if (!inv) throw new AppError(404, 'NOT_FOUND', 'Invoice not found');
+  const farm = await prisma.farm.findUnique({ where: { id: farmId }, select: { settings: { select: { gstin: true } } } });
   const forPdf: InvoiceForPdf = {
     invoiceNumber: inv.invoiceNumber,
     issueDate: inv.issueDate,
     fssaiLicenseNo: inv.fssaiLicenseNo,
+    sellerGstin: farm?.settings?.gstin ?? null,
     customerName: inv.customer.name,
     customerGstin: inv.customer.gstin,
     subtotalPaise: inv.subtotalPaise,

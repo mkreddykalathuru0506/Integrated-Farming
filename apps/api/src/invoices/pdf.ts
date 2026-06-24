@@ -5,6 +5,7 @@ export type InvoiceForPdf = {
   invoiceNumber: string;
   issueDate: Date;
   fssaiLicenseNo: string | null;
+  sellerGstin: string | null;
   customerName: string;
   customerGstin: string | null;
   subtotalPaise: bigint;
@@ -22,6 +23,14 @@ export type InvoiceForPdf = {
   }[];
 };
 
+/** Header lines for the invoice (pure → unit-testable; PDF byte output isn't greppable). */
+export function invoiceHeaderLines(inv: InvoiceForPdf): string[] {
+  const lines = [`Invoice: ${inv.invoiceNumber}`, `Date: ${inv.issueDate.toISOString().slice(0, 10)}`];
+  if (inv.sellerGstin) lines.push(`GSTIN: ${inv.sellerGstin}`); // seller GSTIN on the tax invoice
+  if (inv.fssaiLicenseNo) lines.push(`FSSAI License: ${inv.fssaiLicenseNo}`); // legally required on every bill
+  return lines;
+}
+
 /** Adapter so tests can swap a mock. The real impl renders a GST/FSSAI invoice PDF. */
 export interface InvoicePdf {
   render(inv: InvoiceForPdf): Promise<Buffer>;
@@ -38,9 +47,7 @@ export class PdfKitInvoicePdf implements InvoicePdf {
 
       doc.fontSize(18).text('Tax Invoice', { align: 'center' });
       doc.moveDown(0.5).fontSize(10);
-      doc.text(`Invoice: ${inv.invoiceNumber}`);
-      doc.text(`Date: ${inv.issueDate.toISOString().slice(0, 10)}`);
-      if (inv.fssaiLicenseNo) doc.text(`FSSAI License: ${inv.fssaiLicenseNo}`); // legally required on every bill
+      for (const line of invoiceHeaderLines(inv)) doc.text(line);
       doc.moveDown(0.5);
       doc.text(`Bill to: ${inv.customerName}${inv.customerGstin ? ` (GSTIN ${inv.customerGstin})` : ''}`);
       doc.moveDown(0.5);

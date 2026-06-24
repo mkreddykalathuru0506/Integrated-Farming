@@ -24,7 +24,7 @@ jobs:
   deploy:
     runs-on: [self-hosted, ifm-vps]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Hold the deploy until the CI `build` check passes for this commit.
       - name: Wait for gating check (build)
