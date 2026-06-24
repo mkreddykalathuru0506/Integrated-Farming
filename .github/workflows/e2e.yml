@@ -24,10 +24,10 @@ jobs:
       JWT_ACCESS_SECRET: ci_access_secret_not_for_prod
       API_PORT: '4000'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
         with: { version: 9.15.9 }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { prisma } from '../src/prisma';
-import { PdfKitInvoicePdf } from '../src/invoices/pdf';
+import { PdfKitInvoicePdf, invoiceHeaderLines } from '../src/invoices/pdf';
 
 const app = createApp();
 const suite = process.env.DATABASE_URL ? describe : describe.skip;
@@ -20,22 +20,35 @@ const login = async (email: string) =>
   (await request(app).post('/api/auth/login').send({ email, password: pw })).body.accessToken as string;
 const h = (t: string) => ({ Authorization: `Bearer ${t}`, 'X-Farm-Id': farm });
 
+const FOR_PDF = {
+  invoiceNumber: 'INV-2026-27-0001',
+  issueDate: new Date('2026-06-23T00:00:00.000Z'),
+  fssaiLicenseNo: '12345678901234',
+  sellerGstin: '36ABCDE1234F1Z5',
+  customerName: 'Acme',
+  customerGstin: null,
+  subtotalPaise: 500000n,
+  cgstPaise: 12500n,
+  sgstPaise: 12500n,
+  igstPaise: 0n,
+  totalPaise: 525000n,
+  lines: [{ description: 'Eggs', hsnSac: '0407', qty: '100', unitPricePaise: 5000n, gstRateBps: 500, lineTotalPaise: 525000n }],
+};
+
 describe('invoice PDF adapter', () => {
   it('renders a %PDF document', async () => {
-    const buf = await new PdfKitInvoicePdf().render({
-      invoiceNumber: 'INV-2026-27-0001',
-      issueDate: new Date('2026-06-23T00:00:00.000Z'),
-      fssaiLicenseNo: '12345678901234',
-      customerName: 'Acme',
-      customerGstin: null,
-      subtotalPaise: 500000n,
-      cgstPaise: 12500n,
-      sgstPaise: 12500n,
-      igstPaise: 0n,
-      totalPaise: 525000n,
-      lines: [{ description: 'Eggs', hsnSac: '0407', qty: '100', unitPricePaise: 5000n, gstRateBps: 500, lineTotalPaise: 525000n }],
-    });
+    const buf = await new PdfKitInvoicePdf().render(FOR_PDF);
     expect(buf.subarray(0, 4).toString()).toBe('%PDF');
+  });
+
+  it('header prints seller GSTIN + FSSAI (both legally required)', () => {
+    const lines = invoiceHeaderLines(FOR_PDF);
+    expect(lines).toContain('GSTIN: 36ABCDE1234F1Z5');
+    expect(lines).toContain('FSSAI License: 12345678901234');
+  });
+
+  it('omits the GSTIN line when the seller has no GSTIN', () => {
+    expect(invoiceHeaderLines({ ...FOR_PDF, sellerGstin: null }).some((l) => l.startsWith('GSTIN:'))).toBe(false);
   });
 });
 
