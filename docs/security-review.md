@@ -15,7 +15,8 @@ Re-run this checklist each hardening pass.
 | Tenant isolation / farm-scoping (no IDOR) | ✅ | `requireFarmAccess` + `farmScope`; every `/api/farm/*` query filters `farmId` |
 | Input validation (Zod on every input) | ✅ | per-module `schemas.ts`; `ZodError → 400` in `errors.ts` |
 | Security headers | ✅ | `helmet()` in `app.ts` |
-| CORS | ✅ | `cors()` in `app.ts` (tighten `origin` allowlist before prod — see findings) |
+| CORS origin allowlist | ✅ | `corsOptions()` in `app.ts` — restricts to `WEB_ORIGIN` (comma-separated) when set; permissive only when unset (dev/test) |
+| Audit log on every write | ✅ | `security/audit.ts` `auditWrite` — one `AuditLog` row per successful mutation under `/api/farm/*` and `POST /api/farms` (who/what/where/ip); auth writes audited in `auth/service.ts` |
 | Rate limiting (auth brute-force) | ✅ | `security/rate-limit.ts` → `/api/auth/*` (10 / 15 min; relaxed under test) |
 | Readiness probe (DB) | ✅ | `GET /api/health/ready` |
 | Money as integer paise (no float) | ✅ | BigInt across all money fields |
@@ -24,11 +25,16 @@ Re-run this checklist each hardening pass.
 
 ## Open findings (tracked debt)
 
-1. **Audit log not yet wired on every write.** `AuditLog` table exists but writes are not
-   universally recorded. *Recommendation:* add audit middleware on mutating `/api/farm/*`
-   routes (auth, money, RBAC changes first). Severity: medium.
-2. **CORS is permissive (`cors()` default).** Before prod, restrict to the web origin via an
-   allowlist env (`WEB_ORIGIN`). Severity: medium (prod-blocking).
+1. ~~**Audit log not yet wired on every write.**~~ **RESOLVED.** `auditWrite` middleware
+   (`security/audit.ts`) records one `AuditLog` row per successful mutation (2xx) under
+   `/api/farm/*` plus `POST /api/farms`, capturing `farmId`/`userId`/`action`/`entity`/
+   `entityId`/`ip`. Reads (GET) and failed writes (non-2xx) are not audited. Auth writes
+   (register/login) remain audited explicitly in `auth/service.ts`. Audit failures are
+   isolated and never break the served request. *(Coverage gap: `/api/me/*` profile writes
+   are not yet audited — low volume, low risk; revisit if a user-self-service surface grows.)*
+2. ~~**CORS is permissive (`cors()` default).**~~ **RESOLVED (mechanism).** `corsOptions()`
+   restricts to the `WEB_ORIGIN` allowlist when set. **Ops action at deploy:** set
+   `WEB_ORIGIN` in `/opt/ifm/.env` to the deployed web host (see Pre-prod must-do).
 3. **No account lockout / MFA.** Rate limiting mitigates brute force; lockout + optional MFA
    are post-MVP. Severity: low.
 4. **Notification/market/weather provider creds** are owner-gated and unset; real wiring is a
@@ -36,6 +42,7 @@ Re-run this checklist each hardening pass.
 
 ## Pre-prod must-do (gate the production deploy)
 - [ ] Set a strong `JWT_ACCESS_SECRET` in `/opt/ifm/.env` (env guard enforces non-dev).
-- [ ] Restrict CORS origin to the deployed web host.
+- [ ] Set `WEB_ORIGIN` in `/opt/ifm/.env` to the deployed web host (allowlist mechanism is in
+      place via `corsOptions()`; this is the remaining ops step to activate it).
 - [ ] TLS/HTTPS termination + HSTS at the edge (nginx/Cloudflare).
 - [ ] Automated DB backups enabled (see `docs/monitoring.md`, `scripts/backup.sh`).
