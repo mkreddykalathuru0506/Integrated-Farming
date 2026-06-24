@@ -1,5 +1,5 @@
 import express, { type Express } from 'express';
-import cors from 'cors';
+import cors, { type CorsOptions } from 'cors';
 import helmet from 'helmet';
 import { authRouter } from './auth/routes';
 import { meRouter, farmRouter } from './rbac/routes';
@@ -32,15 +32,39 @@ import { marketRouter } from './market/routes';
 import { alertRouter, dashboardRouter } from './notifications/routes';
 import { reportRouter } from './reports/routes';
 import { authLimiter } from './security/rate-limit';
+import { auditWrite } from './security/audit';
 import { prisma } from './prisma';
 import { errorHandler } from './errors';
+
+/**
+ * CORS policy. When `WEB_ORIGIN` is set (comma-separated list, required before prod —
+ * see docs/security-review.md), restrict cross-origin requests to that allowlist.
+ * Unset (dev/test) falls back to the permissive default. Requests with no Origin header
+ * (curl, server-to-server, same-origin) are always allowed.
+ */
+function corsOptions(): CorsOptions {
+  const allow = (process.env.WEB_ORIGIN ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (allow.length === 0) return {};
+  return {
+    origin(origin, cb) {
+      // Allow no-Origin (curl/server-to-server) and allowlisted origins. A disallowed
+      // origin gets `false` (no ACAO header) rather than an error — the browser blocks it,
+      // the server still responds cleanly without 500-ing.
+      cb(null, !origin || allow.includes(origin));
+    },
+    credentials: true,
+  };
+}
 
 /** Builds the Express app. Exported separately so tests can mount it without listening. */
 export function createApp(): Express {
   const app = express();
 
   app.use(helmet());
-  app.use(cors());
+  app.use(cors(corsOptions()));
   app.use(express.json());
 
   app.get('/api/health', (_req, res) => {
@@ -68,7 +92,12 @@ export function createApp(): Express {
   app.use('/api/auth', authLimiter);
   app.use('/api/auth', authRouter);
   app.use('/api/me', meRouter);
+  // Audit farm creation (POST /api/farms) and every successful mutation under /api/farm
+  // (Brief §7). Mounted before the routers so it observes the whole subtree; it reads req
+  // context after auth runs downstream. Note `/api/farm` does not match `/api/farms`.
+  app.use('/api/farms', auditWrite);
   app.use('/api/farms', farmsRouter);
+  app.use('/api/farm', auditWrite);
   app.use('/api/farm', farmRouter);
   app.use('/api/farm', farmCrudRouter);
   app.use('/api/farm/species', speciesRouter);
