@@ -48,7 +48,7 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
   }
 
   return (
-    <div className="flex min-h-dvh bg-background">
+    <div className="flex min-h-dvh">
       {/* Desktop rail */}
       <aside
         className={cn(

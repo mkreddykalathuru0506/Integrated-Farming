@@ -34,16 +34,16 @@ export default {
           border: 'hsl(var(--sidebar-border))',
         },
       },
-      borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
+      borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 4px)', sm: 'calc(var(--radius) - 8px)' },
       fontFamily: {
-        sans: ['Inter', 'Noto Sans Devanagari', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['Plus Jakarta Sans', 'Noto Sans Devanagari', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        sans: ['Hanken Grotesk', 'Noto Sans Devanagari', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Fraunces', 'Noto Sans Devanagari', 'Georgia', 'serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       boxShadow: {
-        card: '0 1px 2px 0 rgb(20 83 45 / 0.04), 0 1px 3px 0 rgb(20 83 45 / 0.06)',
-        elevated: '0 4px 12px -2px rgb(20 83 45 / 0.10), 0 2px 6px -2px rgb(20 83 45 / 0.08)',
-        popover: '0 8px 28px -6px rgb(20 83 45 / 0.18)',
+        card: '0 1px 2px 0 rgb(22 39 28 / 0.05), 0 12px 28px -14px rgb(22 39 28 / 0.16)',
+        elevated: '0 2px 8px 0 rgb(22 39 28 / 0.05), 0 30px 60px -26px rgb(22 39 28 / 0.22)',
+        popover: '0 8px 28px -6px rgb(22 39 28 / 0.20)',
       },
       keyframes: {
         'accordion-down': { from: { height: '0' }, to: { height: 'var(--radix-accordion-content-height)' } },

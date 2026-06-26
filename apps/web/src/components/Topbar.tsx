@@ -52,7 +52,13 @@ export function Topbar({
         <Menu className="h-5 w-5" aria-hidden />
       </button>
 
-      <h1 className="truncate font-display text-lg font-bold text-foreground">{title}</h1>
+      <div className="flex min-w-0 items-baseline gap-1.5">
+        <span className="hidden shrink-0 text-sm font-semibold text-muted-foreground sm:inline">
+          {t('nav.workspace')}
+        </span>
+        <span className="hidden shrink-0 text-muted-foreground/60 sm:inline">/</span>
+        <h1 className="truncate font-display text-xl font-semibold text-foreground">{title}</h1>
+      </div>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
         {/* Farm switcher */}
