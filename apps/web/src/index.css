@@ -1,3 +1,118 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Samagra Krishi design tokens — "Earth green + harvest gold".
+ * Space-separated HSL channels (shadcn convention) so colours compose via hsl(var(--x) / <alpha>).
+ * Light theme only for now; a dark block can be added under .dark without touching components.
+ */
+@layer base {
+  :root {
+    /* "Harvest" — warm, editorial agritech palette */
+    --background: 42 38% 92%; /* warm bone/paper */
+    --foreground: 150 28% 12%; /* deep pine ink */
+
+    --card: 44 40% 99%; /* warm white */
+    --card-foreground: 150 28% 12%;
+    --popover: 44 40% 99%;
+    --popover-foreground: 150 28% 12%;
+
+    --primary: 150 58% 26%; /* pine green #1C6B43 */
+    --primary-foreground: 44 40% 98%;
+    --secondary: 44 46% 90%; /* warm tint surface */
+    --secondary-foreground: 150 44% 20%;
+    --accent: 41 85% 38%; /* harvest gold #B5830F */
+    --accent-foreground: 44 40% 98%;
+
+    --muted: 42 30% 89%;
+    --muted-foreground: 145 12% 36%;
+
+    --destructive: 4 61% 47%; /* deep red #C0392F */
+    --destructive-foreground: 44 40% 98%;
+    --success: 95 46% 40%; /* leaf/lime green */
+    --success-foreground: 44 40% 98%;
+    --warning: 22 66% 46%; /* terracotta clay #C15A2B */
+    --warning-foreground: 44 40% 98%;
+
+    --border: 40 30% 85%; /* warm border */
+    --input: 40 28% 82%;
+    --ring: 150 58% 30%;
+
+    /* Deep-green gradient sidebar */
+    --sidebar: 150 50% 14%;
+    --sidebar-2: 152 56% 8%;
+    --sidebar-foreground: 140 26% 90%;
+    --sidebar-muted: 145 14% 62%;
+    --sidebar-accent: 150 42% 22%;
+    --sidebar-border: 150 24% 20%;
+
+    --radius: 1rem;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--background));
+    /* Soft gold + green light washes for warmth and depth */
+    background-image: radial-gradient(1100px 480px at 88% -6%, hsl(var(--accent) / 0.1), transparent 60%),
+      radial-gradient(820px 460px at 4% 2%, hsl(var(--primary) / 0.06), transparent 55%);
+    background-attachment: fixed;
+    font-family: theme('fontFamily.sans');
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: theme('fontFamily.display');
+    letter-spacing: -0.015em;
+  }
+
+  ::selection {
+    background-color: hsl(var(--accent) / 0.22);
+  }
+}
+
+@layer utilities {
+  /* Tabular figures for data columns / money / counts so they don't jitter on update. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+}
+
+/* Subtle, on-theme scrollbars (desktop) */
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+/* Honour reduced-motion globally (a11y) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
