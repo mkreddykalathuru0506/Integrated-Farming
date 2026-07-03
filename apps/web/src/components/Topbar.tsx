@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
 } from '../ui';
 import { LanguageToggle } from './LanguageToggle';
+import { ThemeToggle } from './ThemeToggle';
 
 type Props = {
   title: string;
@@ -83,6 +84,8 @@ export function Topbar({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+
+        <ThemeToggle />
 
         <div className="hidden sm:block">
           <LanguageToggle />

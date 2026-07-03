@@ -50,6 +50,51 @@
     --radius: 1rem;
   }
 
+  /*
+   * Dark theme — "Harvest at dusk". Same warm hues, dropped onto a deep-pine
+   * near-black canvas; only the CSS variables change, so no component needs a
+   * single `dark:` class. Toggled by adding `.dark` to <html> (see ThemeToggle
+   * + the no-flash script in index.html).
+   */
+  .dark {
+    --background: 156 24% 7%; /* deep pine near-black */
+    --foreground: 40 26% 90%; /* warm off-white ink */
+
+    --card: 156 18% 11%; /* lifted panel */
+    --card-foreground: 40 26% 90%;
+    --popover: 156 20% 12%;
+    --popover-foreground: 40 26% 90%;
+
+    --primary: 150 44% 42%; /* brighter pine so it reads on dark */
+    --primary-foreground: 44 40% 97%;
+    --secondary: 156 14% 16%; /* muted dark surface */
+    --secondary-foreground: 40 22% 84%;
+    --accent: 41 80% 55%; /* harvest gold, brightened */
+    --accent-foreground: 40 45% 10%;
+
+    --muted: 156 12% 16%;
+    --muted-foreground: 145 12% 62%; /* readable secondary text on dark */
+
+    --destructive: 4 66% 57%;
+    --destructive-foreground: 40 40% 96%;
+    --success: 95 42% 52%;
+    --success-foreground: 120 40% 8%;
+    --warning: 28 74% 56%;
+    --warning-foreground: 30 45% 10%;
+
+    --border: 156 12% 20%;
+    --input: 156 12% 23%;
+    --ring: 150 50% 50%;
+
+    /* Sidebar stays the deep-green anchor in both themes, tuned for the darker canvas */
+    --sidebar: 156 40% 10%;
+    --sidebar-2: 158 46% 6%;
+    --sidebar-foreground: 140 22% 88%;
+    --sidebar-muted: 145 12% 58%;
+    --sidebar-accent: 150 34% 18%;
+    --sidebar-border: 150 20% 18%;
+  }
+
   * {
     border-color: hsl(var(--border));
   }
@@ -69,6 +114,12 @@
     font-family: theme('fontFamily.sans');
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  /* Warm gold/green glows read a touch stronger against the dark canvas. */
+  .dark body {
+    background-image: radial-gradient(1100px 480px at 88% -6%, hsl(var(--accent) / 0.09), transparent 60%),
+      radial-gradient(820px 460px at 4% 2%, hsl(var(--primary) / 0.12), transparent 55%);
   }
 
   h1, h2, h3, h4, h5 {

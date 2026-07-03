@@ -7,6 +7,7 @@ import animate from 'tailwindcss-animate';
  * without touching component classes. Semantic tokens only — no raw hex in components.
  */
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     container: { center: true, padding: '1rem', screens: { '2xl': '1400px' } },
