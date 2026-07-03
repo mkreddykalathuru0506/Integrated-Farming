@@ -85,6 +85,8 @@ const en = {
       closeMenu: 'Close menu',
       collapse: 'Collapse sidebar',
       expand: 'Expand sidebar',
+      themeDark: 'Switch to dark theme',
+      themeLight: 'Switch to light theme',
     },
     unitTypes: {
       POULTRY: 'Poultry',
@@ -601,6 +603,8 @@ const hi = {
       closeMenu: 'मेनू बंद करें',
       collapse: 'साइडबार छोटा करें',
       expand: 'साइडबार बड़ा करें',
+      themeDark: 'डार्क थीम पर जाएँ',
+      themeLight: 'लाइट थीम पर जाएँ',
     },
     weather: {
       title: 'मौसम और चेतावनियाँ',

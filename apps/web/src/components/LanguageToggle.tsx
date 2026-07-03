@@ -16,7 +16,7 @@ export function LanguageToggle() {
             aria-pressed={active}
             className={cn(
               'min-h-9 rounded px-2 text-xs font-semibold transition',
-              active ? 'bg-slate-200 text-slate-900' : 'text-slate-500 hover:bg-slate-100',
+              active ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:bg-muted',
             )}
           >
             {l.label}
