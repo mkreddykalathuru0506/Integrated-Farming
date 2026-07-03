@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPaise, rupeesToPaise } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, DataRow, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createWorker,
   listAttendance,
@@ -69,24 +69,18 @@ export function WorkersPanel({ farmId, canWrite }: { farmId: string; canWrite: b
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('workers.title')}</h2>
+      <PanelHeading>{t('workers.title')}</PanelHeading>
 
-      {load.status === 'loading' && <p className="text-sm text-slate-500">{t('workers.loading')}</p>}
-      {load.status === 'error' && (
-        <p role="alert" className="text-sm text-red-600">
-          {t('workers.error')}
-        </p>
-      )}
-      {load.status === 'ready' && load.workers.length === 0 && (
-        <p className="text-sm text-slate-500">{t('workers.empty')}</p>
-      )}
+      {load.status === 'loading' && <PanelNote>{t('workers.loading')}</PanelNote>}
+      {load.status === 'error' && <PanelError>{t('workers.error')}</PanelError>}
+      {load.status === 'ready' && load.workers.length === 0 && <PanelNote>{t('workers.empty')}</PanelNote>}
       {load.status === 'ready' && load.workers.length > 0 && (
         <ul className="space-y-2">
           {load.workers.map((w) => (
-            <li key={w.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2">
+            <DataRow key={w.id}>
               <div className="min-w-0">
-                <p className="truncate font-medium text-slate-800">{w.name}</p>
-                <p className="truncate text-xs text-slate-500">
+                <p className="truncate font-medium text-foreground">{w.name}</p>
+                <p className="truncate text-xs text-muted-foreground tabular">
                   {w.designation ?? '—'}
                   {w.dailyWageRatePaise ? ` · ${formatPaise(Number(w.dailyWageRatePaise))}/day` : ''}
                 </p>
@@ -101,13 +95,13 @@ export function WorkersPanel({ farmId, canWrite }: { farmId: string; canWrite: b
                   </Button>
                 </div>
               )}
-            </li>
+            </DataRow>
           ))}
         </ul>
       )}
 
       {canWrite && (
-        <form onSubmit={onAdd} className="space-y-2 rounded-lg bg-slate-50 p-3">
+        <form onSubmit={onAdd} className="space-y-2 rounded-xl bg-secondary/60 p-3">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('workers.name')} required />
           <Input value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder={t('workers.designation')} />
           <div className="flex gap-2">
@@ -120,11 +114,7 @@ export function WorkersPanel({ farmId, canWrite }: { farmId: string; canWrite: b
             </Select>
             <Input value={wage} onChange={(e) => setWage(e.target.value)} type="number" min={0} placeholder={t('workers.wage')} className="flex-1" />
           </div>
-          {formError && (
-            <p role="alert" className="text-sm text-red-600">
-              {formError}
-            </p>
-          )}
+          {formError && <PanelError>{formError}</PanelError>}
           <Button type="submit" full>
             {t('workers.add')}
           </Button>

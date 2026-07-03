@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, Input, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createColdStorage,
   listColdStorages,
@@ -57,30 +57,30 @@ export function ColdStoragePanel({
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('cold.title')}</h2>
+      <PanelHeading>{t('cold.title')}</PanelHeading>
 
       {stores.length === 0 ? (
-        <p className="text-sm text-slate-500">{t('cold.empty')}</p>
+        <PanelNote>{t('cold.empty')}</PanelNote>
       ) : (
         <ul className="space-y-2 text-sm">
           {stores.map((s) => (
-            <li key={s.id} className="rounded-lg border border-slate-200 px-3 py-2">
+            <li key={s.id} className="rounded-xl border border-border bg-card px-3 py-2">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-slate-700">{s.name}</span>
-                <span className="text-xs text-slate-500">
+                <span className="font-medium text-foreground">{s.name}</span>
+                <span className="text-xs text-muted-foreground tabular">
                   {t(`cold.mode.${s.mode}`)} · {s.minTempC}…{s.maxTempC}°C
                 </span>
               </div>
               <div className="mt-1 flex items-center justify-between">
                 {s.latest ? (
-                  <span className={s.latest.isOutOfRange ? 'font-semibold text-red-600' : 'text-slate-600'}>
+                  <span className={s.latest.isOutOfRange ? 'font-semibold text-destructive tabular' : 'text-muted-foreground tabular'}>
                     {s.latest.temperatureC}°C {s.latest.isOutOfRange ? `· ${t('cold.outOfRange')}` : `· ${t('cold.ok')}`}
                   </span>
                 ) : (
-                  <span className="text-slate-400">{t('cold.noReading')}</span>
+                  <span className="text-muted-foreground">{t('cold.noReading')}</span>
                 )}
                 {s.breachCount > 0 && (
-                  <span className="text-xs text-red-500">{t('cold.breaches', { count: s.breachCount })}</span>
+                  <span className="text-xs text-destructive tabular">{t('cold.breaches', { count: s.breachCount })}</span>
                 )}
               </div>
               {canLog && (
@@ -104,8 +104,8 @@ export function ColdStoragePanel({
       )}
 
       {canWrite && (
-        <form onSubmit={onCreate} className="space-y-2 rounded-lg bg-slate-50 p-3">
-          <p className="text-xs text-slate-500">{t('cold.add')}</p>
+        <form onSubmit={onCreate} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+          <p className="text-xs text-muted-foreground">{t('cold.add')}</p>
           <div className="flex gap-2">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('cold.name')} required className="flex-1" />
             <Select value={mode} onChange={(e) => setMode(e.target.value as 'FRESH' | 'FROZEN')} className="w-32">

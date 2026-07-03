@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPaise, rupeesToPaise } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, DataRow, Input, PanelHeading, PanelNote, Select, SubPanel } from '../ui';
 import {
   createCustomer,
   createInvoice,
@@ -73,34 +73,34 @@ export function InvoicePanel({ farmId, canWrite }: { farmId: string; canWrite: b
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('invoices.title')}</h2>
+      <PanelHeading>{t('invoices.title')}</PanelHeading>
 
       {pnl && (
-        <div className="rounded-lg bg-slate-50 p-3 text-sm">
-          <p className="font-medium text-slate-800">{t('invoices.farmPnl')}</p>
-          <p className="text-slate-600">
+        <SubPanel className="text-sm">
+          <p className="font-medium text-foreground">{t('invoices.farmPnl')}</p>
+          <p className="text-muted-foreground tabular">
             {t('invoices.revenue')} {formatPaise(Number(pnl.revenuePaise))} − {t('invoices.cost')}{' '}
             {formatPaise(Number(pnl.costPaise))} = <span className="font-semibold">{formatPaise(Number(pnl.profitPaise))}</span>
           </p>
-        </div>
+        </SubPanel>
       )}
 
       {invoices.length === 0 ? (
-        <p className="text-sm text-slate-500">{t('invoices.empty')}</p>
+        <PanelNote>{t('invoices.empty')}</PanelNote>
       ) : (
         <ul className="space-y-1 text-sm">
           {invoices.slice(0, 8).map((inv) => (
-            <li key={inv.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-1.5">
-              <span className="text-slate-700">{inv.invoiceNumber}</span>
+            <DataRow key={inv.id} className="py-1.5">
+              <span className="text-foreground">{inv.invoiceNumber}</span>
               <span className="flex items-center gap-2">
-                <span className="text-slate-500">{formatPaise(Number(inv.totalPaise))}</span>
+                <span className="text-muted-foreground tabular">{formatPaise(Number(inv.totalPaise))}</span>
                 {accessToken && (
-                  <button type="button" onClick={() => void openInvoicePdf(accessToken, farmId, inv.id)} className="text-xs font-semibold text-green-700 hover:underline">
+                  <button type="button" onClick={() => void openInvoicePdf(accessToken, farmId, inv.id)} className="text-xs font-semibold text-success hover:underline">
                     {t('invoices.pdf')}
                   </button>
                 )}
               </span>
-            </li>
+            </DataRow>
           ))}
         </ul>
       )}
@@ -108,8 +108,8 @@ export function InvoicePanel({ farmId, canWrite }: { farmId: string; canWrite: b
       {canWrite && (
         <>
           {customers.length > 0 ? (
-            <form onSubmit={onCreateInvoice} className="space-y-2 rounded-lg bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">{t('invoices.create')}</p>
+            <form onSubmit={onCreateInvoice} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+              <p className="text-xs text-muted-foreground">{t('invoices.create')}</p>
               <Select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -135,10 +135,10 @@ export function InvoicePanel({ farmId, canWrite }: { farmId: string; canWrite: b
               </Button>
             </form>
           ) : (
-            <p className="text-xs text-slate-500">{t('invoices.addCustomerFirst')}</p>
+            <p className="text-xs text-muted-foreground">{t('invoices.addCustomerFirst')}</p>
           )}
-          <form onSubmit={onAddCustomer} className="space-y-2 rounded-lg bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">{t('invoices.addCustomer')}</p>
+          <form onSubmit={onAddCustomer} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+            <p className="text-xs text-muted-foreground">{t('invoices.addCustomer')}</p>
             <div className="flex gap-2">
               <Input value={custName} onChange={(e) => setCustName(e.target.value)} placeholder={t('invoices.custName')} required className="flex-1" />
               <Input value={custState} onChange={(e) => setCustState(e.target.value)} placeholder={t('invoices.custState')} className="flex-1" />

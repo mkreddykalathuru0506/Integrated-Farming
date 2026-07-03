@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, DataRow, Input, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createReportSchedule,
   downloadReport,
@@ -50,8 +50,8 @@ export function ReportsPanel({ farmId, canWrite }: { farmId: string; canWrite: b
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('reports.title')}</h2>
-      <p className="text-sm text-slate-500">{t('reports.blurb')}</p>
+      <PanelHeading>{t('reports.title')}</PanelHeading>
+      <PanelNote>{t('reports.blurb')}</PanelNote>
       <div className="flex gap-2">
         <Button type="button" variant="secondary" onClick={() => accessToken && void downloadReport(accessToken, farmId, 'pdf')} className="flex-1">
           {t('reports.pdf')}
@@ -62,31 +62,31 @@ export function ReportsPanel({ farmId, canWrite }: { farmId: string; canWrite: b
       </div>
 
       <div>
-        <p className="mb-1 text-xs font-medium text-slate-500">{t('reports.schedules')}</p>
+        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('reports.schedules')}</p>
         {schedules.length === 0 ? (
-          <p className="text-sm text-slate-500">{t('reports.noSchedules')}</p>
+          <PanelNote>{t('reports.noSchedules')}</PanelNote>
         ) : (
-          <ul className="space-y-1 text-sm">
+          <ul className="space-y-1.5 text-sm">
             {schedules.map((s) => (
-              <li key={s.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-1.5">
-                <span className="truncate text-slate-700">
+              <DataRow key={s.id} className="py-1.5">
+                <span className="truncate text-foreground">
                   {s.name} · {t(`reports.freq.${s.frequency}`)} · {s.format.toUpperCase()}
-                  <span className="block text-xs text-slate-400">{t('reports.next', { date: fmtDate(s.nextRunAt) })}</span>
+                  <span className="block text-xs text-muted-foreground tabular">{t('reports.next', { date: fmtDate(s.nextRunAt) })}</span>
                 </span>
                 {canWrite && (
-                  <button type="button" onClick={() => void onRun(s.id)} className="shrink-0 text-xs font-semibold text-green-700 hover:underline">
+                  <button type="button" onClick={() => void onRun(s.id)} className="shrink-0 text-xs font-semibold text-success hover:underline">
                     {t('reports.runNow')}
                   </button>
                 )}
-              </li>
+              </DataRow>
             ))}
           </ul>
         )}
       </div>
 
       {canWrite && (
-        <form onSubmit={onCreate} className="space-y-2 rounded-lg bg-slate-50 p-3">
-          <p className="text-xs text-slate-500">{t('reports.schedule')}</p>
+        <form onSubmit={onCreate} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('reports.schedule')}</p>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('reports.scheduleName')} required />
           <div className="flex gap-2">
             <Select value={frequency} onChange={(e) => setFrequency(e.target.value)} className="flex-1">

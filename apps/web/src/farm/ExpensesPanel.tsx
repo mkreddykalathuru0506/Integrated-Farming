@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPaise, rupeesToPaise } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, DataRow, Input, PanelError, PanelHeading, PanelNote, Select, SubPanel } from '../ui';
 import {
   createExpense,
   getBatchCost,
@@ -74,40 +74,34 @@ export function ExpensesPanel({ farmId, canWrite }: { farmId: string; canWrite: 
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('expenses.title')}</h2>
+      <PanelHeading>{t('expenses.title')}</PanelHeading>
 
       {cost && (
-        <div className="rounded-lg bg-slate-50 p-3 text-sm">
-          <p className="font-medium text-slate-800">{t('expenses.batchCost')}</p>
-          <p className="text-slate-600">
+        <SubPanel className="text-sm">
+          <p className="font-medium text-foreground">{t('expenses.batchCost')}</p>
+          <p className="text-muted-foreground tabular">
             {t('expenses.total')}: {formatPaise(Number(cost.totalPaise))} · {t('expenses.perBird')}:{' '}
             {formatPaise(Number(cost.costPerBirdPaise))}
           </p>
-        </div>
+        </SubPanel>
       )}
 
-      {load.status === 'loading' && <p className="text-sm text-slate-500">{t('expenses.loading')}</p>}
-      {load.status === 'error' && (
-        <p role="alert" className="text-sm text-red-600">
-          {t('expenses.error')}
-        </p>
-      )}
-      {load.status === 'ready' && load.expenses.length === 0 && (
-        <p className="text-sm text-slate-500">{t('expenses.empty')}</p>
-      )}
+      {load.status === 'loading' && <PanelNote>{t('expenses.loading')}</PanelNote>}
+      {load.status === 'error' && <PanelError>{t('expenses.error')}</PanelError>}
+      {load.status === 'ready' && load.expenses.length === 0 && <PanelNote>{t('expenses.empty')}</PanelNote>}
       {load.status === 'ready' && load.expenses.length > 0 && (
-        <ul className="space-y-1 text-sm">
+        <ul className="space-y-1.5 text-sm">
           {load.expenses.slice(0, 8).map((e) => (
-            <li key={e.id} className="flex justify-between rounded-lg border border-slate-200 px-3 py-1.5">
-              <span className="text-slate-700">{t(`expenses.category.${e.category}`)}</span>
-              <span className="text-slate-500">{formatPaise(Number(e.amountPaise))}</span>
-            </li>
+            <DataRow key={e.id} className="py-1.5">
+              <span className="text-foreground">{t(`expenses.category.${e.category}`)}</span>
+              <span className="text-muted-foreground tabular">{formatPaise(Number(e.amountPaise))}</span>
+            </DataRow>
           ))}
         </ul>
       )}
 
       {canWrite && (
-        <form onSubmit={onAdd} className="space-y-2 rounded-lg bg-slate-50 p-3">
+        <form onSubmit={onAdd} className="space-y-2 rounded-xl bg-secondary/60 p-3">
           <div className="flex gap-2">
             <Select value={category} onChange={(e) => setCategory(e.target.value)} className="flex-1">
               {CATEGORIES.map((c) => (

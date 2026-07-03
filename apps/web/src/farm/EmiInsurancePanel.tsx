@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPaise, rupeesToPaise } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, DataRow, Input, PanelHeading, Select } from '../ui';
 import {
   createInsurance,
   createLoan,
@@ -83,10 +83,10 @@ export function EmiInsurancePanel({ farmId, canWrite }: { farmId: string; canWri
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('emi.title')}</h2>
+      <PanelHeading>{t('emi.title')}</PanelHeading>
 
       {rem && (rem.emiDue.length > 0 || rem.policiesExpiring.length > 0) && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="rounded-lg bg-warning/15 px-3 py-2 text-sm text-warning">
           {t('emi.reminder', { emi: rem.emiDue.length, policies: rem.policiesExpiring.length })}
         </p>
       )}
@@ -94,34 +94,34 @@ export function EmiInsurancePanel({ farmId, canWrite }: { farmId: string; canWri
       {loans.length > 0 && (
         <ul className="space-y-1 text-sm">
           {loans.map((l) => (
-            <li key={l.id} className="flex justify-between rounded-lg border border-slate-200 px-3 py-1.5">
-              <span className="text-slate-700">{l.lender}</span>
-              <span className="text-slate-500">
+            <DataRow key={l.id} className="py-1.5">
+              <span className="text-foreground">{l.lender}</span>
+              <span className="text-muted-foreground tabular">
                 {l.emiAmountPaise ? `${formatPaise(Number(l.emiAmountPaise))}/mo` : formatPaise(Number(l.principalPaise))} · {t('emi.due')} {fmtDate(l.nextDueDate)}
               </span>
-            </li>
+            </DataRow>
           ))}
         </ul>
       )}
       {policies.length > 0 && (
         <ul className="space-y-1 text-sm">
           {policies.map((p) => (
-            <li key={p.id} className="flex justify-between rounded-lg border border-slate-200 px-3 py-1.5">
-              <span className="text-slate-700">
-                {p.provider} <span className="text-xs text-slate-400">· {t(`emi.insType.${p.type}`)}</span>
+            <DataRow key={p.id} className="py-1.5">
+              <span className="text-foreground">
+                {p.provider} <span className="text-xs text-muted-foreground">· {t(`emi.insType.${p.type}`)}</span>
               </span>
-              <span className="text-slate-500">
+              <span className="text-muted-foreground tabular">
                 {formatPaise(Number(p.premiumPaise))} · {t('emi.expires')} {fmtDate(p.endDate)}
               </span>
-            </li>
+            </DataRow>
           ))}
         </ul>
       )}
 
       {canWrite && (
         <>
-          <form onSubmit={onLoan} className="space-y-2 rounded-lg bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">{t('emi.addLoan')}</p>
+          <form onSubmit={onLoan} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+            <p className="text-xs text-muted-foreground">{t('emi.addLoan')}</p>
             <Input value={lender} onChange={(e) => setLender(e.target.value)} placeholder={t('emi.lender')} required />
             <div className="flex gap-2">
               <Input type="number" min={0} value={principal} onChange={(e) => setPrincipal(e.target.value)} placeholder={t('emi.principal')} required className="flex-1" />
@@ -132,8 +132,8 @@ export function EmiInsurancePanel({ farmId, canWrite }: { farmId: string; canWri
               <Button type="submit">{t('emi.addLoanBtn')}</Button>
             </div>
           </form>
-          <form onSubmit={onPolicy} className="space-y-2 rounded-lg bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">{t('emi.addPolicy')}</p>
+          <form onSubmit={onPolicy} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+            <p className="text-xs text-muted-foreground">{t('emi.addPolicy')}</p>
             <Input value={provider} onChange={(e) => setProvider(e.target.value)} placeholder={t('emi.provider')} required />
             <div className="flex gap-2">
               <Select value={insType} onChange={(e) => setInsType(e.target.value)} className="flex-1">

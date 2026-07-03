@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, Input, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createAsset,
   createMaintenanceSchedule,
@@ -74,33 +74,33 @@ export function AssetsPanel({ farmId, canWrite }: { farmId: string; canWrite: bo
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('assets.title')}</h2>
+      <PanelHeading>{t('assets.title')}</PanelHeading>
 
       {due.length > 0 && (
-        <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="rounded-xl bg-warning/12 p-3 text-sm text-warning">
           {t('assets.dueReminder', { count: due.length })}
         </div>
       )}
 
       {assets.length === 0 ? (
-        <p className="text-sm text-slate-500">{t('assets.empty')}</p>
+        <PanelNote>{t('assets.empty')}</PanelNote>
       ) : (
         <ul className="space-y-2 text-sm">
           {assets.slice(0, 8).map((a) => (
-            <li key={a.id} className="rounded-lg border border-slate-200 px-3 py-2">
+            <li key={a.id} className="rounded-xl border border-border bg-card px-3 py-2">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-slate-700">{a.name}</span>
-                <span className="text-xs text-slate-500">{t(`assets.type.${a.type}`)}</span>
+                <span className="font-medium text-foreground">{a.name}</span>
+                <span className="text-xs text-muted-foreground">{t(`assets.type.${a.type}`)}</span>
               </div>
               {a.schedules.length > 0 && (
                 <ul className="mt-1 space-y-1">
                   {a.schedules.map((s) => (
-                    <li key={s.id} className="flex items-center justify-between text-xs text-slate-500">
+                    <li key={s.id} className="flex items-center justify-between text-xs text-muted-foreground tabular">
                       <span>
                         {s.name} · {t('assets.due')} {fmtDate(s.nextDueDate)}
                       </span>
                       {canWrite && (
-                        <button type="button" onClick={() => void onService(a.id, s.id)} className="font-semibold text-green-700 hover:underline">
+                        <button type="button" onClick={() => void onService(a.id, s.id)} className="font-semibold text-success hover:underline">
                           {t('assets.markServiced')}
                         </button>
                       )}
@@ -135,8 +135,8 @@ export function AssetsPanel({ farmId, canWrite }: { farmId: string; canWrite: bo
       )}
 
       {canWrite && (
-        <form onSubmit={onCreate} className="space-y-2 rounded-lg bg-slate-50 p-3">
-          <p className="text-xs text-slate-500">{t('assets.add')}</p>
+        <form onSubmit={onCreate} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+          <p className="text-xs text-muted-foreground">{t('assets.add')}</p>
           <div className="flex gap-2">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('assets.name')} required className="flex-1" />
             <Select value={type} onChange={(e) => setType(e.target.value)} className="w-36">

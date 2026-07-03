@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createDispatch,
   listDispatches,
@@ -70,21 +70,21 @@ export function DispatchPanel({ farmId, canWrite }: { farmId: string; canWrite: 
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('dispatch.title')}</h2>
+      <PanelHeading>{t('dispatch.title')}</PanelHeading>
 
       {dispatches.length === 0 ? (
-        <p className="text-sm text-slate-500">{t('dispatch.empty')}</p>
+        <PanelNote>{t('dispatch.empty')}</PanelNote>
       ) : (
         <ul className="space-y-1 text-sm">
           {dispatches.slice(0, 6).map((d) => (
-            <li key={d.id} className="rounded-lg border border-slate-200 px-3 py-2">
+            <li key={d.id} className="rounded-xl border border-border bg-card px-3 py-2">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-slate-700">{d.salesOrder.orderNumber}</span>
-                <span className={d.coldChainOk ? 'text-xs font-semibold text-green-700' : 'text-xs font-semibold text-red-600'}>
+                <span className="font-medium text-foreground">{d.salesOrder.orderNumber}</span>
+                <span className={d.coldChainOk ? 'text-xs font-semibold text-success' : 'text-xs font-semibold text-destructive'}>
                   {d.coldChainOk ? `❄ ${t('dispatch.chainOk')}` : t('dispatch.chainBroken')}
                 </span>
               </div>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <p className="mt-0.5 text-xs text-muted-foreground tabular">
                 {d.lines[0]?.productLot
                   ? `${d.lines[0].productLot.productName} → ${t('processing.fromBatch')} ${d.lines[0].productLot.sourceBatch?.code ?? '—'}`
                   : '—'}
@@ -98,8 +98,8 @@ export function DispatchPanel({ farmId, canWrite }: { farmId: string; canWrite: 
 
       {canWrite &&
         (orders.length > 0 && lots.length > 0 ? (
-          <form onSubmit={onDispatch} className="space-y-2 rounded-lg bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">{t('dispatch.create')}</p>
+          <form onSubmit={onDispatch} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+            <p className="text-xs text-muted-foreground">{t('dispatch.create')}</p>
             <Select value={orderId} onChange={(e) => setOrderId(e.target.value)}>
               {orders.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -117,7 +117,7 @@ export function DispatchPanel({ farmId, canWrite }: { farmId: string; canWrite: 
               </Select>
               <Input type="number" min={0.01} step="0.01" value={qty} onChange={(e) => setQty(e.target.value)} placeholder={t('dispatch.qtyKg')} required className="w-24" />
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-600">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
               <input type="checkbox" checked={refrigerated} onChange={(e) => setRefrigerated(e.target.checked)} />
               {t('dispatch.refrigerated')}
             </label>
@@ -125,17 +125,13 @@ export function DispatchPanel({ farmId, canWrite }: { farmId: string; canWrite: 
               <Input type="number" step="0.1" value={temp} onChange={(e) => setTemp(e.target.value)} placeholder={t('dispatch.tempC')} className="flex-1" />
               <Input value={vehicle} onChange={(e) => setVehicle(e.target.value)} placeholder={t('dispatch.vehicle')} className="flex-1" />
             </div>
-            {error && (
-              <p role="alert" className="text-xs text-red-600">
-                {error}
-              </p>
-            )}
+            {error && <PanelError className="text-xs">{error}</PanelError>}
             <Button type="submit" full>
               {t('dispatch.dispatch')}
             </Button>
           </form>
         ) : (
-          <p className="text-xs text-slate-500">{t('dispatch.needOrderAndLot')}</p>
+          <p className="text-xs text-muted-foreground">{t('dispatch.needOrderAndLot')}</p>
         ))}
     </section>
   );

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Badge } from '../ui';
+import { Badge, PanelError, PanelHeading, PanelNote } from '../ui';
 import { getSpecies, listSpecies, type SpeciesDetail, type SpeciesSummary } from './api';
 
 type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; species: SpeciesSummary[] };
@@ -35,40 +35,34 @@ export function SpeciesPanel({ farmId }: { farmId: string }) {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('species.title')}</h2>
+      <PanelHeading>{t('species.title')}</PanelHeading>
 
-      {load.status === 'loading' && <p className="text-sm text-slate-500">{t('species.loading')}</p>}
-      {load.status === 'error' && (
-        <p role="alert" className="text-sm text-red-600">
-          {t('species.error')}
-        </p>
-      )}
-      {load.status === 'ready' && load.species.length === 0 && (
-        <p className="text-sm text-slate-500">{t('species.empty')}</p>
-      )}
+      {load.status === 'loading' && <PanelNote>{t('species.loading')}</PanelNote>}
+      {load.status === 'error' && <PanelError>{t('species.error')}</PanelError>}
+      {load.status === 'ready' && load.species.length === 0 && <PanelNote>{t('species.empty')}</PanelNote>}
       {load.status === 'ready' && load.species.length > 0 && (
         <ul className="space-y-2">
           {load.species.map((s) => (
-            <li key={s.id} className="rounded-lg border border-slate-200">
+            <li key={s.id} className="rounded-xl border border-border bg-card">
               <button
                 type="button"
                 onClick={() => toggle(s.id)}
                 aria-expanded={openId === s.id}
                 className="flex min-h-11 w-full items-center justify-between px-3 text-left"
               >
-                <span className="font-medium text-slate-800">{s.name}</span>
-                <Badge className={s.trackingMode === 'INDIVIDUAL' ? 'bg-sky-100 text-sky-800' : ''}>
+                <span className="font-medium text-foreground">{s.name}</span>
+                <Badge variant={s.trackingMode === 'INDIVIDUAL' ? 'accent' : 'default'}>
                   {t(`species.tracking.${s.trackingMode}`)}
                 </Badge>
               </button>
               {openId === s.id && (
-                <div className="border-t border-slate-100 px-3 py-2 text-sm">
+                <div className="border-t border-border px-3 py-2 text-sm">
                   {!detail ? (
-                    <span className="text-slate-400">{t('species.loading')}</span>
+                    <span className="text-muted-foreground">{t('species.loading')}</span>
                   ) : (
                     <>
-                      <p className="text-slate-500">{t('species.stages')}</p>
-                      <ol className="mb-2 ml-4 list-decimal text-slate-700">
+                      <p className="text-muted-foreground">{t('species.stages')}</p>
+                      <ol className="mb-2 ml-4 list-decimal text-foreground">
                         {detail.stages.map((st) => (
                           <li key={st.id}>
                             {st.name}
@@ -76,8 +70,8 @@ export function SpeciesPanel({ farmId }: { farmId: string }) {
                           </li>
                         ))}
                       </ol>
-                      <p className="text-slate-500">{t('species.breeds')}</p>
-                      <p className="text-slate-700">{detail.breeds.map((b) => b.name).join(', ') || '—'}</p>
+                      <p className="text-muted-foreground">{t('species.breeds')}</p>
+                      <p className="text-foreground">{detail.breeds.map((b) => b.name).join(', ') || '—'}</p>
                     </>
                   )}
                 </div>

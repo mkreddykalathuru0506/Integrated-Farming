@@ -6,3 +6,4 @@ export * from './Card';
 export * from './Badge';
 export * from './DropdownMenu';
 export * from './Sheet';
+export * from './Panel';

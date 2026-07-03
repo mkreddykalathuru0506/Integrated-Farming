@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPaise, rupeesToPaise } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, Input, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createOrder,
   listCustomers,
@@ -58,28 +58,28 @@ export function OrdersPanel({ farmId, canWrite }: { farmId: string; canWrite: bo
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('orders.title')}</h2>
+      <PanelHeading>{t('orders.title')}</PanelHeading>
 
       {orders.length === 0 ? (
-        <p className="text-sm text-slate-500">{t('orders.empty')}</p>
+        <PanelNote>{t('orders.empty')}</PanelNote>
       ) : (
         <ul className="space-y-1 text-sm">
           {orders.slice(0, 8).map((o) => (
-            <li key={o.id} className="rounded-lg border border-slate-200 px-3 py-2">
+            <li key={o.id} className="rounded-xl border border-border bg-card px-3 py-2">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-slate-700">{o.orderNumber}</span>
-                <span className="text-slate-500">{formatPaise(Number(o.totalPaise))}</span>
+                <span className="font-medium text-foreground">{o.orderNumber}</span>
+                <span className="text-muted-foreground tabular">{formatPaise(Number(o.totalPaise))}</span>
               </div>
               <div className="mt-1 flex items-center justify-between">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted-foreground">
                   {o.customer.name} · {t(`orders.status.${o.status}`)}
                 </span>
                 {canWrite && o.status === 'DRAFT' && (
                   <span className="flex gap-2">
-                    <button type="button" onClick={() => void onStatus(o.id, 'CONFIRMED')} className="text-xs font-semibold text-green-700 hover:underline">
+                    <button type="button" onClick={() => void onStatus(o.id, 'CONFIRMED')} className="text-xs font-semibold text-success hover:underline">
                       {t('orders.confirm')}
                     </button>
-                    <button type="button" onClick={() => void onStatus(o.id, 'CANCELLED')} className="text-xs font-semibold text-red-600 hover:underline">
+                    <button type="button" onClick={() => void onStatus(o.id, 'CANCELLED')} className="text-xs font-semibold text-destructive hover:underline">
                       {t('orders.cancel')}
                     </button>
                   </span>
@@ -92,8 +92,8 @@ export function OrdersPanel({ farmId, canWrite }: { farmId: string; canWrite: bo
 
       {canWrite &&
         (customers.length > 0 ? (
-          <form onSubmit={onCreate} className="space-y-2 rounded-lg bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">{t('orders.create')}</p>
+          <form onSubmit={onCreate} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+            <p className="text-xs text-muted-foreground">{t('orders.create')}</p>
             <Select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -111,7 +111,7 @@ export function OrdersPanel({ farmId, canWrite }: { farmId: string; canWrite: bo
             </Button>
           </form>
         ) : (
-          <p className="text-xs text-slate-500">{t('orders.addCustomerFirst')}</p>
+          <p className="text-xs text-muted-foreground">{t('orders.addCustomerFirst')}</p>
         ))}
     </section>
   );

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, DataRow, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createBreeding,
   listBreeding,
@@ -62,26 +62,20 @@ export function BreedingPanel({ farmId, canWrite }: { farmId: string; canWrite: 
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('breeding.title')}</h2>
+      <PanelHeading>{t('breeding.title')}</PanelHeading>
 
-      {load.status === 'loading' && <p className="text-sm text-slate-500">{t('breeding.loading')}</p>}
-      {load.status === 'error' && (
-        <p role="alert" className="text-sm text-red-600">
-          {t('breeding.error')}
-        </p>
-      )}
-      {load.status === 'ready' && load.records.length === 0 && (
-        <p className="text-sm text-slate-500">{t('breeding.empty')}</p>
-      )}
+      {load.status === 'loading' && <PanelNote>{t('breeding.loading')}</PanelNote>}
+      {load.status === 'error' && <PanelError>{t('breeding.error')}</PanelError>}
+      {load.status === 'ready' && load.records.length === 0 && <PanelNote>{t('breeding.empty')}</PanelNote>}
       {load.status === 'ready' && load.records.length > 0 && (
         <ul className="space-y-2">
           {load.records.map((r) => (
-            <li key={r.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <DataRow key={r.id} className="text-sm">
               <div className="min-w-0">
-                <p className="truncate text-slate-800">
+                <p className="truncate text-foreground">
                   {r.speciesId ? (nameById[r.speciesId] ?? '—') : '—'} · {t(`breeding.status.${r.status}`)}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {t('breeding.due')}: {fmt(r.expectedDueDate)}
                 </p>
               </div>
@@ -90,13 +84,13 @@ export function BreedingPanel({ farmId, canWrite }: { farmId: string; canWrite: 
                   {t('breeding.complete')}
                 </Button>
               )}
-            </li>
+            </DataRow>
           ))}
         </ul>
       )}
 
       {canWrite && species.length > 0 && (
-        <form onSubmit={onAdd} className="space-y-2 rounded-lg bg-slate-50 p-3">
+        <form onSubmit={onAdd} className="space-y-2 rounded-xl bg-secondary/60 p-3">
           <Select value={speciesId} onChange={(e) => setSpeciesId(e.target.value)}>
             {species.map((s) => (
               <option key={s.id} value={s.id}>

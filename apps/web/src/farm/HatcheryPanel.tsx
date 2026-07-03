@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createHatchery,
   listHatchery,
@@ -71,28 +71,22 @@ export function HatcheryPanel({ farmId, canWrite }: { farmId: string; canWrite: 
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('hatchery.title')}</h2>
+      <PanelHeading>{t('hatchery.title')}</PanelHeading>
 
-      {load.status === 'loading' && <p className="text-sm text-slate-500">{t('hatchery.loading')}</p>}
-      {load.status === 'error' && (
-        <p role="alert" className="text-sm text-red-600">
-          {t('hatchery.error')}
-        </p>
-      )}
-      {load.status === 'ready' && load.batches.length === 0 && (
-        <p className="text-sm text-slate-500">{t('hatchery.empty')}</p>
-      )}
+      {load.status === 'loading' && <PanelNote>{t('hatchery.loading')}</PanelNote>}
+      {load.status === 'error' && <PanelError>{t('hatchery.error')}</PanelError>}
+      {load.status === 'ready' && load.batches.length === 0 && <PanelNote>{t('hatchery.empty')}</PanelNote>}
       {load.status === 'ready' && load.batches.length > 0 && (
         <ul className="space-y-2">
           {load.batches.map((b) => (
-            <li key={b.id} className="space-y-1 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <li key={b.id} className="space-y-1 rounded-xl border border-border bg-card px-3 py-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-slate-800">
-                  {b.code} <span className="text-xs text-slate-400">· {b.eggCount} eggs · {t(`hatchery.status.${b.status}`)}</span>
+                <span className="font-medium text-foreground">
+                  {b.code} <span className="text-xs text-muted-foreground tabular">· {b.eggCount} eggs · {t(`hatchery.status.${b.status}`)}</span>
                 </span>
-                {b.hatchedCount != null && <span className="text-xs text-green-700">{t('hatchery.rate', { rate: b.hatchRate })}</span>}
+                {b.hatchedCount != null && <span className="text-xs text-success tabular">{t('hatchery.rate', { rate: b.hatchRate })}</span>}
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 {t('hatchery.set')} {d(b.setDate)} → {t('hatchery.candle')} {d(b.candlingDate)} → {t('hatchery.lockdown')}{' '}
                 {d(b.lockdownDate)} → {t('hatchery.hatch')} {d(b.expectedHatchDate)}
               </p>
@@ -117,7 +111,7 @@ export function HatcheryPanel({ farmId, canWrite }: { farmId: string; canWrite: 
       )}
 
       {canWrite && species.length > 0 && (
-        <form onSubmit={onSet} className="space-y-2 rounded-lg bg-slate-50 p-3">
+        <form onSubmit={onSet} className="space-y-2 rounded-xl bg-secondary/60 p-3">
           <Select value={speciesId} onChange={(e) => setSpeciesId(e.target.value)}>
             {species.map((s) => (
               <option key={s.id} value={s.id}>
@@ -130,11 +124,7 @@ export function HatcheryPanel({ farmId, canWrite }: { farmId: string; canWrite: 
             <Input type="date" value={setDate} onChange={(e) => setSetDate(e.target.value)} required className="flex-1" />
             <Input type="number" min={1} value={eggs} onChange={(e) => setEggs(e.target.value)} placeholder={t('hatchery.eggCount')} required className="flex-1" />
           </div>
-          {formError && (
-            <p role="alert" className="text-sm text-red-600">
-              {formError}
-            </p>
-          )}
+          {formError && <PanelError>{formError}</PanelError>}
           <Button type="submit" full>
             {t('hatchery.setEggs')}
           </Button>
