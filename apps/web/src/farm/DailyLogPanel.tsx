@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Badge, Button, DataRow, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import { createLog, listBatches, listLogs, type Batch, type DailyLog } from './api';
 import { enqueueAndFlush, flush, pendingCount, type Poster, type QueuedLog } from '../offline/queue';
 
@@ -88,17 +88,20 @@ export function DailyLogPanel({ farmId }: { farmId: string }) {
 
   return (
     <section className="space-y-3" data-testid="daily-log">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('logs.title')}</h2>
-        {pending > 0 && (
-          <span data-testid="log-pending" className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
-            {t('logs.pending', { count: pending })}
-          </span>
-        )}
-      </div>
+      <PanelHeading
+        action={
+          pending > 0 ? (
+            <Badge variant="warning" data-testid="log-pending">
+              {t('logs.pending', { count: pending })}
+            </Badge>
+          ) : undefined
+        }
+      >
+        {t('logs.title')}
+      </PanelHeading>
 
       {batches.length > 0 && (
-        <form onSubmit={onLog} className="space-y-2 rounded-lg bg-slate-50 p-3">
+        <form onSubmit={onLog} className="space-y-2 rounded-xl bg-secondary/60 p-3">
           <div className="flex gap-2">
             <Select value={type} onChange={(e) => setType(e.target.value)} className="flex-1" data-testid="log-type">
               {LOG_TYPES.map((lt) => (
@@ -133,24 +136,18 @@ export function DailyLogPanel({ farmId }: { farmId: string }) {
         </form>
       )}
 
-      {load.status === 'loading' && <p className="text-sm text-slate-500">{t('logs.loading')}</p>}
-      {load.status === 'error' && (
-        <p role="alert" className="text-sm text-red-600">
-          {t('logs.error')}
-        </p>
-      )}
-      {load.status === 'ready' && load.logs.length === 0 && (
-        <p className="text-sm text-slate-500">{t('logs.empty')}</p>
-      )}
+      {load.status === 'loading' && <PanelNote>{t('logs.loading')}</PanelNote>}
+      {load.status === 'error' && <PanelError>{t('logs.error')}</PanelError>}
+      {load.status === 'ready' && load.logs.length === 0 && <PanelNote>{t('logs.empty')}</PanelNote>}
       {load.status === 'ready' && load.logs.length > 0 && (
         <ul className="space-y-1 text-sm" data-testid="log-recent">
           {load.logs.slice(0, 8).map((l) => (
-            <li key={l.id} className="flex justify-between rounded-lg border border-slate-200 px-3 py-1.5">
-              <span className="text-slate-700">{t(`logs.type.${l.type}`)}</span>
-              <span className="text-slate-500">
+            <DataRow key={l.id} className="py-1.5">
+              <span className="text-foreground">{t(`logs.type.${l.type}`)}</span>
+              <span className="text-muted-foreground tabular">
                 {l.quantity} {l.unit}
               </span>
-            </li>
+            </DataRow>
           ))}
         </ul>
       )}

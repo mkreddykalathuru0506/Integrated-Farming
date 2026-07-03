@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPaise } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
+import { PanelHeading, PanelNote } from '../ui';
 import { getCircularity, type Circularity } from './api';
 
 export function CircularityPanel({ farmId }: { farmId: string }) {
@@ -18,30 +19,30 @@ export function CircularityPanel({ farmId }: { farmId: string }) {
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('circularity.title')}</h2>
+      <PanelHeading>{t('circularity.title')}</PanelHeading>
 
       {!c || c.transferCount === 0 ? (
-        <p className="text-sm text-slate-500">{t('circularity.empty')}</p>
+        <PanelNote>{t('circularity.empty')}</PanelNote>
       ) : (
         <>
-          <div className="rounded-lg bg-green-50 p-3">
-            <p className="text-xs text-green-700">{t('circularity.totalSaved')}</p>
-            <p className="text-xl font-semibold text-green-800">{formatPaise(Number(c.totalCreditPaise))}</p>
-            <p className="text-xs text-green-700">
+          <div className="rounded-xl bg-success/10 p-3">
+            <p className="text-xs text-success">{t('circularity.totalSaved')}</p>
+            <p className="text-xl font-semibold text-success tabular">{formatPaise(Number(c.totalCreditPaise))}</p>
+            <p className="text-xs text-success tabular">
               {t('circularity.summary', { count: c.transferCount, qty: c.totalQuantity })}
             </p>
           </div>
 
           {c.byType.length > 0 && (
             <div>
-              <p className="mb-1 text-xs font-medium text-slate-500">{t('circularity.byType')}</p>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">{t('circularity.byType')}</p>
               <ul className="space-y-1 text-sm">
                 {c.byType.map((b) => (
                   <li key={b.type} className="flex items-center justify-between">
-                    <span className="text-slate-600">
+                    <span className="text-muted-foreground tabular">
                       {t(`byproducts.type.${b.type}`)} · {b.quantity}kg
                     </span>
-                    <span className="text-green-700">{formatPaise(Number(b.creditPaise))}</span>
+                    <span className="text-success tabular">{formatPaise(Number(b.creditPaise))}</span>
                   </li>
                 ))}
               </ul>

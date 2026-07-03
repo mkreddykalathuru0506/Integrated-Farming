@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createAnimal,
   listAnimals,
@@ -73,37 +73,31 @@ export function AnimalsPanel({ farmId, canWrite }: { farmId: string; canWrite: b
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('animals.title')}</h2>
+      <PanelHeading>{t('animals.title')}</PanelHeading>
 
-      {load.status === 'loading' && <p className="text-sm text-slate-500">{t('animals.loading')}</p>}
-      {load.status === 'error' && (
-        <p role="alert" className="text-sm text-red-600">
-          {t('animals.error')}
-        </p>
-      )}
-      {load.status === 'ready' && load.animals.length === 0 && (
-        <p className="text-sm text-slate-500">{t('animals.empty')}</p>
-      )}
+      {load.status === 'loading' && <PanelNote>{t('animals.loading')}</PanelNote>}
+      {load.status === 'error' && <PanelError>{t('animals.error')}</PanelError>}
+      {load.status === 'ready' && load.animals.length === 0 && <PanelNote>{t('animals.empty')}</PanelNote>}
       {load.status === 'ready' && load.animals.length > 0 && (
         <ul className="space-y-2">
           {load.animals.map((a) => (
-            <li key={a.id} className="space-y-2 rounded-lg border border-slate-200 px-3 py-2">
+            <li key={a.id} className="space-y-2 rounded-xl border border-border bg-card px-3 py-2">
               <div className="flex items-center gap-3">
                 {a.qrCode && (
                   <QRCodeSVG value={a.qrCode} size={48} className="shrink-0" aria-label={a.qrCode} />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-slate-800">
+                  <p className="truncate font-medium text-foreground">
                     {a.tagNumber ?? a.name ?? a.qrCode}
                   </p>
-                  <p className="truncate text-xs text-slate-500">
+                  <p className="truncate text-xs text-muted-foreground">
                     {a.species.name} · {a.currentStage?.name ?? '—'} · {t(`animals.status.${a.status}`)}
                   </p>
                 </div>
               </div>
 
               {canWrite && a.status === 'ACTIVE' && accessToken && (
-                <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
+                <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
                   <Button size="sm" variant="danger" onClick={() => act(recordMortality(accessToken, farmId, { animalId: a.id, type: 'CULL' }))}>
                     {t('events.cull')}
                   </Button>
@@ -129,7 +123,7 @@ export function AnimalsPanel({ farmId, canWrite }: { farmId: string; canWrite: b
       )}
 
       {canWrite && indivSpecies.length > 0 && (
-        <form onSubmit={onAdd} className="space-y-2 rounded-lg bg-slate-50 p-3">
+        <form onSubmit={onAdd} className="space-y-2 rounded-xl bg-secondary/60 p-3">
           <Select value={speciesId} onChange={(e) => setSpeciesId(e.target.value)}>
             {indivSpecies.map((s) => (
               <option key={s.id} value={s.id}>
@@ -145,11 +139,7 @@ export function AnimalsPanel({ farmId, canWrite }: { farmId: string; canWrite: b
               </option>
             ))}
           </Select>
-          {formError && (
-            <p role="alert" className="text-sm text-red-600">
-              {formError}
-            </p>
-          )}
+          {formError && <PanelError>{formError}</PanelError>}
           <Button type="submit" full>
             {t('animals.add')}
           </Button>

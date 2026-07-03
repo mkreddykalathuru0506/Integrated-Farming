@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPaise, rupeesToPaise } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input } from '../ui';
+import { Button, DataRow, Input, PanelHeading, PanelNote } from '../ui';
 import { listMarketRates, recordMarketRate, type MarketRate } from './api';
 
 function fmtTs(iso: string) {
@@ -43,29 +43,29 @@ export function MarketPanel({ farmId, canWrite }: { farmId: string; canWrite: bo
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('market.title')}</h2>
+      <PanelHeading>{t('market.title')}</PanelHeading>
 
       {rates.length === 0 ? (
-        <p className="text-sm text-slate-500">{t('market.empty')}</p>
+        <PanelNote>{t('market.empty')}</PanelNote>
       ) : (
         <ul className="space-y-1 text-sm">
           {rates.map((r) => (
-            <li key={r.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-1.5">
-              <span className="text-slate-700">
+            <DataRow key={r.id} className="py-1.5">
+              <span className="text-foreground">
                 {r.commodity}
-                <span className="block text-xs text-slate-400">{t('market.asOf', { ts: fmtTs(r.fetchedAt), source: r.source })}</span>
+                <span className="block text-xs text-muted-foreground">{t('market.asOf', { ts: fmtTs(r.fetchedAt), source: r.source })}</span>
               </span>
-              <span className="text-slate-600">
+              <span className="text-muted-foreground tabular">
                 {formatPaise(Number(r.pricePaise))}/{r.unit}
               </span>
-            </li>
+            </DataRow>
           ))}
         </ul>
       )}
 
       {canWrite && (
-        <form onSubmit={onRecord} className="space-y-2 rounded-lg bg-slate-50 p-3">
-          <p className="text-xs text-slate-500">{t('market.record')}</p>
+        <form onSubmit={onRecord} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+          <p className="text-xs text-muted-foreground">{t('market.record')}</p>
           <Input value={commodity} onChange={(e) => setCommodity(e.target.value)} placeholder={t('market.commodity')} required />
           <div className="flex gap-2">
             <Input type="number" min={0} value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t('market.price')} required className="flex-1" />

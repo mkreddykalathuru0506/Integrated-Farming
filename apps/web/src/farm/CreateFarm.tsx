@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input } from '../ui';
+import { Button, Input, PanelError, PanelNote } from '../ui';
 import { createFarm } from './api';
 
 export function CreateFarm({ onCreated }: { onCreated: () => void }) {
@@ -29,7 +29,7 @@ export function CreateFarm({ onCreated }: { onCreated: () => void }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      <p className="text-sm text-slate-500">{t('farm.create.prompt')}</p>
+      <PanelNote>{t('farm.create.prompt')}</PanelNote>
       <Input
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -41,11 +41,7 @@ export function CreateFarm({ onCreated }: { onCreated: () => void }) {
         onChange={(e) => setState(e.target.value)}
         placeholder={t('farm.create.state')}
       />
-      {error && (
-        <p role="alert" className="text-sm text-red-600">
-          {t('farm.create.error')}
-        </p>
-      )}
+      {error && <PanelError>{t('farm.create.error')}</PanelError>}
       <Button type="submit" full disabled={saving}>
         {saving ? t('common.saving') : t('farm.create.submit')}
       </Button>

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button } from '../ui';
+import { Button, DataRow, PanelHeading, PanelNote } from '../ui';
 import { acknowledgeRisk, getWeather, listRisks, type RiskFlag, type Weather } from './api';
 
 const SEVERITY_CLASS: Record<string, string> = {
-  CRITICAL: 'text-red-600',
-  WARNING: 'text-amber-600',
-  INFO: 'text-slate-500',
+  CRITICAL: 'text-destructive',
+  WARNING: 'text-warning',
+  INFO: 'text-muted-foreground',
 };
 
 function fmtTs(iso: string) {
@@ -57,17 +57,17 @@ export function WeatherPanel({ farmId, canWrite }: { farmId: string; canWrite: b
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('weather.title')}</h2>
+      <PanelHeading>{t('weather.title')}</PanelHeading>
 
       {needsLocation ? (
-        <p className="text-sm text-slate-500">{t('weather.needLocation')}</p>
+        <PanelNote>{t('weather.needLocation')}</PanelNote>
       ) : weather ? (
-        <div className="rounded-lg bg-sky-50 p-3 text-sm">
-          <p className="text-lg font-semibold text-sky-800">
+        <div className="rounded-xl bg-accent/10 p-3 text-sm">
+          <p className="text-lg font-semibold text-accent tabular">
             {weather.weather.tempC}°C
             {weather.weather.humidityPct !== null ? ` · ${weather.weather.humidityPct}% RH` : ''}
           </p>
-          <p className="text-xs text-sky-700">
+          <p className="text-xs text-accent">
             {t('weather.asOf', { ts: fmtTs(weather.weather.fetchedAt), source: weather.weather.source })}
           </p>
           {canWrite && (
@@ -77,27 +77,27 @@ export function WeatherPanel({ farmId, canWrite }: { farmId: string; canWrite: b
           )}
         </div>
       ) : (
-        <p className="text-sm text-slate-500">{t('weather.loading')}</p>
+        <PanelNote>{t('weather.loading')}</PanelNote>
       )}
 
       <div>
-        <p className="mb-1 text-xs font-medium text-slate-500">{t('weather.alerts')}</p>
+        <p className="mb-1 text-xs font-medium text-muted-foreground">{t('weather.alerts')}</p>
         {openRisks.length === 0 ? (
-          <p className="text-sm text-slate-500">{t('weather.noAlerts')}</p>
+          <PanelNote>{t('weather.noAlerts')}</PanelNote>
         ) : (
           <ul className="space-y-1 text-sm">
             {openRisks.map((r) => (
-              <li key={r.id} className="flex items-start justify-between gap-2 rounded-lg border border-slate-200 px-3 py-1.5">
+              <DataRow key={r.id} className="items-start gap-2 py-1.5">
                 <span>
                   <span className={`font-semibold ${SEVERITY_CLASS[r.severity] ?? ''}`}>{t(`risk.type.${r.type}`)}</span>
-                  <span className="block text-xs text-slate-500">{r.reason}</span>
+                  <span className="block text-xs text-muted-foreground">{r.reason}</span>
                 </span>
                 {canWrite && (
-                  <button type="button" onClick={() => void onAck(r.id)} className="shrink-0 text-xs font-semibold text-green-700 hover:underline">
+                  <button type="button" onClick={() => void onAck(r.id)} className="shrink-0 text-xs font-semibold text-success hover:underline">
                     {t('weather.ack')}
                   </button>
                 )}
-              </li>
+              </DataRow>
             ))}
           </ul>
         )}

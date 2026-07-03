@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPaise, rupeesToPaise } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
-import { Badge, Button, Input } from '../ui';
+import { Badge, Button, DataRow, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import {
   consumeFeed,
   createFeedItem,
@@ -104,30 +104,24 @@ export function FeedPanel({ farmId, canWrite }: { farmId: string; canWrite: bool
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('feed.title')}</h2>
+      <PanelHeading>{t('feed.title')}</PanelHeading>
 
-      {load.status === 'loading' && <p className="text-sm text-slate-500">{t('feed.loading')}</p>}
-      {load.status === 'error' && (
-        <p role="alert" className="text-sm text-red-600">
-          {t('feed.error')}
-        </p>
-      )}
-      {load.status === 'ready' && load.items.length === 0 && (
-        <p className="text-sm text-slate-500">{t('feed.empty')}</p>
-      )}
+      {load.status === 'loading' && <PanelNote>{t('feed.loading')}</PanelNote>}
+      {load.status === 'error' && <PanelError>{t('feed.error')}</PanelError>}
+      {load.status === 'ready' && load.items.length === 0 && <PanelNote>{t('feed.empty')}</PanelNote>}
       {load.status === 'ready' && load.items.length > 0 && (
         <ul className="space-y-2">
           {load.items.map((i) => (
-            <li key={i.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
+            <DataRow key={i.id}>
               <div className="min-w-0">
-                <p className="truncate font-medium text-slate-800">{i.name}</p>
-                <p className="text-xs text-slate-500">
+                <p className="truncate font-medium text-foreground">{i.name}</p>
+                <p className="text-xs text-muted-foreground tabular">
                   {i.stockQty} {i.unit}
                   {i.lastUnitPricePaise ? ` · ${formatPaise(Number(i.lastUnitPricePaise))}/${i.unit}` : ''}
                 </p>
               </div>
-              {isLow(i) && <Badge className="bg-amber-100 text-amber-800">{t('feed.low')}</Badge>}
-            </li>
+              {isLow(i) && <Badge variant="warning">{t('feed.low')}</Badge>}
+            </DataRow>
           ))}
         </ul>
       )}
@@ -135,15 +129,15 @@ export function FeedPanel({ farmId, canWrite }: { farmId: string; canWrite: bool
       {canWrite && (
         <>
           {load.status === 'ready' && load.items.length > 0 && (
-            <form onSubmit={onBuy} className="space-y-2 rounded-lg bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">{t('feed.buy')}</p>
-              <select value={buyId} onChange={(e) => setBuyId(e.target.value)} className="block min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3">
+            <form onSubmit={onBuy} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('feed.buy')}</p>
+              <Select value={buyId} onChange={(e) => setBuyId(e.target.value)}>
                 {load.items.map((i) => (
                   <option key={i.id} value={i.id}>
                     {i.name}
                   </option>
                 ))}
-              </select>
+              </Select>
               <div className="flex gap-2">
                 <Input type="number" min={0.01} step="0.01" value={qty} onChange={(e) => setQty(e.target.value)} placeholder={t('feed.qty')} required className="flex-1" />
                 <Input type="number" min={0} value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t('feed.unitPrice')} required className="flex-1" />
@@ -154,41 +148,37 @@ export function FeedPanel({ farmId, canWrite }: { farmId: string; canWrite: bool
             </form>
           )}
           {load.status === 'ready' && load.items.length > 0 && batches.length > 0 && (
-            <form onSubmit={onConsume} className="space-y-2 rounded-lg bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">{t('feed.consume')}</p>
+            <form onSubmit={onConsume} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('feed.consume')}</p>
               <div className="flex gap-2">
-                <select value={buyId} onChange={(e) => setBuyId(e.target.value)} className="block min-h-11 flex-1 rounded-lg border border-slate-300 bg-white px-3">
+                <Select value={buyId} onChange={(e) => setBuyId(e.target.value)} className="flex-1">
                   {load.items.map((i) => (
                     <option key={i.id} value={i.id}>
                       {i.name}
                     </option>
                   ))}
-                </select>
-                <select value={consBatch} onChange={(e) => setConsBatch(e.target.value)} className="block min-h-11 flex-1 rounded-lg border border-slate-300 bg-white px-3">
+                </Select>
+                <Select value={consBatch} onChange={(e) => setConsBatch(e.target.value)} className="flex-1">
                   {batches.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.code}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="flex items-center gap-2">
                 <Input type="number" min={0.01} step="0.01" value={consQty} onChange={(e) => setConsQty(e.target.value)} placeholder={t('feed.qty')} required className="flex-1" />
                 <Button type="submit">{t('feed.recordConsume')}</Button>
               </div>
-              {consError && (
-                <p role="alert" className="text-sm text-red-600">
-                  {consError}
-                </p>
-              )}
+              {consError && <PanelError>{consError}</PanelError>}
               {fcr && (
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-muted-foreground tabular">
                   {t('feed.fcrLine', { feed: fcr.feedConsumedKg, gain: fcr.weightGainKg, fcr: fcr.fcr ?? '—' })}
                 </p>
               )}
             </form>
           )}
-          <form onSubmit={onAddItem} className="space-y-2 rounded-lg bg-slate-50 p-3">
+          <form onSubmit={onAddItem} className="space-y-2 rounded-xl bg-secondary/60 p-3">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('feed.name')} required />
             <Input type="number" min={0} value={threshold} onChange={(e) => setThreshold(e.target.value)} placeholder={t('feed.reorder')} />
             <Button type="submit" full variant="secondary">

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import { getSettings, updateSettings, type FarmSettings } from './api';
 
 const TIERS = ['', 'BASIC', 'STATE', 'CENTRAL'] as const;
@@ -42,23 +42,17 @@ export function SettingsPanel({ farmId, canWrite }: { farmId: string; canWrite: 
   }
 
   if (error && !settings) {
-    return (
-      <p role="alert" className="text-sm text-red-600">
-        {t('settings.error')}
-      </p>
-    );
+    return <PanelError>{t('settings.error')}</PanelError>;
   }
-  if (!settings) return <p className="text-sm text-slate-500">{t('settings.loading')}</p>;
+  if (!settings) return <PanelNote>{t('settings.loading')}</PanelNote>;
 
   const set = (patch: Partial<FarmSettings>) => setSettings({ ...settings, ...patch });
 
   return (
     <form onSubmit={onSave} className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-        {t('settings.title')}
-      </h2>
+      <PanelHeading>{t('settings.title')}</PanelHeading>
 
-      <label className="block space-y-1 text-sm text-slate-700">
+      <label className="block space-y-1 text-sm text-foreground">
         <span>{t('settings.fssai')}</span>
         <Input
           value={settings.fssaiLicenseNo ?? ''}
@@ -67,7 +61,7 @@ export function SettingsPanel({ farmId, canWrite }: { farmId: string; canWrite: 
         />
       </label>
 
-      <label className="block space-y-1 text-sm text-slate-700">
+      <label className="block space-y-1 text-sm text-foreground">
         <span>{t('settings.tier')}</span>
         <Select
           value={settings.fssaiTier ?? ''}
@@ -82,7 +76,7 @@ export function SettingsPanel({ farmId, canWrite }: { farmId: string; canWrite: 
         </Select>
       </label>
 
-      <label className="block space-y-1 text-sm text-slate-700">
+      <label className="block space-y-1 text-sm text-foreground">
         <span>{t('settings.gstin')}</span>
         <Input
           value={settings.gstin ?? ''}
@@ -92,7 +86,7 @@ export function SettingsPanel({ farmId, canWrite }: { farmId: string; canWrite: 
       </label>
 
       <div className="flex gap-2">
-        <label className="block flex-1 space-y-1 text-sm text-slate-700">
+        <label className="block flex-1 space-y-1 text-sm text-foreground">
           <span>{t('settings.latitude')}</span>
           <Input
             type="number"
@@ -102,7 +96,7 @@ export function SettingsPanel({ farmId, canWrite }: { farmId: string; canWrite: 
             disabled={!canWrite}
           />
         </label>
-        <label className="block flex-1 space-y-1 text-sm text-slate-700">
+        <label className="block flex-1 space-y-1 text-sm text-foreground">
           <span>{t('settings.longitude')}</span>
           <Input
             type="number"
@@ -114,12 +108,8 @@ export function SettingsPanel({ farmId, canWrite }: { farmId: string; canWrite: 
         </label>
       </div>
 
-      {saved && <p className="text-sm text-green-700">{t('settings.saved')}</p>}
-      {error && (
-        <p role="alert" className="text-sm text-red-600">
-          {t('settings.error')}
-        </p>
-      )}
+      {saved && <p className="text-sm text-success">{t('settings.saved')}</p>}
+      {error && <PanelError>{t('settings.error')}</PanelError>}
 
       {canWrite && (
         <Button type="submit" full>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, DataRow, Input, PanelError, PanelHeading, PanelNote, Select, SubPanel } from '../ui';
 import {
   createProcessing,
   listBatches,
@@ -72,41 +72,41 @@ export function ProcessingPanel({ farmId, canWrite }: { farmId: string; canWrite
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('processing.title')}</h2>
+      <PanelHeading>{t('processing.title')}</PanelHeading>
 
       {lots.length === 0 ? (
-        <p className="text-sm text-slate-500">{t('processing.empty')}</p>
+        <PanelNote>{t('processing.empty')}</PanelNote>
       ) : (
         <ul className="space-y-1 text-sm">
           {lots.slice(0, 8).map((l) => (
-            <li key={l.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-1.5">
-              <span className="truncate text-slate-700">
+            <DataRow key={l.id} className="py-1.5">
+              <span className="truncate text-foreground tabular">
                 {l.productName} · {l.quantityKg}kg · {t(`cold.mode.${l.state}`)}
               </span>
-              <button type="button" onClick={() => void onTrace(l.id)} className="shrink-0 text-xs font-semibold text-green-700 hover:underline">
+              <button type="button" onClick={() => void onTrace(l.id)} className="shrink-0 text-xs font-semibold text-success hover:underline">
                 {t('processing.trace')}
               </button>
-            </li>
+            </DataRow>
           ))}
         </ul>
       )}
 
       {trace && (
-        <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-          <p className="font-medium text-slate-800">{trace.lot.lotCode}</p>
+        <SubPanel className="text-xs text-muted-foreground">
+          <p className="font-medium text-foreground">{trace.lot.lotCode}</p>
           <p>
             {trace.lot.productName} ← {t('processing.fromBatch')}{' '}
             <span className="font-medium">{trace.sourceBatch?.code ?? '—'}</span>
             {trace.sourceBatch?.species ? ` (${trace.sourceBatch.species.name})` : ''}
           </p>
           {trace.coldStorage && <p>{t('processing.storedIn', { name: trace.coldStorage.name })}</p>}
-        </div>
+        </SubPanel>
       )}
 
       {canWrite &&
         (batches.length > 0 ? (
-          <form onSubmit={onProcess} className="space-y-2 rounded-lg bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">{t('processing.run')}</p>
+          <form onSubmit={onProcess} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+            <p className="text-xs text-muted-foreground">{t('processing.run')}</p>
             <div className="flex gap-2">
               <Select value={batchId} onChange={(e) => setBatchId(e.target.value)} className="flex-1">
                 {batches.map((b) => (
@@ -140,17 +140,13 @@ export function ProcessingPanel({ farmId, canWrite }: { farmId: string; canWrite
                 </option>
               ))}
             </Select>
-            {error && (
-              <p role="alert" className="text-xs text-red-600">
-                {error}
-              </p>
-            )}
+            {error && <PanelError className="text-xs">{error}</PanelError>}
             <Button type="submit" full>
               {t('processing.process')}
             </Button>
           </form>
         ) : (
-          <p className="text-xs text-slate-500">{t('processing.noBatches')}</p>
+          <p className="text-xs text-muted-foreground">{t('processing.noBatches')}</p>
         ))}
     </section>
   );

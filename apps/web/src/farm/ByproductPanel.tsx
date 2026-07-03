@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPaise, rupeesToPaise } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, DataRow, Input, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createByproductTransfer,
   listByproducts,
@@ -54,27 +54,27 @@ export function ByproductPanel({ farmId, canWrite }: { farmId: string; canWrite:
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('byproducts.title')}</h2>
+      <PanelHeading>{t('byproducts.title')}</PanelHeading>
 
       {transfers.length === 0 ? (
-        <p className="text-sm text-slate-500">{t('byproducts.empty')}</p>
+        <PanelNote>{t('byproducts.empty')}</PanelNote>
       ) : (
         <ul className="space-y-1 text-sm">
           {transfers.slice(0, 8).map((tr) => (
-            <li key={tr.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-1.5">
-              <span className="truncate text-slate-700">
+            <DataRow key={tr.id} className="py-1.5">
+              <span className="truncate text-foreground tabular">
                 {t(`byproducts.type.${tr.byproductType}`)} · {tr.quantity}
                 {tr.unit} · {unitName(tr.fromUnitId)} → {unitName(tr.toUnitId)}
               </span>
-              {Number(tr.creditPaise) > 0 && <span className="shrink-0 text-green-700">{formatPaise(Number(tr.creditPaise))}</span>}
-            </li>
+              {Number(tr.creditPaise) > 0 && <span className="shrink-0 text-success tabular">{formatPaise(Number(tr.creditPaise))}</span>}
+            </DataRow>
           ))}
         </ul>
       )}
 
       {canWrite && (
-        <form onSubmit={onCreate} className="space-y-2 rounded-lg bg-slate-50 p-3">
-          <p className="text-xs text-slate-500">{t('byproducts.record')}</p>
+        <form onSubmit={onCreate} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+          <p className="text-xs text-muted-foreground">{t('byproducts.record')}</p>
           <Select value={type} onChange={(e) => setType(e.target.value)}>
             {BYPRODUCT_TYPES.map((bt) => (
               <option key={bt} value={bt}>
@@ -91,7 +91,7 @@ export function ByproductPanel({ farmId, canWrite }: { farmId: string; canWrite:
                 </option>
               ))}
             </Select>
-            <span className="self-center text-slate-400">→</span>
+            <span className="self-center text-muted-foreground">→</span>
             <Select value={toUnitId} onChange={(e) => setToUnitId(e.target.value)} className="flex-1">
               <option value="">{t('byproducts.toAny')}</option>
               {units.map((u) => (

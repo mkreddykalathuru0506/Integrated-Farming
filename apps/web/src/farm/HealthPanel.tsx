@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, Input, PanelHeading, PanelNote, Select } from '../ui';
 import {
   getWithdrawal,
   listBatches,
@@ -71,10 +71,10 @@ export function HealthPanel({ farmId, canWrite }: { farmId: string; canWrite: bo
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('health.title')}</h2>
+      <PanelHeading>{t('health.title')}</PanelHeading>
 
       {batches.length === 0 ? (
-        <p className="text-sm text-slate-500">{t('health.noBatches')}</p>
+        <PanelNote>{t('health.noBatches')}</PanelNote>
       ) : (
         <>
           <Select value={batchId} onChange={(e) => setBatchId(e.target.value)} aria-label={t('health.batch')}>
@@ -87,7 +87,7 @@ export function HealthPanel({ farmId, canWrite }: { farmId: string; canWrite: bo
 
           {status && (
             <p
-              className={`rounded-lg px-3 py-2 text-sm ${status.underWithdrawal ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}
+              className={`rounded-xl px-3 py-2 text-sm ${status.underWithdrawal ? 'bg-destructive/12 text-destructive' : 'bg-success/12 text-success'}`}
             >
               {status.underWithdrawal
                 ? t('health.under', { date: status.until ? new Date(status.until).toLocaleDateString() : '' })
@@ -96,15 +96,15 @@ export function HealthPanel({ farmId, canWrite }: { farmId: string; canWrite: bo
           )}
 
           {msg && (
-            <p role="alert" className={`text-sm ${msg.kind === 'ok' ? 'text-green-700' : 'text-red-600'}`}>
+            <p role="alert" className={`text-sm ${msg.kind === 'ok' ? 'text-success' : 'text-destructive'}`}>
               {msg.text}
             </p>
           )}
 
           {canWrite && (
             <>
-              <form onSubmit={onMed} className="space-y-2 rounded-lg bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">{t('health.recordMed')}</p>
+              <form onSubmit={onMed} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+                <p className="text-xs text-muted-foreground">{t('health.recordMed')}</p>
                 <Input value={drug} onChange={(e) => setDrug(e.target.value)} placeholder={t('health.drug')} required />
                 <div className="flex items-center gap-2">
                   <Input

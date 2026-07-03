@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UNIT_TYPES } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, DataRow, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import { createUnit, deleteUnit, listUnits, type Unit } from './api';
 
 type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; units: Unit[] };
@@ -51,41 +51,30 @@ export function UnitsPanel({ farmId, canWrite }: { farmId: string; canWrite: boo
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-        {t('units.title')}
-      </h2>
+      <PanelHeading>{t('units.title')}</PanelHeading>
 
-      {load.status === 'loading' && <p className="text-sm text-slate-500">{t('units.loading')}</p>}
-      {load.status === 'error' && (
-        <p role="alert" className="text-sm text-red-600">
-          {t('units.error')}
-        </p>
-      )}
-      {load.status === 'ready' && load.units.length === 0 && (
-        <p className="text-sm text-slate-500">{t('units.empty')}</p>
-      )}
+      {load.status === 'loading' && <PanelNote>{t('units.loading')}</PanelNote>}
+      {load.status === 'error' && <PanelError>{t('units.error')}</PanelError>}
+      {load.status === 'ready' && load.units.length === 0 && <PanelNote>{t('units.empty')}</PanelNote>}
       {load.status === 'ready' && load.units.length > 0 && (
         <ul className="space-y-2">
           {load.units.map((u) => (
-            <li
-              key={u.id}
-              className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2"
-            >
-              <span className="text-slate-800">
-                {u.name} <span className="text-xs text-slate-400">· {t(`unitTypes.${u.type}`)}</span>
+            <DataRow key={u.id}>
+              <span className="text-foreground">
+                {u.name} <span className="text-xs text-muted-foreground">· {t(`unitTypes.${u.type}`)}</span>
               </span>
               {canWrite && (
                 <Button variant="danger" size="sm" onClick={() => void onDelete(u.id)}>
                   {t('common.delete')}
                 </Button>
               )}
-            </li>
+            </DataRow>
           ))}
         </ul>
       )}
 
       {canWrite && (
-        <form onSubmit={onAdd} className="space-y-2 rounded-lg bg-slate-50 p-3">
+        <form onSubmit={onAdd} className="space-y-2 rounded-xl bg-secondary/60 p-3">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -99,11 +88,7 @@ export function UnitsPanel({ farmId, canWrite }: { farmId: string; canWrite: boo
               </option>
             ))}
           </Select>
-          {formError && (
-            <p role="alert" className="text-sm text-red-600">
-              {formError}
-            </p>
-          )}
+          {formError && <PanelError>{formError}</PanelError>}
           <Button type="submit" full>
             {t('units.add')}
           </Button>

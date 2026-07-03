@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Input, Select } from '../ui';
+import { Button, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import {
   advanceBatch,
   closeBatch,
@@ -75,32 +75,26 @@ export function BatchesPanel({ farmId, canWrite }: { farmId: string; canWrite: b
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('batches.title')}</h2>
+      <PanelHeading>{t('batches.title')}</PanelHeading>
 
-      {load.status === 'loading' && <p className="text-sm text-slate-500">{t('batches.loading')}</p>}
-      {load.status === 'error' && (
-        <p role="alert" className="text-sm text-red-600">
-          {t('batches.error')}
-        </p>
-      )}
-      {load.status === 'ready' && load.batches.length === 0 && (
-        <p className="text-sm text-slate-500">{t('batches.empty')}</p>
-      )}
+      {load.status === 'loading' && <PanelNote>{t('batches.loading')}</PanelNote>}
+      {load.status === 'error' && <PanelError>{t('batches.error')}</PanelError>}
+      {load.status === 'ready' && load.batches.length === 0 && <PanelNote>{t('batches.empty')}</PanelNote>}
       {load.status === 'ready' && load.batches.length > 0 && (
         <ul className="space-y-2">
           {load.batches.map((b) => (
-            <li key={b.id} className="space-y-2 rounded-lg border border-slate-200 px-3 py-2">
+            <li key={b.id} className="space-y-2 rounded-xl border border-border bg-card px-3 py-2">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-slate-800">
-                  {b.code} <span className="text-xs text-slate-400">· {b.species.name}</span>
+                <span className="font-medium text-foreground">
+                  {b.code} <span className="text-xs text-muted-foreground">· {b.species.name}</span>
                 </span>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted-foreground tabular">
                   {b.currentCount}/{b.initialCount} · {b.currentStage?.name ?? '—'} · {t(`batches.status.${b.status}`)}
                 </span>
               </div>
 
               {canWrite && b.status === 'ACTIVE' && accessToken && (
-                <div className="space-y-2 border-t border-slate-100 pt-2">
+                <div className="space-y-2 border-t border-border pt-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <Input
                       type="number"
@@ -144,7 +138,7 @@ export function BatchesPanel({ farmId, canWrite }: { farmId: string; canWrite: b
       )}
 
       {canWrite && batchSpecies.length > 0 && (
-        <form onSubmit={onAdd} className="space-y-2 rounded-lg bg-slate-50 p-3">
+        <form onSubmit={onAdd} className="space-y-2 rounded-xl bg-secondary/60 p-3">
           <Select value={speciesId} onChange={(e) => setSpeciesId(e.target.value)}>
             {batchSpecies.map((s) => (
               <option key={s.id} value={s.id}>
@@ -154,11 +148,7 @@ export function BatchesPanel({ farmId, canWrite }: { farmId: string; canWrite: b
           </Select>
           <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('batches.code')} required />
           <Input value={count} onChange={(e) => setCount(e.target.value)} type="number" min={1} placeholder={t('batches.count')} required />
-          {formError && (
-            <p role="alert" className="text-sm text-red-600">
-              {formError}
-            </p>
-          )}
+          {formError && <PanelError>{formError}</PanelError>}
           <Button type="submit" full>
             {t('batches.add')}
           </Button>

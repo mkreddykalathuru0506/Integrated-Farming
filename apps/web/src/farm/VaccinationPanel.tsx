@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
-import { Button, Select } from '../ui';
+import { Button, PanelHeading, PanelNote, Select } from '../ui';
 import { getVaccinations, listBatches, recordVaccination, type Batch, type Vaccinations } from './api';
 
 export function VaccinationPanel({ farmId, canWrite }: { farmId: string; canWrite: boolean }) {
@@ -38,10 +38,10 @@ export function VaccinationPanel({ farmId, canWrite }: { farmId: string; canWrit
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">{t('vax.title')}</h2>
+      <PanelHeading>{t('vax.title')}</PanelHeading>
 
       {batches.length === 0 ? (
-        <p className="text-sm text-slate-500">{t('vax.noBatches')}</p>
+        <PanelNote>{t('vax.noBatches')}</PanelNote>
       ) : (
         <>
           <Select value={batchId} onChange={(e) => setBatchId(e.target.value)} aria-label={t('vax.batch')}>
@@ -54,16 +54,16 @@ export function VaccinationPanel({ farmId, canWrite }: { farmId: string; canWrit
 
           {vax && (
             <div className="space-y-2 text-sm">
-              <p className="text-xs text-slate-500">{t('vax.age', { days: vax.ageDays })}</p>
+              <p className="text-xs text-muted-foreground">{t('vax.age', { days: vax.ageDays })}</p>
 
               {vax.due.length > 0 && (
                 <div>
-                  <p className="font-medium text-red-700">{t('vax.due')}</p>
+                  <p className="font-medium text-destructive">{t('vax.due')}</p>
                   <ul className="space-y-1">
                     {vax.due.map((v) => (
-                      <li key={v.id} className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-1.5">
+                      <li key={v.id} className="flex items-center justify-between rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-1.5">
                         <span>
-                          {v.vaccineName} <span className="text-xs text-slate-400">· d{v.ageDays}</span>
+                          {v.vaccineName} <span className="text-xs text-muted-foreground tabular">· d{v.ageDays}</span>
                         </span>
                         {canWrite && (
                           <Button size="sm" onClick={() => void give(v.vaccineName)}>
@@ -77,17 +77,17 @@ export function VaccinationPanel({ farmId, canWrite }: { farmId: string; canWrit
               )}
 
               {vax.upcoming.length > 0 && (
-                <p className="text-slate-500">
+                <p className="text-muted-foreground">
                   {t('vax.upcoming')}: {vax.upcoming.map((v) => v.vaccineName).join(', ')}
                 </p>
               )}
               {vax.done.length > 0 && (
-                <p className="text-green-700">
+                <p className="text-success">
                   {t('vax.done')}: {vax.done.map((v) => v.vaccineName).join(', ')}
                 </p>
               )}
               {vax.due.length === 0 && vax.upcoming.length === 0 && vax.done.length === 0 && (
-                <p className="text-slate-500">{t('vax.none')}</p>
+                <p className="text-muted-foreground">{t('vax.none')}</p>
               )}
             </div>
           )}
