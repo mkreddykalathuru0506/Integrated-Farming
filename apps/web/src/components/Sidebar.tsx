@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { PanelLeftClose, PanelLeftOpen, Leaf } from 'lucide-react';
 import { cn } from '../ui';
 import { SECTIONS } from './nav';
+import { pathForSection } from './router';
 
 type Props = {
   activeKey: string;
@@ -61,13 +62,19 @@ export function SidebarContent({ activeKey, onSelect, collapsed, onToggleCollaps
                     className="absolute -left-3 top-2 bottom-2 w-[3px] rounded-r bg-accent shadow-[0_0_12px_hsl(var(--accent)/0.7)]"
                   />
                 )}
-                <button
-                  type="button"
-                  onClick={() => onSelect(s.key)}
+                <a
+                  href={pathForSection(s.key)}
+                  onClick={(e) => {
+                    // Let modified / non-primary clicks fall through to the browser
+                    // (open-in-new-tab, etc.); handle plain clicks as in-app navigation.
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                    e.preventDefault();
+                    onSelect(s.key);
+                  }}
                   aria-current={active ? 'page' : undefined}
                   title={collapsed ? label : undefined}
                   className={cn(
-                    'group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors',
+                    'group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium no-underline transition-colors',
                     collapsed && 'justify-center px-0',
                     active
                       ? 'bg-gradient-to-r from-success/20 to-success/[0.04] text-white'
@@ -80,7 +87,7 @@ export function SidebarContent({ activeKey, onSelect, collapsed, onToggleCollaps
                     aria-hidden
                   />
                   {!collapsed && <span className="truncate">{label}</span>}
-                </button>
+                </a>
               </li>
             );
           })}
