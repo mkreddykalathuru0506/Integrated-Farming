@@ -5,6 +5,7 @@ import { Card, cn, Sheet, SheetContent, SheetTitle } from '../ui';
 import { SidebarContent } from './Sidebar';
 import { Topbar } from './Topbar';
 import { SECTIONS, permsFor } from './nav';
+import { useRoute } from './router';
 
 type Props = {
   farms: MyFarm[];
@@ -19,7 +20,7 @@ const COLLAPSE_KEY = 'ifm.sidebar.collapsed';
 
 export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail, onLogout }: Props) {
   const { t } = useTranslation();
-  const [activeKey, setActiveKey] = useState('overview');
+  const { key: routeKey, navigate } = useRoute();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -37,13 +38,19 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
     }
   }, [collapsed]);
 
-  const section = SECTIONS.find((s) => s.key === activeKey) ?? SECTIONS[0]!;
+  const section = SECTIONS.find((s) => s.key === routeKey) ?? SECTIONS[0]!;
+  const activeKey = section.key;
   const selected = farms.find((f) => f.farmId === selectedId);
   const perms = permsFor(selected);
   const isOverview = section.key === 'overview';
 
+  // Canonicalise an unknown/typo'd URL (e.g. /nope) to the section it fell back to.
+  useEffect(() => {
+    if (routeKey !== section.key) navigate(section.key, { replace: true });
+  }, [routeKey, section.key, navigate]);
+
   function selectFromDrawer(key: string) {
-    setActiveKey(key);
+    navigate(key);
     setMobileOpen(false);
   }
 
@@ -58,7 +65,7 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
       >
         <SidebarContent
           activeKey={activeKey}
-          onSelect={setActiveKey}
+          onSelect={navigate}
           collapsed={collapsed}
           onToggleCollapse={() => setCollapsed((c) => !c)}
         />
