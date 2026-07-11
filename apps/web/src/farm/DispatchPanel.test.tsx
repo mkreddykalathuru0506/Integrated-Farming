@@ -8,6 +8,9 @@ import { ToastProvider } from '../ui/Toast';
 import { jsonResponse, mockFetchRoutes, type RouteHandler } from '../test/mockFetch';
 import { DispatchPanel } from './DispatchPanel';
 
+// Dialog-heavy userEvent flows can exceed the 5s default on loaded CI runners.
+vi.setConfig({ testTimeout: 20_000 });
+
 const dispatch = {
   id: 'd1',
   dispatchedAt: '2026-07-08T09:00:00.000Z',

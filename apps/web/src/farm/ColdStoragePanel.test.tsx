@@ -8,6 +8,9 @@ import { ToastProvider } from '../ui/Toast';
 import { jsonResponse, mockFetchRoutes, type RouteHandler } from '../test/mockFetch';
 import { ColdStoragePanel } from './ColdStoragePanel';
 
+// Dialog-heavy userEvent flows can exceed the 5s default on loaded CI runners.
+vi.setConfig({ testTimeout: 20_000 });
+
 const store = {
   id: 's1',
   name: 'Freezer A',

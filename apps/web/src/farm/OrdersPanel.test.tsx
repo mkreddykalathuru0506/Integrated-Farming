@@ -8,6 +8,10 @@ import { ToastProvider } from '../ui/Toast';
 import { jsonResponse, mockFetchRoutes, type RouteHandler } from '../test/mockFetch';
 import { OrdersPanel } from './OrdersPanel';
 
+// Dialog-heavy userEvent flows (RHF field arrays) can exceed the 5s default on
+// loaded CI runners — allow more headroom for this file.
+vi.setConfig({ testTimeout: 20_000 });
+
 const order = {
   id: 'o1',
   orderNumber: 'SO-2026-27-0001',

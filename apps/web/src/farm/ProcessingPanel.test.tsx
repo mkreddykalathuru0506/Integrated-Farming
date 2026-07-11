@@ -8,6 +8,9 @@ import { ToastProvider } from '../ui/Toast';
 import { jsonResponse, mockFetchRoutes, type RouteHandler } from '../test/mockFetch';
 import { ProcessingPanel } from './ProcessingPanel';
 
+// Dialog-heavy userEvent flows can exceed the 5s default on loaded CI runners.
+vi.setConfig({ testTimeout: 20_000 });
+
 const lot = {
   id: 'l1',
   lotCode: 'IFM-L-l1',
