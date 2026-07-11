@@ -3,7 +3,12 @@ import { prisma } from '../prisma';
 import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import { makeNotificationService, MockNotificationService, type NotificationChannel } from './notification.service';
 
-type DispatchInput = { channel?: NotificationChannel; recipient?: string };
+type DispatchInput = {
+  channel?: NotificationChannel;
+  recipient?: string;
+  /** Only dispatch flags of this severity (e.g. the proactive sweep routes CRITICAL only). */
+  severity?: 'INFO' | 'WARNING' | 'CRITICAL';
+};
 
 /**
  * Route alerts for OPEN risk flags that haven't been notified yet. One notification per flag
@@ -15,7 +20,7 @@ export async function dispatchAlerts(farmId: string, userId: string, input: Disp
   const recipient = input.recipient ?? 'farm-owner';
 
   const openFlags = await prisma.riskFlag.findMany({
-    where: { farmId, status: 'OPEN' },
+    where: { farmId, status: 'OPEN', ...(input.severity ? { severity: input.severity } : {}) },
     select: { id: true, type: true, severity: true, reason: true },
   });
   if (openFlags.length === 0) return { dispatched: 0 };
