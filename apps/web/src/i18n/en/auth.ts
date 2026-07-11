@@ -75,7 +75,6 @@ export default {
     rateLimited: 'Too many attempts — please wait a minute and try again',
     offline: 'Cannot reach the server — check your connection',
     otpInvalid: 'That code is incorrect or has expired — request a new one',
-    emailInvalid: 'Please enter a valid email',
   },
   restoring: 'Signing you in…',
   welcome: 'Welcome, {{name}}',
