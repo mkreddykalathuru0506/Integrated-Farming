@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
+import { isApiError } from '../lib/http';
 import { Button, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createDispatch,
@@ -65,7 +66,7 @@ export function DispatchPanel({ farmId, canWrite }: { farmId: string; canWrite: 
         setTemp('');
         refresh();
       })
-      .catch((err: Error) => setError(err.message === 'COLD_CHAIN_FAIL' ? t('dispatch.coldChainFail') : t('dispatch.error')));
+      .catch((err: unknown) => setError(isApiError(err) && err.code === 'COLD_CHAIN_FAIL' ? t('dispatch.coldChainFail') : t('dispatch.error')));
   }
 
   return (

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
+import { isApiError } from '../lib/http';
 import { Button, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createHatchery,
@@ -57,7 +58,7 @@ export function HatcheryPanel({ farmId, canWrite }: { farmId: string; canWrite: 
       refresh();
     } catch (err) {
       setFormError(
-        err instanceof Error && err.message === 'NO_INCUBATION_DAYS' ? t('hatchery.noIncubation') : t('hatchery.addError'),
+        isApiError(err) && err.code === 'NO_INCUBATION_DAYS' ? t('hatchery.noIncubation') : t('hatchery.addError'),
       );
     }
   }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
+import { isApiError } from '../lib/http';
 import { Button, DataRow, Input, PanelError, PanelHeading, PanelNote, Select, SubPanel } from '../ui';
 import {
   createProcessing,
@@ -60,8 +61,8 @@ export function ProcessingPanel({ farmId, canWrite }: { farmId: string; canWrite
         setInputCount('');
         refresh();
       })
-      .catch((err: Error) =>
-        setError(err.message === 'WITHDRAWAL_ACTIVE' ? t('processing.withdrawalBlocked') : t('processing.error')),
+      .catch((err: unknown) =>
+        setError(isApiError(err) && err.code === 'WITHDRAWAL_ACTIVE' ? t('processing.withdrawalBlocked') : t('processing.error')),
       );
   }
 

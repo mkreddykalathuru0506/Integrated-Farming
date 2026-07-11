@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatPaise, rupeesToPaise } from '@ifm/shared';
 import { useAuth } from '../auth/AuthContext';
+import { isApiError } from '../lib/http';
 import { Badge, Button, DataRow, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import {
   consumeFeed,
@@ -74,7 +75,7 @@ export function FeedPanel({ farmId, canWrite }: { farmId: string; canWrite: bool
       refresh();
       getFcr(accessToken, farmId, consBatch).then(setFcr).catch(() => undefined);
     } catch (err) {
-      setConsError(err instanceof Error && err.message === 'INSUFFICIENT_STOCK' ? t('feed.insufficient') : t('feed.consumeError'));
+      setConsError(isApiError(err) && err.code === 'INSUFFICIENT_STOCK' ? t('feed.insufficient') : t('feed.consumeError'));
     }
   }
 

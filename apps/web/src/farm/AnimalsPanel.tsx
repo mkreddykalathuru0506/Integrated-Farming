@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../auth/AuthContext';
+import { isApiError } from '../lib/http';
 import { Button, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import {
   createAnimal,
@@ -66,7 +67,7 @@ export function AnimalsPanel({ farmId, canWrite }: { farmId: string; canWrite: b
       refresh();
     } catch (err) {
       setFormError(
-        err instanceof Error && err.message === 'ANIMAL_TAG_TAKEN' ? t('animals.duplicate') : t('animals.addError'),
+        isApiError(err) && err.code === 'ANIMAL_TAG_TAKEN' ? t('animals.duplicate') : t('animals.addError'),
       );
     }
   }

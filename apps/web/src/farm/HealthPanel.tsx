@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
+import { isApiError } from '../lib/http';
 import { Button, Input, PanelHeading, PanelNote, Select } from '../ui';
 import {
   getWithdrawal,
@@ -64,7 +65,7 @@ export function HealthPanel({ farmId, canWrite }: { farmId: string; canWrite: bo
     } catch (err) {
       setMsg({
         kind: 'err',
-        text: err instanceof Error && err.message === 'WITHDRAWAL_ACTIVE' ? t('health.blocked') : t('health.saleReadyErr'),
+        text: isApiError(err) && err.code === 'WITHDRAWAL_ACTIVE' ? t('health.blocked') : t('health.saleReadyErr'),
       });
     }
   }
