@@ -11,7 +11,16 @@ import {
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { resetRequestFetch, setRequestFetch } from '../lib/http';
-import { loginRequest, logoutRequest, refreshRequest, type PublicUser, type Session } from './api';
+import {
+  changePasswordRequest,
+  loginRequest,
+  logoutRequest,
+  otpVerifyRequest,
+  refreshRequest,
+  revokeOtherSessionsRequest,
+  type PublicUser,
+  type Session,
+} from './api';
 
 const RT_KEY = 'ifm.auth.rt';
 
@@ -35,10 +44,26 @@ function writeStoredRefreshToken(rt: string | null) {
 type AuthState = {
   user: PublicUser | null;
   accessToken: string | null;
+  /**
+   * RefreshToken row id of THIS session (from login/refresh/otp-verify responses,
+   * slice 11.3 API) — lets the sessions list mark "this device". Null on older APIs.
+   */
+  sessionId: string | null;
   /** True while a persisted session is being restored on boot. */
   restoring: boolean;
   login: (email: string, password: string) => Promise<void>;
+  /** Passwordless login: verify an emailed 6-digit LOGIN code. */
+  loginWithOtp: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** Sync the in-memory user after a profile update (PATCH /api/me). */
+  updateUser: (user: PublicUser) => void;
+  /**
+   * Change the password; the API revokes every OTHER session (the presenting
+   * refresh token — this one — stays valid).
+   */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  /** Revoke every session except this one. Resolves to the revoked count. */
+  revokeOtherSessions: () => Promise<number>;
   /**
    * fetch wrapper used (via the http delegate) by every API call: injects the
    * current access token and, on 401, performs ONE single-flight refresh and
@@ -53,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [user, setUser] = useState<PublicUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(() => readStoredRefreshToken() !== null);
 
   // Refs mirror the tokens so the stable authedFetch closure always sees the
@@ -66,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshRef.current = session.refreshToken;
     writeStoredRefreshToken(session.refreshToken);
     setAccessToken(session.accessToken);
+    setSessionId(session.sessionId ?? null);
     setUser(session.user);
   }, []);
 
@@ -74,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshRef.current = null;
     writeStoredRefreshToken(null);
     setAccessToken(null);
+    setSessionId(null);
     setUser(null);
     // Drop cached farm data so nothing leaks into the next signed-in user.
     queryClient.clear();
@@ -148,15 +176,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   );
 
+  const loginWithOtp = useCallback(
+    async (email: string, code: string) => {
+      applySession(await otpVerifyRequest(email, code));
+    },
+    [applySession],
+  );
+
   const logout = useCallback(async () => {
     const rt = refreshRef.current;
     if (rt) await logoutRequest(rt).catch(() => undefined);
     clearSession();
   }, [clearSession]);
 
+  const updateUser = useCallback((next: PublicUser) => setUser(next), []);
+
+  // The refresh token never leaves this provider: endpoints that must identify
+  // the presenting session (change-password, revoke-others) are wrapped here.
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    const refreshToken = refreshRef.current;
+    if (!refreshToken) throw new Error('Not authenticated');
+    await changePasswordRequest({ currentPassword, newPassword, refreshToken });
+  }, []);
+
+  const revokeOtherSessions = useCallback(async () => {
+    const refreshToken = refreshRef.current;
+    if (!refreshToken) throw new Error('Not authenticated');
+    const { revoked } = await revokeOtherSessionsRequest(refreshToken);
+    return revoked;
+  }, []);
+
   const value = useMemo<AuthState>(
-    () => ({ user, accessToken, restoring, login, logout, authedFetch }),
-    [user, accessToken, restoring, login, logout, authedFetch],
+    () => ({
+      user,
+      accessToken,
+      sessionId,
+      restoring,
+      login,
+      loginWithOtp,
+      logout,
+      updateUser,
+      changePassword,
+      revokeOtherSessions,
+      authedFetch,
+    }),
+    [
+      user,
+      accessToken,
+      sessionId,
+      restoring,
+      login,
+      loginWithOtp,
+      logout,
+      updateUser,
+      changePassword,
+      revokeOtherSessions,
+      authedFetch,
+    ],
   );
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
