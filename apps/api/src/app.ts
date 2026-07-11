@@ -3,6 +3,7 @@ import cors, { type CorsOptions } from 'cors';
 import helmet from 'helmet';
 import { authRouter } from './auth/routes';
 import { meRouter, farmRouter } from './rbac/routes';
+import { profileRouter } from './me/routes';
 import { farmsRouter, farmCrudRouter } from './farms/routes';
 import {
   speciesRouter,
@@ -92,6 +93,7 @@ export function createApp(): Express {
   app.use('/api/auth', authLimiter);
   app.use('/api/auth', authRouter);
   app.use('/api/me', meRouter);
+  app.use('/api/me', profileRouter); // profile + sessions (slice 11.3)
   // Audit farm creation (POST /api/farms) and every successful mutation under /api/farm
   // (Brief §7). Mounted before the routers so it observes the whole subtree; it reads req
   // context after auth runs downstream. Note `/api/farm` does not match `/api/farms`.
