@@ -33,6 +33,10 @@ export const CORE_NS = [
   'vax',
   'breeding',
   'hatchery',
+  'feed',
+  'expenses',
+  'emi',
+  'invoices',
 ] as const;
 
 export const resources = { en, hi };

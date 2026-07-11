@@ -23,6 +23,10 @@ import health from './health';
 import vax from './vax';
 import breeding from './breeding';
 import hatchery from './hatchery';
+import feed from './feed';
+import expenses from './expenses';
+import emi from './emi';
+import invoices from './invoices';
 
 export const hi = {
   translation: {
@@ -49,5 +53,9 @@ export const hi = {
     vax,
     breeding,
     hatchery,
+    feed,
+    expenses,
+    emi,
+    invoices,
   },
 };
