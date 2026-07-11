@@ -8,7 +8,16 @@ export const hi = {
       saving: 'सहेजा जा रहा है…',
       delete: 'हटाएँ',
       close: 'बंद करें',
+      confirm: 'पुष्टि करें',
+      cancel: 'रद्द करें',
       notifications: 'सूचनाएँ',
+    },
+    table: {
+      search: 'खोजें…',
+      empty: 'अभी यहाँ कुछ नहीं',
+      range: '{{total}} में से {{from}}–{{to}}',
+      prev: 'पिछला पृष्ठ',
+      next: 'अगला पृष्ठ',
     },
     auth: {
       login: {
@@ -57,6 +66,9 @@ export const hi = {
       LOT_UNAVAILABLE: 'यह उत्पाद लॉट उपलब्ध नहीं है',
       BATCH_CLOSED: 'यह बैच बंद है',
       BAD_TRANSITION: 'वर्तमान चरण से यह बदलाव मान्य नहीं है',
+      boundaryTitle: 'कुछ गलत हो गया',
+      boundaryBody: 'यह भाग लोड नहीं हो सका। फिर से कोशिश करने के लिए पेज पुनः लोड करें।',
+      reload: 'पुनः लोड करें',
     },
     farms: {
       title: 'आपके फार्म',
@@ -84,6 +96,8 @@ export const hi = {
       duplicate: 'इस नाम की इकाई पहले से मौजूद है',
       added: 'इकाई जोड़ी गई',
       deleted: 'इकाई हटाई गई',
+      confirmDeleteTitle: 'इकाई हटाएँ',
+      confirmDeleteBody: 'क्या आप वाकई “{{name}}” हटाना चाहते हैं?',
     },
     settings: {
       title: 'फार्म सेटिंग्स',

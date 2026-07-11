@@ -12,6 +12,7 @@ export const SUPPORTED_LANGS = [
 export const CORE_NS = [
   'app',
   'common',
+  'table',
   'auth',
   'errors',
   'farms',

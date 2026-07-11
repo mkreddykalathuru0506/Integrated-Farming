@@ -7,7 +7,16 @@ export const en = {
       saving: 'Saving…',
       delete: 'Delete',
       close: 'Close',
+      confirm: 'Confirm',
+      cancel: 'Cancel',
       notifications: 'Notifications',
+    },
+    table: {
+      search: 'Search…',
+      empty: 'Nothing here yet',
+      range: '{{from}}–{{to}} of {{total}}',
+      prev: 'Previous page',
+      next: 'Next page',
     },
     auth: {
       login: {
@@ -56,6 +65,9 @@ export const en = {
       LOT_UNAVAILABLE: 'This product lot is not available',
       BATCH_CLOSED: 'This batch is closed',
       BAD_TRANSITION: 'This change is not allowed from the current stage',
+      boundaryTitle: 'Something went wrong',
+      boundaryBody: 'This section failed to load. Reload the page to try again.',
+      reload: 'Reload',
     },
     farms: {
       title: 'Your farms',
@@ -83,6 +95,8 @@ export const en = {
       duplicate: 'A unit with this name already exists',
       added: 'Unit added',
       deleted: 'Unit deleted',
+      confirmDeleteTitle: 'Delete unit',
+      confirmDeleteBody: 'Are you sure you want to delete “{{name}}”?',
     },
     settings: {
       title: 'Farm settings',
