@@ -63,7 +63,7 @@ describe('SettingsPanel', () => {
     });
     renderPanel();
 
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.type(await screen.findByLabelText(/FSSAI license number/), '123');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -84,7 +84,7 @@ describe('SettingsPanel', () => {
     });
     renderPanel();
 
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.type(await screen.findByLabelText(/FSSAI license number/), '12345678901234');
     await user.type(screen.getByLabelText(/GSTIN/), '36abcde1234f1z5');
     await user.type(screen.getByLabelText(/Latitude/), '17.385');

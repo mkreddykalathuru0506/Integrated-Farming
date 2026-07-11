@@ -72,7 +72,7 @@ describe('AssetsPanel', () => {
     renderPanel();
     expect((await screen.findAllByText('Diesel generator')).length).toBeGreaterThan(0);
 
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click(screen.getByRole('button', { name: 'Add asset' }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Asset name/), 'Pump');
@@ -96,7 +96,7 @@ describe('AssetsPanel', () => {
     });
     renderPanel();
 
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click((await screen.findAllByText('Diesel generator'))[0]!.closest('tr, li')!);
     const detail = await screen.findByRole('dialog');
     expect(within(detail).getByText('Oil change')).toBeInTheDocument();

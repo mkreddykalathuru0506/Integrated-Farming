@@ -35,7 +35,7 @@ describe('CreateFarm (first-run experience)', () => {
     });
     renderPanel(() => undefined);
 
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click(screen.getByRole('button', { name: 'Create farm' }));
     expect(await screen.findByText('Enter a farm name')).toBeInTheDocument();
     expect(posts).toHaveLength(0);
@@ -52,7 +52,7 @@ describe('CreateFarm (first-run experience)', () => {
     });
     renderPanel(onCreated);
 
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.type(screen.getByLabelText(/Farm name/), 'Green Acres');
     await user.type(screen.getByLabelText(/State/), 'Telangana');
     await user.click(screen.getByRole('button', { name: 'Create farm' }));

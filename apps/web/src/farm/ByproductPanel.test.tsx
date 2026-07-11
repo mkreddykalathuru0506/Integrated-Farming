@@ -95,7 +95,7 @@ describe('ByproductPanel', () => {
     renderPanel();
     expect(await screen.findByText('No byproduct transfers yet')).toBeInTheDocument();
 
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click(screen.getAllByRole('button', { name: 'Record a transfer' })[0]!);
     const dialog = await screen.findByRole('dialog');
     await user.selectOptions(within(dialog).getByLabelText(/From unit/), 'u1');

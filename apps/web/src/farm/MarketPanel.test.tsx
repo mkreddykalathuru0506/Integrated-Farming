@@ -62,7 +62,7 @@ describe('MarketPanel', () => {
       },
     });
     renderPanel();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click((await screen.findAllByRole('button', { name: /Refresh from source/ }))[0]!);
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(posts[0]).toEqual({ commodity: 'Broiler', market: 'Hyderabad' });
@@ -86,7 +86,7 @@ describe('MarketPanel', () => {
     });
     renderPanel();
 
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click(await screen.findByRole('button', { name: 'Record a rate' }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Commodity/), 'Broiler');

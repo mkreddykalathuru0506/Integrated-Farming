@@ -63,7 +63,7 @@ describe('ReportsPanel', () => {
       },
     });
     renderPanel();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click((await screen.findAllByRole('button', { name: /Run now/ }))[0]!);
     await waitFor(() => expect(runs).toEqual(['rs1']));
     expect(await screen.findByText('Report generated and delivered')).toBeInTheDocument();
@@ -83,7 +83,7 @@ describe('ReportsPanel', () => {
     renderPanel();
     expect(await screen.findByText('No scheduled reports')).toBeInTheDocument();
 
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click(screen.getAllByRole('button', { name: 'Add schedule' })[0]!);
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByLabelText(/Name/), 'Daily digest');
