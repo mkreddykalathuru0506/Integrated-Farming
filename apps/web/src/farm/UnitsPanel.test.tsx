@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '../i18n';
@@ -76,5 +76,45 @@ describe('UnitsPanel (TanStack Query reference conversion)', () => {
     expect(await screen.findByText(/Shed B/)).toBeInTheDocument();
     // success toast from the useApiMutation wrapper
     expect(await screen.findByText('Unit added')).toBeInTheDocument();
+  });
+
+  it('deletes a unit only after ConfirmDialog confirmation', async () => {
+    let units = [makeUnit('u1', 'Shed A')];
+    const deletes: string[] = [];
+    mockFetchRoutes({
+      '/api/farm/units/u1': (init) => {
+        if (init?.method === 'DELETE') {
+          deletes.push('u1');
+          units = [];
+          return jsonResponse(200, { ok: true });
+        }
+        return jsonResponse(404, { error: { code: 'NOT_FOUND' } });
+      },
+      '/api/farm/units': () => jsonResponse(200, { units: [...units] }),
+    });
+    renderPanel();
+    expect(await screen.findByText(/Shed A/)).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+    // dialog opens; nothing deleted yet
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('Delete unit');
+    expect(dialog).toHaveTextContent('Shed A');
+    expect(deletes).toHaveLength(0);
+
+    // cancel closes without deleting
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(deletes).toHaveLength(0);
+
+    // confirm actually deletes + toasts + refetches
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    const confirm = await screen.findByRole('dialog');
+    await user.click(within(confirm).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(deletes).toEqual(['u1']));
+    expect(await screen.findByText('Unit deleted')).toBeInTheDocument();
+    expect(await screen.findByText('No units yet')).toBeInTheDocument();
   });
 });

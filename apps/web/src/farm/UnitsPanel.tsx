@@ -2,11 +2,22 @@ import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UNIT_TYPES } from '@ifm/shared';
 import { useCreateUnit, useDeleteUnit, useUnits } from '../api/hooks';
-import { Button, DataRow, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
+import type { Unit } from './api';
+import {
+  Button,
+  ConfirmDialog,
+  DataRow,
+  Input,
+  PanelError,
+  PanelHeading,
+  PanelNote,
+  Select,
+} from '../ui';
 
 // First panel on the TanStack Query pattern (reference for the 11.6 sweep):
 // queries via useUnits(), mutations via useApiMutation hooks (toasts +
 // invalidation handled centrally). farmId now comes from FarmProvider.
+// Destructive delete goes through ConfirmDialog (reference adoption, 11.1b).
 export function UnitsPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
   const { t } = useTranslation();
   const units = useUnits();
@@ -14,10 +25,16 @@ export function UnitsPanel({ canWrite }: { farmId: string; canWrite: boolean }) 
   const deleteUnit = useDeleteUnit();
   const [name, setName] = useState('');
   const [type, setType] = useState<string>(UNIT_TYPES[0]);
+  const [pendingDelete, setPendingDelete] = useState<Unit | null>(null);
 
   function onAdd(e: FormEvent) {
     e.preventDefault();
     createUnit.mutate({ name, type }, { onSuccess: () => setName('') });
+  }
+
+  function onConfirmDelete() {
+    if (!pendingDelete) return;
+    deleteUnit.mutate(pendingDelete.id, { onSettled: () => setPendingDelete(null) });
   }
 
   return (
@@ -39,7 +56,7 @@ export function UnitsPanel({ canWrite }: { farmId: string; canWrite: boolean }) 
                   variant="danger"
                   size="sm"
                   disabled={deleteUnit.isPending}
-                  onClick={() => deleteUnit.mutate(u.id)}
+                  onClick={() => setPendingDelete(u)}
                 >
                   {t('common.delete')}
                 </Button>
@@ -48,6 +65,19 @@ export function UnitsPanel({ canWrite }: { farmId: string; canWrite: boolean }) 
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        title={t('units.confirmDeleteTitle')}
+        description={t('units.confirmDeleteBody', { name: pendingDelete?.name ?? '' })}
+        confirmLabel={t('common.delete')}
+        variant="danger"
+        loading={deleteUnit.isPending}
+        onConfirm={onConfirmDelete}
+      />
 
       {canWrite && (
         <form onSubmit={onAdd} className="space-y-2 rounded-xl bg-secondary/60 p-3">
