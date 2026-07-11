@@ -1,0 +1,30 @@
+export default {
+  title: "Today's tasks",
+  loading: 'Loading tasks…',
+  error: 'Could not load tasks',
+  empty: 'No tasks for today',
+  generate: "Generate today's",
+  complete: 'Done',
+  addSchedule: 'Add recurring schedule',
+  scheduleName: 'Schedule name (e.g. Morning feeding)',
+  status: {
+    PENDING: 'Pending',
+    DONE: 'Done',
+    MISSED: 'Missed',
+    SKIPPED: 'Skipped',
+  },
+  frequency: {
+    DAILY: 'Daily',
+    WEEKLY: 'Weekly',
+    MONTHLY: 'Monthly',
+  },
+  taskType: {
+    FEEDING: 'Feeding',
+    CLEANING: 'Cleaning',
+    EGG_COLLECTION: 'Egg collection',
+    HEALTH_CHECK: 'Health check',
+    WEIGHING: 'Weighing',
+    TEMPERATURE_LOG: 'Temperature log',
+    OTHER: 'Other',
+  },
+};

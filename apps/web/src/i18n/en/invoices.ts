@@ -1,0 +1,18 @@
+export default {
+  title: 'Invoices & P&L',
+  empty: 'No invoices yet',
+  farmPnl: 'Farm P&L',
+  revenue: 'Revenue',
+  cost: 'Cost',
+  pdf: 'PDF',
+  create: 'Raise an invoice',
+  desc: 'Item description',
+  qty: 'Qty',
+  price: 'Unit price (₹)',
+  raise: 'Raise invoice',
+  addCustomer: 'Add a customer',
+  addCustomerFirst: 'Add a customer to raise invoices',
+  custName: 'Customer name',
+  custState: 'State (for GST)',
+  addCustomerBtn: 'Add customer',
+};

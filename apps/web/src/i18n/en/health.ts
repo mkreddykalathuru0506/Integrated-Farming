@@ -1,0 +1,16 @@
+export default {
+  title: 'Health & withdrawal',
+  noBatches: 'Add a batch first',
+  batch: 'Batch',
+  under: 'Under medication withdrawal until {{date}} — sale blocked',
+  clear: 'No active withdrawal — sale allowed',
+  recordMed: 'Record a medication',
+  drug: 'Drug name',
+  withdrawalDays: 'Withdrawal days',
+  record: 'Record',
+  medError: 'Could not record the medication',
+  markSaleReady: 'Mark sale-ready',
+  saleReadyOk: 'Marked sale-ready',
+  saleReadyErr: 'Could not mark sale-ready',
+  blocked: 'Blocked: under medication withdrawal period',
+};

@@ -11,7 +11,10 @@ import {
   DropdownMenuSeparator,
 } from '../ui';
 import { LanguageToggle } from './LanguageToggle';
+import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
+import type { NavTarget } from './commands';
+import type { Role } from './nav';
 
 type Props = {
   title: string;
@@ -22,6 +25,8 @@ type Props = {
   userEmail: string;
   onLogout: () => void;
   onOpenNav: () => void;
+  role: Role | undefined;
+  onNavigate: (target: NavTarget) => void;
 };
 
 function initials(name: string): string {
@@ -37,6 +42,8 @@ export function Topbar({
   userEmail,
   onLogout,
   onOpenNav,
+  role,
+  onNavigate,
 }: Props) {
   const { t } = useTranslation();
   const selected = farms.find((f) => f.farmId === selectedId);
@@ -85,6 +92,8 @@ export function Topbar({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+
+        <NotificationBell role={role} onNavigate={onNavigate} />
 
         <ThemeToggle />
 

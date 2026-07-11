@@ -1,0 +1,16 @@
+export default {
+  title: 'Processing & lots',
+  empty: 'No product lots yet',
+  run: 'Process a batch into products',
+  inputCount: '# processed',
+  product: 'Product (e.g. Whole dressed chicken)',
+  kg: 'Qty (kg)',
+  noStore: '— no cold storage —',
+  process: 'Process',
+  trace: 'Trace',
+  fromBatch: 'from batch',
+  storedIn: 'Stored in {{name}}',
+  noBatches: 'Add an active batch first',
+  withdrawalBlocked: 'Blocked: batch under medication withdrawal period',
+  error: 'Could not process this batch',
+};

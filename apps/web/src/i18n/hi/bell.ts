@@ -1,0 +1,29 @@
+export default {
+  title: 'सूचनाएँ',
+  empty: 'सब कुछ देख लिया गया है',
+  unread: '{{n}} अपठित सूचनाएँ',
+  error: 'सूचनाएँ लोड नहीं हो सकीं',
+  retry: 'फिर कोशिश करें',
+  markSeen: 'सभी देखी गईं',
+  ack: 'स्वीकार करें',
+  acked: 'चेतावनी स्वीकार की गई',
+  more: '+{{n}} और',
+  groups: {
+    today: 'आज',
+    earlier: 'पहले',
+    upcoming: 'आगामी',
+  },
+  severity: {
+    INFO: 'सूचना',
+    WARNING: 'चेतावनी',
+    CRITICAL: 'गंभीर',
+  },
+  kinds: {
+    risk: '{{reason}}',
+    vaccination: '{{n}} टीकाकरण देय — बैच {{batch}}',
+    maintenance: '{{name}} देय — {{asset}}',
+    emi: 'EMI देय — {{lender}}',
+    insurance: 'पॉलिसी समाप्त हो रही है — {{provider}}',
+    tasks: 'आज {{n}} कार्य लंबित',
+  },
+};

@@ -1,0 +1,21 @@
+export default {
+  title: 'Assets & maintenance',
+  empty: 'No assets yet',
+  add: 'Add an asset',
+  addBtn: 'Add asset',
+  name: 'Asset name (e.g. Diesel generator)',
+  due: 'due',
+  dueReminder: '{{count}} service(s) due soon',
+  schedName: 'Service name (e.g. Oil change)',
+  everyDays: 'Every (days)',
+  schedule: 'Schedule',
+  markServiced: 'Mark serviced',
+  type: {
+    EQUIPMENT: 'Equipment',
+    VEHICLE: 'Vehicle',
+    MACHINERY: 'Machinery',
+    BUILDING: 'Building',
+    TOOL: 'Tool',
+    OTHER: 'Other',
+  },
+};
