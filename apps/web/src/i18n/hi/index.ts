@@ -19,6 +19,14 @@ import market from './market';
 import dashboard from './dashboard';
 import reports from './reports';
 import risk from './risk';
+import health from './health';
+import vax from './vax';
+import breeding from './breeding';
+import hatchery from './hatchery';
+import feed from './feed';
+import expenses from './expenses';
+import emi from './emi';
+import invoices from './invoices';
 import species from './species';
 import batches from './batches';
 import animals from './animals';
@@ -48,6 +56,14 @@ export const hi = {
     dashboard,
     reports,
     risk,
+    health,
+    vax,
+    breeding,
+    hatchery,
+    feed,
+    expenses,
+    emi,
+    invoices,
     species,
     batches,
     animals,
