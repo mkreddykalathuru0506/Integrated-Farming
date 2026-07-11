@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '../i18n';
@@ -115,5 +115,31 @@ describe('DailyLogPanel (11.6a rewrite, offline queue intact)', () => {
     await user.click(screen.getByTestId('log-submit'));
 
     expect(await screen.findByTestId('log-pending')).toHaveTextContent('1 to sync');
+  });
+
+  it('parks a permanently-rejected (4xx) entry as a failed item with a discard control', async () => {
+    routes({
+      '/api/farm/logs': (init) => {
+        if (init?.method === 'POST') {
+          return jsonResponse(422, { error: { code: 'INVALID_TARGET', message: 'wrong farm' } });
+        }
+        return jsonResponse(200, { logs: [log] });
+      },
+    });
+    renderPanel();
+
+    const qty = await screen.findByTestId('log-qty');
+    const user = userEvent.setup();
+    await user.type(qty, '9');
+    await user.click(screen.getByTestId('log-submit'));
+
+    // Poison surfaces in the failed area; it is NOT a pending item.
+    const failed = await screen.findByTestId('log-failed');
+    expect(failed).toHaveTextContent('1 could not sync');
+    expect(screen.queryByTestId('log-pending')).not.toBeInTheDocument();
+
+    // Discard clears it.
+    await user.click(within(failed).getByRole('button', { name: 'Discard' }));
+    await waitFor(() => expect(screen.queryByTestId('log-failed')).not.toBeInTheDocument());
   });
 });
