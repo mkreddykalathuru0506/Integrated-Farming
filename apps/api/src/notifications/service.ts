@@ -1,4 +1,6 @@
+import type { NotificationStatus, Prisma } from '@prisma/client';
 import { prisma } from '../prisma';
+import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import { makeNotificationService, MockNotificationService, type NotificationChannel } from './notification.service';
 
 type DispatchInput = { channel?: NotificationChannel; recipient?: string };
@@ -56,14 +58,45 @@ export async function dispatchAlerts(farmId: string, userId: string, input: Disp
   return { dispatched };
 }
 
-export async function listAlerts(farmId: string) {
+const ALERT_SELECT = {
+  id: true,
+  channel: true,
+  recipient: true,
+  subject: true,
+  body: true,
+  status: true,
+  riskFlagId: true,
+  createdAt: true,
+} satisfies Prisma.NotificationLogSelect;
+
+export type AlertListFilter = { q?: string; status?: NotificationStatus; from?: Date; to?: Date };
+
+function alertWhere(farmId: string, f: AlertListFilter): Prisma.NotificationLogWhereInput {
+  const where: Prisma.NotificationLogWhereInput = { farmId };
+  if (f.q) where.OR = [{ subject: contains(f.q) }, { body: contains(f.q) }];
+  if (f.status) where.status = f.status;
+  const range = dateRange(f.from, f.to);
+  if (range) where.createdAt = range;
+  return where;
+}
+
+export async function listAlerts(farmId: string, filter: AlertListFilter = {}) {
   const rows = await prisma.notificationLog.findMany({
-    where: { farmId },
+    where: alertWhere(farmId, filter),
     orderBy: { createdAt: 'desc' },
     take: 50,
-    select: { id: true, channel: true, recipient: true, subject: true, body: true, status: true, riskFlagId: true, createdAt: true },
+    select: ALERT_SELECT,
   });
   return rows;
+}
+
+export async function listAlertsPaged(farmId: string, p: ListQuery & AlertListFilter) {
+  const where = alertWhere(farmId, p);
+  const [items, total] = await Promise.all([
+    prisma.notificationLog.findMany({ where, orderBy: { createdAt: 'desc' }, ...skipTake(p), select: ALERT_SELECT }),
+    prisma.notificationLog.count({ where }),
+  ]);
+  return envelope(items, total, p);
 }
 
 /** Cross-cutting intelligence dashboard summary. */

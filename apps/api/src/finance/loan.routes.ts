@@ -1,9 +1,17 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { asyncHandler } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
 import { CreateInsuranceSchema, CreateLoanSchema, LoanPaymentSchema } from './schemas';
 import * as loans from './loan.service';
+import { financeSummary } from './summary';
+
+const SummaryQuerySchema = z.object({
+  granularity: z.enum(['month']).default('month'),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
 
 const write = requireRole('OWNER', 'MANAGER', 'ACCOUNTANT');
 
@@ -51,12 +59,20 @@ insuranceRouter.post(
   }),
 );
 
-/** /api/farm/finance — cross-cutting finance reads (reminders). */
+/** /api/farm/finance — cross-cutting finance reads (reminders, monthly summary). */
 export const financeRouter = Router();
 financeRouter.use(requireAuth, requireFarmAccess);
 financeRouter.get(
   '/reminders',
   asyncHandler(async (req, res) => {
     res.json(await loans.reminders(farmScope(req).farmId));
+  }),
+);
+// Monthly revenue/expense/feed-cost/profit buckets (IST months; default window = current Indian FY).
+financeRouter.get(
+  '/summary',
+  asyncHandler(async (req, res) => {
+    const p = SummaryQuerySchema.parse(req.query);
+    res.json(await financeSummary(farmScope(req).farmId, p));
   }),
 );

@@ -33,6 +33,7 @@ import { alertRouter, dashboardRouter } from './notifications/routes';
 import { reportRouter } from './reports/routes';
 import { searchRouter } from './search/routes';
 import { auditReadRouter } from './audit/routes';
+import { dueRouter } from './due/routes';
 import { authLimiter } from './security/rate-limit';
 import { auditWrite } from './security/audit';
 import { prisma } from './prisma';
@@ -138,6 +139,7 @@ export function createApp(): Express {
   app.use('/api/farm/reports', reportRouter);
   app.use('/api/farm/search', searchRouter);
   app.use('/api/farm/audit', auditReadRouter);
+  app.use('/api/farm/due', dueRouter);
 
   // JSON 404 fallback — no dead ends, consistent error shape.
   app.use((_req, res) => {

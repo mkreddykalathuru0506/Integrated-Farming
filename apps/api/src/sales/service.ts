@@ -1,6 +1,7 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, type SalesOrderStatus } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
+import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import { lineTotalPaise, orderTotalPaise } from './calc';
 import type { CreateOrderInput, UpdateOrderStatusInput } from './schemas';
 
@@ -101,13 +102,33 @@ export async function createOrder(farmId: string, userId: string, input: CreateO
   return toOrderDTO(order);
 }
 
-export async function listOrders(farmId: string) {
+export type OrderListFilter = { q?: string; status?: SalesOrderStatus; from?: Date; to?: Date };
+
+function orderWhere(farmId: string, f: OrderListFilter): Prisma.SalesOrderWhereInput {
+  const where: Prisma.SalesOrderWhereInput = { farmId, deletedAt: null };
+  if (f.q) where.OR = [{ orderNumber: contains(f.q) }, { customer: { name: contains(f.q) } }];
+  if (f.status) where.status = f.status;
+  const range = dateRange(f.from, f.to);
+  if (range) where.orderDate = range;
+  return where;
+}
+
+export async function listOrders(farmId: string, filter: OrderListFilter = {}) {
   const rows = await prisma.salesOrder.findMany({
-    where: { farmId, deletedAt: null },
+    where: orderWhere(farmId, filter),
     orderBy: { orderDate: 'desc' },
     select: ORDER_SELECT,
   });
   return rows.map(toOrderDTO);
+}
+
+export async function listOrdersPaged(farmId: string, p: ListQuery & OrderListFilter) {
+  const where = orderWhere(farmId, p);
+  const [rows, total] = await Promise.all([
+    prisma.salesOrder.findMany({ where, orderBy: { orderDate: 'desc' }, ...skipTake(p), select: ORDER_SELECT }),
+    prisma.salesOrder.count({ where }),
+  ]);
+  return envelope(rows.map(toOrderDTO), total, p);
 }
 
 export async function getOrder(farmId: string, id: string) {

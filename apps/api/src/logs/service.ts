@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
+import { dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import type { CreateLogInput } from './schemas';
 
 const SELECT = {
@@ -57,13 +58,31 @@ export async function createLog(farmId: string, userId: string, input: CreateLog
   return prisma.dailyLog.create({ data, select: SELECT });
 }
 
-export async function listLogs(farmId: string, filter: { type?: string; limit?: number }) {
+export type LogListFilter = { type?: string; batchId?: string; from?: Date; to?: Date; limit?: number };
+
+function logWhere(farmId: string, f: LogListFilter): Prisma.DailyLogWhereInput {
   const where: Prisma.DailyLogWhereInput = { farmId };
-  if (filter.type) where.type = filter.type as Prisma.EnumLogTypeFilter['equals'];
+  if (f.type) where.type = f.type as Prisma.EnumLogTypeFilter['equals'];
+  if (f.batchId) where.batchId = f.batchId;
+  const range = dateRange(f.from, f.to);
+  if (range) where.loggedAt = range;
+  return where;
+}
+
+export async function listLogs(farmId: string, filter: LogListFilter) {
   return prisma.dailyLog.findMany({
-    where,
+    where: logWhere(farmId, filter),
     orderBy: { loggedAt: 'desc' },
     take: Math.min(filter.limit ?? 50, 200),
     select: SELECT,
   });
+}
+
+export async function listLogsPaged(farmId: string, p: ListQuery & LogListFilter) {
+  const where = logWhere(farmId, p);
+  const [items, total] = await Promise.all([
+    prisma.dailyLog.findMany({ where, orderBy: { loggedAt: 'desc' }, ...skipTake(p), select: SELECT }),
+    prisma.dailyLog.count({ where }),
+  ]);
+  return envelope(items, total, p);
 }
