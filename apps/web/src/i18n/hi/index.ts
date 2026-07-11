@@ -34,6 +34,13 @@ import orders from './orders';
 import cold from './cold';
 import processing from './processing';
 import dispatch from './dispatch';
+import species from './species';
+import batches from './batches';
+import animals from './animals';
+import events from './events';
+import workers from './workers';
+import tasks from './tasks';
+import logs from './logs';
 
 export const hi = {
   translation: {
@@ -71,5 +78,12 @@ export const hi = {
     cold,
     processing,
     dispatch,
+    species,
+    batches,
+    animals,
+    events,
+    workers,
+    tasks,
+    logs,
   },
 };

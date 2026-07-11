@@ -44,6 +44,13 @@ export const CORE_NS = [
   'cold',
   'processing',
   'dispatch',
+  'species',
+  'batches',
+  'animals',
+  'events',
+  'workers',
+  'tasks',
+  'logs',
 ] as const;
 
 export const resources = { en, hi };
