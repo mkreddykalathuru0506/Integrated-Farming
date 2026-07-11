@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import {
@@ -247,7 +247,7 @@ export function Dashboard({ farmId, canWrite }: { farmId: string; canWrite: bool
             <span className="italic text-primary">{(greeting.split(',')[1] ?? '').trim()}</span>
           </h2>
           <p className="mt-1.5 max-w-xl text-sm text-muted-foreground">
-            {today ? `${today} Â· ` : ''}
+            {today ? `${today} · ` : ''}
             {t('dashboard.subtitle')}
           </p>
         </div>
@@ -276,7 +276,7 @@ export function Dashboard({ farmId, canWrite }: { farmId: string; canWrite: bool
             <TrendChip up={profitPaise >= 0}>{profitPaise >= 0 ? t('dashboard.profitable') : t('dashboard.loss')}</TrendChip>
             {pnl && (
               <span className="text-xs text-muted-foreground">
-                {t('dashboard.revenue')} {fmtInrCompact(Number(pnl.revenuePaise))} Â· {t('dashboard.costLabel')}{' '}
+                {t('dashboard.revenue')} {fmtInrCompact(Number(pnl.revenuePaise))} · {t('dashboard.costLabel')}{' '}
                 {fmtInrCompact(Number(pnl.costPaise))}
               </span>
             )}
@@ -284,9 +284,9 @@ export function Dashboard({ farmId, canWrite }: { farmId: string; canWrite: bool
         </div>
 
         <Kpi label={t('dashboard.openRisks')} value={data.risks.open} sub={t('dashboard.criticalCount', { count: critical })} icon={AlertTriangle} tone={data.risks.open > 0 ? 'danger' : 'success'} />
-        <Kpi label={t('dashboard.batches')} value={activeBatches ?? 'â€”'} sub={t('dashboard.birds', { count: birds })} icon={Bird} tone="primary" />
-        <Kpi label={t('dashboard.feedLow')} value={lowFeed ?? 'â€”'} sub={lowFeed && lowFeed > 0 ? t('dashboard.belowReorder', { count: lowFeed }) : t('dashboard.allStocked')} icon={Wheat} tone={lowFeed && lowFeed > 0 ? 'warning' : 'gold'} />
-        <Kpi label={t('dashboard.temp')} value={data.weather ? `${Math.round(data.weather.tempC)}Â°` : 'â€”'} sub={data.weather ? data.weather.source : 'â€”'} icon={Thermometer} tone="primary" />
+        <Kpi label={t('dashboard.batches')} value={activeBatches ?? '—'} sub={t('dashboard.birds', { count: birds })} icon={Bird} tone="primary" />
+        <Kpi label={t('dashboard.feedLow')} value={lowFeed ?? '—'} sub={lowFeed && lowFeed > 0 ? t('dashboard.belowReorder', { count: lowFeed }) : t('dashboard.allStocked')} icon={Wheat} tone={lowFeed && lowFeed > 0 ? 'warning' : 'gold'} />
+        <Kpi label={t('dashboard.temp')} value={data.weather ? `${Math.round(data.weather.tempC)}°` : '—'} sub={data.weather ? data.weather.source : '—'} icon={Thermometer} tone="primary" />
       </div>
 
       {/* Charts row */}
@@ -386,7 +386,7 @@ export function Dashboard({ farmId, canWrite }: { farmId: string; canWrite: bool
                   <span className="absolute -left-[13px] top-3 h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_4px_hsl(var(--card))]" />
                   <p className="line-clamp-2 text-sm font-medium text-foreground">{a.body}</p>
                   <p className="mono text-xs text-muted-foreground">
-                    {a.channel} Â· {a.status.toLowerCase()}
+                    {a.channel} · {a.status.toLowerCase()}
                   </p>
                 </li>
               ))}
@@ -433,8 +433,8 @@ function ColdGauge({ store }: { store: ColdStorage }) {
   const hi = store.maxTempC;
   const pct = Math.min(1, Math.max(0, (temp - lo) / Math.max(0.001, hi - lo)));
   const ok = !store.latest!.isOutOfRange;
-  // Semi-circle arc 180Â°, radius 46, center (58,58)
-  const angle = Math.PI * (1 - pct); // pct 0 â†’ left (180Â°), 1 â†’ right (0Â°)
+  // Semi-circle arc 180°, radius 46, center (58,58)
+  const angle = Math.PI * (1 - pct); // pct 0 → left (180°), 1 → right (0°)
   const x = 58 + 46 * Math.cos(angle);
   const y = 58 - 46 * Math.sin(angle);
   const stroke = ok ? 'hsl(var(--success))' : 'hsl(var(--destructive))';
@@ -447,10 +447,10 @@ function ColdGauge({ store }: { store: ColdStorage }) {
       </svg>
       <div>
         <p className="font-display text-[34px] font-semibold leading-none tabular text-foreground">
-          {temp.toFixed(1)}Â°<span className="text-lg text-muted-foreground">C</span>
+          {temp.toFixed(1)}°<span className="text-lg text-muted-foreground">C</span>
         </p>
         <p className="mt-1.5 text-xs font-medium text-muted-foreground">
-          {store.name} Â· {store.mode === 'FROZEN' ? 'â‰¤ âˆ’18Â°C' : `${lo}â€“${hi}Â°C`}
+          {store.name} · {store.mode === 'FROZEN' ? '≤ −18°C' : `${lo}–${hi}°C`}
         </p>
         <span className={cn('mt-1 inline-block text-xs font-bold', ok ? 'text-success' : 'text-destructive')}>
           {ok ? t('dashboard.inRange') : t('dashboard.outOfRange')}
@@ -471,7 +471,7 @@ function MarketBars({ rows }: { rows: { name: string; unit: string; value: numbe
           <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
             <div className="h-full rounded-full bg-gradient-to-r from-success to-accent" style={{ width: `${Math.max(8, (r.value / max) * 100)}%` }} />
           </div>
-          <span className="mono w-16 shrink-0 text-right text-sm font-semibold text-foreground">â‚¹{inr.format(r.value)}</span>
+          <span className="mono w-16 shrink-0 text-right text-sm font-semibold text-foreground">₹{inr.format(r.value)}</span>
         </div>
       ))}
     </div>
