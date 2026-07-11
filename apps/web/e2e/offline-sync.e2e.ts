@@ -7,7 +7,8 @@ test('daily log offline → reconnect → syncs (no duplicate)', async ({ page, 
   // Log in as the seeded owner.
   await page.locator('input[type=email]').fill('owner@demo.farm');
   await page.locator('input[type=password]').fill('Passw0rd!');
-  await page.getByRole('button', { name: /sign in/i }).click();
+  // Exact match: the login view also has a "Sign in with a code instead" button (slice 11.3).
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
   const dailyLog = page.getByTestId('daily-log');
   await expect(dailyLog).toBeVisible();
