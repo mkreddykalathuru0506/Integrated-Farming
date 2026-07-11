@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { fmtInrCompact } from '../lib/format';
 import { Button, cn } from '../ui';
 import {
   acknowledgeRisk,
@@ -39,17 +40,6 @@ import {
 /* Data-viz palette (explicit hex appropriate for chart series; mirrors the theme tokens). */
 const SEV_HEX: Record<string, string> = { CRITICAL: '#C0392F', WARNING: '#C15A2B', INFO: '#1C6B43', DEFAULT: '#8A8270' };
 const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
-
-/** Compact Indian-currency from paise: ₹1.24L, ₹2.3Cr, ₹4.5k, ₹820. */
-function compactInr(paise: number): string {
-  const r = paise / 100;
-  const a = Math.abs(r);
-  const s = r < 0 ? '-' : '';
-  if (a >= 1e7) return `${s}₹${(a / 1e7).toFixed(2)}Cr`;
-  if (a >= 1e5) return `${s}₹${(a / 1e5).toFixed(2)}L`;
-  if (a >= 1e3) return `${s}₹${(a / 1e3).toFixed(1)}k`;
-  return `${s}₹${inr.format(a)}`;
-}
 
 type Tone = 'primary' | 'danger' | 'warning' | 'success' | 'gold' | 'neutral';
 const BADGE: Record<Tone, string> = {
@@ -280,14 +270,14 @@ export function Dashboard({ farmId, canWrite }: { farmId: string; canWrite: bool
             </span>
           </div>
           <p className="mt-3 font-display text-[40px] font-medium leading-none tracking-tight tabular text-foreground">
-            {compactInr(profitPaise)}
+            {fmtInrCompact(profitPaise)}
           </p>
           <div className="mt-3 flex items-center gap-3">
             <TrendChip up={profitPaise >= 0}>{profitPaise >= 0 ? t('dashboard.profitable') : t('dashboard.loss')}</TrendChip>
             {pnl && (
               <span className="text-xs text-muted-foreground">
-                {t('dashboard.revenue')} {compactInr(Number(pnl.revenuePaise))} · {t('dashboard.costLabel')}{' '}
-                {compactInr(Number(pnl.costPaise))}
+                {t('dashboard.revenue')} {fmtInrCompact(Number(pnl.revenuePaise))} · {t('dashboard.costLabel')}{' '}
+                {fmtInrCompact(Number(pnl.costPaise))}
               </span>
             )}
           </div>
@@ -317,7 +307,7 @@ export function Dashboard({ farmId, canWrite }: { farmId: string; canWrite: bool
                     />
                   </div>
                   <span className="mono w-20 shrink-0 text-right text-sm font-semibold text-foreground">
-                    {compactInr(c.value)}
+                    {fmtInrCompact(c.value)}
                   </span>
                 </div>
               ))}

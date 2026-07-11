@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
+import { isApiError } from '../lib/http';
 import { Button, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
 import {
   advanceBatch,
@@ -68,7 +69,7 @@ export function BatchesPanel({ farmId, canWrite }: { farmId: string; canWrite: b
       refresh();
     } catch (err) {
       setFormError(
-        err instanceof Error && err.message === 'BATCH_CODE_TAKEN' ? t('batches.duplicate') : t('batches.addError'),
+        isApiError(err) && err.code === 'BATCH_CODE_TAKEN' ? t('batches.duplicate') : t('batches.addError'),
       );
     }
   }

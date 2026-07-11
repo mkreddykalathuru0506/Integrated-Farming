@@ -6,8 +6,19 @@ import { myFarmsRequest, type MyFarm } from './auth/api';
 import { LoginForm } from './components/LoginForm';
 import { LanguageToggle } from './components/LanguageToggle';
 import { AppLayout } from './components/AppLayout';
+import { FarmProvider } from './api/FarmContext';
 import { CreateFarm } from './farm/CreateFarm';
-import { Card } from './ui';
+import { Card, ToastProvider, TooltipProvider } from './ui';
+
+const FARM_KEY = 'ifm.farm';
+
+function readStoredFarm(): string {
+  try {
+    return localStorage.getItem(FARM_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
 
 function BrandHeader() {
   const { t } = useTranslation();
@@ -43,7 +54,9 @@ function Authed() {
   const { t } = useTranslation();
   const { user, accessToken, logout } = useAuth();
   const [farms, setFarms] = useState<MyFarm[] | null>(null);
-  const [selectedId, setSelectedId] = useState('');
+  // Restore the last-selected farm; loadFarms falls back to the first farm
+  // if the stored one is no longer in the membership list.
+  const [selectedId, setSelectedId] = useState(readStoredFarm);
   const [error, setError] = useState(false);
 
   const loadFarms = useCallback(() => {
@@ -58,6 +71,15 @@ function Authed() {
   }, [accessToken]);
 
   useEffect(loadFarms, [loadFarms]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    try {
+      localStorage.setItem(FARM_KEY, selectedId);
+    } catch {
+      /* ignore storage failures (private mode) */
+    }
+  }, [selectedId]);
 
   if (error && !farms) {
     return (
@@ -84,19 +106,29 @@ function Authed() {
   }
 
   return (
-    <AppLayout
-      farms={farms}
-      selectedId={selectedId}
-      onSelectFarm={setSelectedId}
-      userName={user?.name ?? ''}
-      userEmail={user?.email ?? ''}
-      onLogout={() => void logout()}
-    />
+    <FarmProvider farmId={selectedId}>
+      <AppLayout
+        farms={farms}
+        selectedId={selectedId}
+        onSelectFarm={setSelectedId}
+        userName={user?.name ?? ''}
+        userEmail={user?.email ?? ''}
+        onLogout={() => void logout()}
+      />
+    </FarmProvider>
   );
 }
 
 function Root() {
-  const { user } = useAuth();
+  const { t } = useTranslation();
+  const { user, restoring } = useAuth();
+  if (restoring) {
+    return (
+      <CenterShell>
+        <p className="text-sm text-muted-foreground">{t('auth.restoring')}</p>
+      </CenterShell>
+    );
+  }
   return user ? (
     <Authed />
   ) : (
@@ -109,7 +141,11 @@ function Root() {
 export default function App() {
   return (
     <AuthProvider>
-      <Root />
+      <ToastProvider>
+        <TooltipProvider>
+          <Root />
+        </TooltipProvider>
+      </ToastProvider>
     </AuthProvider>
   );
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
+import { isApiError } from '../lib/http';
 import { Button, DataRow, PanelHeading, PanelNote } from '../ui';
 import { acknowledgeRisk, getWeather, listRisks, type RiskFlag, type Weather } from './api';
 
@@ -36,8 +37,8 @@ export function WeatherPanel({ farmId, canWrite }: { farmId: string; canWrite: b
           setNeedsLocation(false);
           loadRisks();
         })
-        .catch((err: Error) => {
-          if (err.message === 'LOCATION_REQUIRED') setNeedsLocation(true);
+        .catch((err: unknown) => {
+          if (isApiError(err) && err.code === 'LOCATION_REQUIRED') setNeedsLocation(true);
         });
     },
     [accessToken, farmId, loadRisks],
