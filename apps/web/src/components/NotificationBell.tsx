@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bell, BellOff, Check } from 'lucide-react';
 import { useFarmApi } from '../api/FarmContext';
-import { useApiMutation } from '../lib/useApiMutation';
+import { useAckRisk } from '../api/intelligence.hooks';
 import {
   Badge,
   DropdownMenu,
@@ -25,6 +25,7 @@ import {
   type BellSeverity,
 } from './bell';
 import { useDueRollup, useOpenRisks } from './bellData';
+import type { OpenRisk } from './bell';
 import type { NavTarget } from './commands';
 import type { Role } from './nav';
 
@@ -58,7 +59,7 @@ type Props = {
  */
 export function NotificationBell({ role, onNavigate }: Props) {
   const { t, i18n } = useTranslation();
-  const { farmId, fetchJson } = useFarmApi();
+  const { farmId } = useFarmApi();
   const risksQ = useOpenRisks();
   const dueQ = useDueRollup();
   const [open, setOpen] = useState(false);
@@ -69,7 +70,9 @@ export function NotificationBell({ role, onNavigate }: Props) {
 
   const now = new Date().toISOString();
   const items = useMemo(
-    () => normalizeBell(risksQ.data ?? [], dueQ.data, new Date().toISOString()),
+    // Canonical RiskFlag[] widens severity to string; the bell only reads the
+    // three known enum values, so narrow to OpenRisk for normalizeBell.
+    () => normalizeBell((risksQ.data ?? []) as OpenRisk[], dueQ.data, new Date().toISOString()),
     [risksQ.data, dueQ.data],
   );
   const badge = unreadCount(items, lastSeen, now);
@@ -78,12 +81,9 @@ export function NotificationBell({ role, onNavigate }: Props) {
   const groups = groupBell(shown, now);
 
   const canAck = role === 'OWNER' || role === 'MANAGER';
-  const ack = useApiMutation<unknown, string>({
-    mutationFn: (id) =>
-      fetchJson(`/api/farm/risk/${encodeURIComponent(id)}/ack`, { method: 'POST' }),
-    successKey: 'bell.acked',
-    invalidate: [['farm', farmId, 'bell']],
-  });
+  // Canonical ack — invalidates the shared risk/due/dashboard/alerts caches, so
+  // acking here reconciles the dashboard + Weather panel too.
+  const ack = useAckRisk('bell.acked');
 
   function markSeen() {
     const iso = new Date().toISOString();

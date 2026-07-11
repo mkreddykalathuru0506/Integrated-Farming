@@ -15,11 +15,15 @@ import type {
   MaintReminder,
   MarketRate,
   ReportSchedule,
-  RiskFlag,
   Weather,
 } from '../farm/api';
 import { useFarmApi } from './FarmContext';
+import { intelInvalidation } from './intelligence.hooks';
 import { farmKeys } from './keys';
+
+// Open-risk reads + ack are canonical (intelligence.hooks.ts). Re-exported here so the
+// Weather panel keeps a single import site; the plural 'risks' cache key is gone.
+export { useOpenRisks as useOpenRiskFlags, useAckRisk } from './intelligence.hooks';
 
 /* ---------- assets & maintenance ---------- */
 
@@ -150,35 +154,14 @@ export function useRefreshWeather() {
     mutationFn: () => fetchJson<Weather>('/api/farm/weather?refresh=1'),
     successKey: 'weather.refreshed',
     errorKeyByCode: { LOCATION_REQUIRED: 'weather.needLocation' },
-    // A forced fetch can raise a heat-stress flag — refresh the alerts list too.
-    invalidate: [farmKeys.list(farmId, 'risks')],
+    // A forced fetch can raise a heat-stress flag — refresh the canonical risk/due
+    // caches (dashboard + bell + panel share them) too.
+    invalidate: intelInvalidation(farmId),
     onSuccess: (data) => {
       // The fresh response carries `risk`; a plain invalidate would refetch the
       // cached (risk-less) reading, so write it into the query cache directly.
       queryClient.setQueryData(farmKeys.list(farmId, 'weather'), data);
     },
-  });
-}
-
-export function useOpenRiskFlags() {
-  const { farmId, fetchJson } = useFarmApi();
-  return useQuery({
-    queryKey: farmKeys.list(farmId, 'risks', { status: 'OPEN' }),
-    queryFn: async () =>
-      (await fetchJson<{ risks: RiskFlag[] }>('/api/farm/risk?status=OPEN')).risks,
-  });
-}
-
-export function useAckRisk() {
-  const { farmId, fetchJson } = useFarmApi();
-  return useApiMutation<unknown, string>({
-    mutationFn: (id) =>
-      fetchJson(`/api/farm/risk/${encodeURIComponent(id)}/ack`, {
-        method: 'POST',
-        body: JSON.stringify({}),
-      }),
-    successKey: 'weather.acked',
-    invalidate: [farmKeys.list(farmId, 'risks')],
   });
 }
 
@@ -215,7 +198,13 @@ export function useRecordRate() {
     mutationFn: (data) =>
       fetchJson('/api/farm/market', { method: 'POST', body: JSON.stringify(data) }),
     successKey: 'market.saved',
-    invalidate: [farmKeys.list(farmId, 'market'), farmKeys.list(farmId, 'market-history')],
+    // A manual rate can trip a price-drop flag (response carries `risk`) → refresh
+    // the canonical intel caches alongside the market lists.
+    invalidate: [
+      farmKeys.list(farmId, 'market'),
+      farmKeys.list(farmId, 'market-history'),
+      ...intelInvalidation(farmId),
+    ],
   });
 }
 
@@ -224,10 +213,12 @@ export function useRefreshRate() {
   return useApiMutation<{ rate: MarketRate; risk?: PriceRisk }, { commodity: string; market?: string }>({
     mutationFn: (data) =>
       fetchJson('/api/farm/market/refresh', { method: 'POST', body: JSON.stringify(data) }),
+    // A refreshed rate can raise a price-drop flag → invalidate the canonical
+    // risk/due caches (not the removed 'risks' key) so every surface reconciles.
     invalidate: [
       farmKeys.list(farmId, 'market'),
       farmKeys.list(farmId, 'market-history'),
-      farmKeys.list(farmId, 'risks'),
+      ...intelInvalidation(farmId),
     ],
   });
 }

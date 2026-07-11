@@ -1,29 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
-import { useFarmApi } from '../api/FarmContext';
-import type { DueRollup, OpenRisk } from './bell';
+import { useDue, useOpenRisks as useOpenRisksBase } from '../api/intelligence.hooks';
 
 /**
- * The bell's two polled queries, exported separately so other shell pieces
- * (e.g. the sidebar unread dot) can share the same cache entries — TanStack
- * dedupes by key, so this costs no extra requests.
+ * The bell's two polled queries. They reuse the CANONICAL intel cache entries
+ * (intelligence.hooks.ts) — same keys the dashboard + Weather panel use — so
+ * acking a risk anywhere reconciles every surface (no more 'bell' fragment).
+ * Polling is a per-observer option layered on the shared cache entry.
  */
-
 const POLL = { refetchInterval: 60_000, staleTime: 55_000 } as const;
 
 export function useOpenRisks() {
-  const { farmId, fetchJson } = useFarmApi();
-  return useQuery({
-    queryKey: ['farm', farmId, 'bell', 'risk'] as const,
-    queryFn: async () => (await fetchJson<{ risks: OpenRisk[] }>('/api/farm/risk?status=OPEN')).risks,
-    ...POLL,
-  });
+  return useOpenRisksBase(POLL);
 }
 
 export function useDueRollup() {
-  const { farmId, fetchJson } = useFarmApi();
-  return useQuery({
-    queryKey: ['farm', farmId, 'bell', 'due'] as const,
-    queryFn: () => fetchJson<DueRollup>('/api/farm/due?days=7'),
-    ...POLL,
-  });
+  return useDue(7, POLL);
 }

@@ -111,11 +111,8 @@ describe('AnimalsPanel (11.6a rewrite)', () => {
 
     // Fake popup window backed by a real detached document (never attached to jsdom's DOM).
     const popupDoc = document.implementation.createHTMLDocument('popup');
-    const popup = {
-      document: popupDoc,
-      focus: vi.fn(),
-      print: vi.fn(),
-    } as unknown as Window;
+    const print = vi.fn();
+    const popup = { document: popupDoc, focus: vi.fn(), print } as unknown as Window;
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(popup);
 
     renderPanel();
@@ -125,7 +122,7 @@ describe('AnimalsPanel (11.6a rewrite)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Print' }));
 
     expect(openSpy).toHaveBeenCalled();
-    expect((popup as { print: ReturnType<typeof vi.fn> }).print).toHaveBeenCalled();
+    expect(print).toHaveBeenCalled();
     // The payload must appear as literal text…
     expect(popupDoc.body.textContent).toContain(payload);
     // …and must NOT have been parsed into an element (the classic XSS sink).
