@@ -50,7 +50,7 @@ export async function financeSummary(farmId: string, opts: { from?: Date; to?: D
       select: { issueDate: true, totalPaise: true },
     }),
     prisma.expense.findMany({
-      where: { farmId, occurredAt: { gte: from, lte: to } },
+      where: { farmId, deletedAt: null, occurredAt: { gte: from, lte: to } },
       select: { occurredAt: true, amountPaise: true },
     }),
     prisma.feedTransaction.findMany({

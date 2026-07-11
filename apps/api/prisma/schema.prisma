@@ -907,7 +907,9 @@ model Expense {
   vendorId    String?
 
   createdBy String?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  updatedBy String?
+  deletedAt DateTime?
 
   @@index([farmId])
   @@index([batchId])

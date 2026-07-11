@@ -3,7 +3,7 @@ import { prisma } from '../prisma';
 import { AppError } from '../errors';
 import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import { perUnitPaise } from './calc';
-import type { CreateExpenseInput } from './schemas';
+import type { CreateExpenseInput, UpdateExpenseInput } from './schemas';
 
 export async function createExpense(farmId: string, userId: string, input: CreateExpenseInput) {
   if (input.batchId) {
@@ -51,7 +51,7 @@ export type ExpenseListFilter = {
 };
 
 function expenseWhere(farmId: string, f: ExpenseListFilter): Prisma.ExpenseWhereInput {
-  const where: Prisma.ExpenseWhereInput = { farmId };
+  const where: Prisma.ExpenseWhereInput = { farmId, deletedAt: null };
   if (f.batchId) where.batchId = f.batchId;
   if (f.category) where.category = f.category as Prisma.EnumExpenseCategoryFilter['equals'];
   if (f.status) where.category = f.status;
@@ -79,6 +79,41 @@ export async function listExpensesPaged(farmId: string, p: ListQuery & ExpenseLi
   return envelope(rows.map(expenseDTO), total, p);
 }
 
+/** Edit an expense (soft-deleted rows are invisible → 404). `null` clears a nullable field. */
+export async function updateExpense(farmId: string, userId: string, id: string, input: UpdateExpenseInput) {
+  const existing = await prisma.expense.findFirst({ where: { id, farmId, deletedAt: null }, select: { id: true } });
+  if (!existing) throw new AppError(404, 'NOT_FOUND', 'Expense not found');
+  if (input.batchId) {
+    const b = await prisma.batch.findFirst({ where: { id: input.batchId, farmId, deletedAt: null } });
+    if (!b) throw new AppError(422, 'INVALID_TARGET', 'Batch does not belong to this farm');
+  }
+  const e = await prisma.expense.update({
+    where: { id: existing.id },
+    data: {
+      category: input.category,
+      amountPaise: input.amountPaise !== undefined ? BigInt(input.amountPaise) : undefined,
+      occurredAt: input.occurredAt ? new Date(input.occurredAt) : undefined,
+      description: input.description,
+      batchId: input.batchId,
+      unitId: input.unitId,
+      vendorId: input.vendorId,
+      updatedBy: userId,
+    },
+    select: EXPENSE_SELECT,
+  });
+  return expenseDTO(e);
+}
+
+/** Soft-delete an expense — hides it from every read (list, batch cost, P&L, summaries). */
+export async function deleteExpense(farmId: string, userId: string, id: string) {
+  const { count } = await prisma.expense.updateMany({
+    where: { id, farmId, deletedAt: null },
+    data: { deletedAt: new Date(), updatedBy: userId },
+  });
+  if (count === 0) throw new AppError(404, 'NOT_FOUND', 'Expense not found');
+  return { ok: true as const, id };
+}
+
 export async function batchCost(farmId: string, batchId: string) {
   const batch = await prisma.batch.findFirst({
     where: { id: batchId, farmId, deletedAt: null },
@@ -88,7 +123,7 @@ export async function batchCost(farmId: string, batchId: string) {
 
   const [feed, expenses] = await Promise.all([
     prisma.feedTransaction.findMany({ where: { farmId, batchId, type: 'CONSUMPTION' }, select: { totalPaise: true } }),
-    prisma.expense.findMany({ where: { farmId, batchId }, select: { category: true, amountPaise: true } }),
+    prisma.expense.findMany({ where: { farmId, batchId, deletedAt: null }, select: { category: true, amountPaise: true } }),
   ]);
 
   const feedCostPaise = feed.reduce((s, f) => s + (f.totalPaise ?? 0n), 0n);

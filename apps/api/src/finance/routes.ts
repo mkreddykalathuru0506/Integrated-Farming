@@ -5,7 +5,7 @@ import { asyncHandler, AppError } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
 import { ListQuerySchema } from '../http/list-query';
-import { CreateExpenseSchema } from './schemas';
+import { CreateExpenseSchema, UpdateExpenseSchema } from './schemas';
 import * as finance from './service';
 
 const q = (v: unknown) => (typeof v === 'string' ? v : undefined);
@@ -44,5 +44,22 @@ expenseRouter.post(
   asyncHandler(async (req, res) => {
     const input = CreateExpenseSchema.parse(req.body);
     res.status(201).json({ expense: await finance.createExpense(farmScope(req).farmId, req.userId!, input) });
+  }),
+);
+
+expenseRouter.patch(
+  '/:id',
+  requireRole('OWNER', 'MANAGER', 'ACCOUNTANT'),
+  asyncHandler(async (req, res) => {
+    const input = UpdateExpenseSchema.parse(req.body);
+    res.json({ expense: await finance.updateExpense(farmScope(req).farmId, req.userId!, req.params.id!, input) });
+  }),
+);
+
+expenseRouter.delete(
+  '/:id',
+  requireRole('OWNER', 'MANAGER', 'ACCOUNTANT'),
+  asyncHandler(async (req, res) => {
+    res.json(await finance.deleteExpense(farmScope(req).farmId, req.userId!, req.params.id!));
   }),
 );
