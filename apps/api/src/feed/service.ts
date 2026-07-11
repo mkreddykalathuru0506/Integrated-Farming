@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
 import { fcr, purchaseTotalPaise } from './calc';
-import type { ConsumeInput, CreateFeedItemInput, PurchaseInput } from './schemas';
+import type { ConsumeInput, CreateFeedItemInput, PurchaseInput, UpdateFeedItemInput } from './schemas';
 
 type ItemRow = {
   id: string;
@@ -42,6 +42,30 @@ export async function createFeedItem(farmId: string, userId: string, input: Crea
         unit: input.unit ?? 'kg',
         reorderThreshold: input.reorderThreshold,
         createdBy: userId,
+      },
+      select: ITEM_SELECT,
+    });
+    return itemToDTO(item);
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      throw new AppError(409, 'FEED_NAME_TAKEN', 'A feed item with this name already exists');
+    }
+    throw err;
+  }
+}
+
+/** Edit a feed item's descriptive fields. Never touches stockQty/lastUnitPricePaise (transaction-derived). */
+export async function updateFeedItem(farmId: string, userId: string, id: string, input: UpdateFeedItemInput) {
+  const existing = await prisma.feedItem.findFirst({ where: { id, farmId, deletedAt: null }, select: { id: true } });
+  if (!existing) throw new AppError(404, 'NOT_FOUND', 'Feed item not found');
+  try {
+    const item = await prisma.feedItem.update({
+      where: { id: existing.id },
+      data: {
+        name: input.name,
+        unit: input.unit,
+        reorderThreshold: input.reorderThreshold,
+        updatedBy: userId,
       },
       select: ITEM_SELECT,
     });

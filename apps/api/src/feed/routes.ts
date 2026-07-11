@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
-import { ConsumeSchema, CreateFeedItemSchema, PurchaseSchema } from './schemas';
+import { ConsumeSchema, CreateFeedItemSchema, PurchaseSchema, UpdateFeedItemSchema } from './schemas';
 import * as feed from './service';
 
 const q = (v: unknown) => (typeof v === 'string' ? v : undefined);
@@ -61,5 +61,15 @@ feedRouter.get(
       return;
     }
     res.json(await feed.batchFcr(farmScope(req).farmId, batchId));
+  }),
+);
+
+// Registered after the static routes so /low-stock, /purchase, /consume, /fcr always win.
+feedRouter.patch(
+  '/:id',
+  requireRole('OWNER', 'MANAGER', 'ACCOUNTANT'),
+  asyncHandler(async (req, res) => {
+    const input = UpdateFeedItemSchema.parse(req.body);
+    res.json({ item: await feed.updateFeedItem(farmScope(req).farmId, req.userId!, req.params.id!, input) });
   }),
 );
