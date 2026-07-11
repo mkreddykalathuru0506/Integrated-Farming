@@ -183,3 +183,26 @@ export async function softDeleteUnit(farmId: string, id: string, userId: string)
   await findUnitInFarm(farmId, id);
   await prisma.unit.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: userId } });
 }
+
+/**
+ * New-farm onboarding progress (slice 11.7, read-only): cheap `count()`s over the five
+ * setup milestones the dashboard checklist walks a new owner through.
+ */
+export async function onboarding(farmId: string) {
+  const [units, batches, workers, dailyLogs, invoices] = await Promise.all([
+    prisma.unit.count({ where: { farmId, deletedAt: null } }),
+    prisma.batch.count({ where: { farmId, deletedAt: null } }),
+    prisma.worker.count({ where: { farmId, deletedAt: null } }),
+    prisma.dailyLog.count({ where: { farmId } }),
+    prisma.invoice.count({ where: { farmId } }),
+  ]);
+  const steps = {
+    units: { done: units > 0 },
+    batches: { done: batches > 0 },
+    workers: { done: workers > 0 },
+    dailyLogs: { done: dailyLogs > 0 },
+    invoices: { done: invoices > 0 },
+  };
+  const completedCount = Object.values(steps).filter((s) => s.done).length;
+  return { steps, completedCount, total: Object.keys(steps).length };
+}

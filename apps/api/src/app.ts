@@ -27,7 +27,7 @@ import { processingRouter, lotRouter } from './processing/routes';
 import { dispatchRouter } from './dispatch/routes';
 import { assetRouter } from './assets/routes';
 import { byproductRouter } from './byproducts/routes';
-import { weatherRouter, riskRouter } from './intelligence/routes';
+import { weatherRouter, riskRouter, intelligenceRouter } from './intelligence/routes';
 import { marketRouter } from './market/routes';
 import { alertRouter, dashboardRouter } from './notifications/routes';
 import { reportRouter } from './reports/routes';
@@ -133,6 +133,7 @@ export function createApp(): Express {
   app.use('/api/farm/byproducts', byproductRouter);
   app.use('/api/farm/weather', weatherRouter);
   app.use('/api/farm/risk', riskRouter);
+  app.use('/api/farm/intelligence', intelligenceRouter);
   app.use('/api/farm/market', marketRouter);
   app.use('/api/farm/alerts', alertRouter);
   app.use('/api/farm/dashboard', dashboardRouter);

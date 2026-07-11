@@ -58,6 +58,14 @@ farmCrudRouter.put(
   }),
 );
 
+// New-farm setup progress for the dashboard checklist (any member; read-only counts).
+farmCrudRouter.get(
+  '/onboarding',
+  asyncHandler(async (req, res) => {
+    res.json(await farms.onboarding(farmScope(req).farmId));
+  }),
+);
+
 farmCrudRouter.get(
   '/units',
   asyncHandler(async (req, res) => {
