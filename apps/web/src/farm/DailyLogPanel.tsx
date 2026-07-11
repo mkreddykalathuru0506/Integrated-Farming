@@ -32,6 +32,7 @@ import {
   type DataTableColumn,
 } from '../ui';
 import { LoadErrorNote } from './LoadErrorNote';
+import { LoadMore } from './LoadMore';
 
 const LOG_TYPES = ['FEED', 'EGGS', 'WEIGHT'] as const;
 const UNIT_FOR: Record<string, string> = { FEED: 'kg', EGGS: 'units', WEIGHT: 'kg' };
@@ -290,28 +291,36 @@ export function DailyLogPanel(_props: { farmId: string }) {
       </div>
 
       <div data-testid="log-recent">
-        {logs.isError && !logs.data ? (
+        {logs.isError && !logs.items ? (
           <LoadErrorNote
             text={t('logs.error')}
             retryLabel={t('logs.retry')}
             onRetry={() => void logs.refetch()}
           />
         ) : (
-          <DataTable
-            columns={columns}
-            data={logs.data}
-            isLoading={logs.isPending}
-            pageSize={10}
-            getRowId={(l) => l.id}
-            emptyState={
-              <EmptyState
-                icon={NotebookPen}
-                title={t('logs.empty')}
-                description={t('logs.emptyHint')}
-                size="compact"
-              />
-            }
-          />
+          <>
+            <DataTable
+              columns={columns}
+              data={logs.items}
+              isLoading={logs.isPending}
+              pageSize={10}
+              getRowId={(l) => l.id}
+              emptyState={
+                <EmptyState
+                  icon={NotebookPen}
+                  title={t('logs.empty')}
+                  description={t('logs.emptyHint')}
+                  size="compact"
+                />
+              }
+            />
+            <LoadMore
+              shown={logs.items?.length ?? 0}
+              total={logs.total}
+              loading={logs.isFetchingNextPage}
+              onLoadMore={() => void logs.fetchNextPage()}
+            />
+          </>
         )}
       </div>
     </section>

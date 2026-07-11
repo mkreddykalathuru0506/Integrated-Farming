@@ -5,7 +5,8 @@
  * queries via useFarmApi + farmKeys, mutations via useApiMutation.
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { request, requestBlob } from '../lib/http';
+import { qs, request, requestBlob } from '../lib/http';
+import { usePagedList } from './paged';
 import { useApiMutation } from '../lib/useApiMutation';
 import type {
   Asset,
@@ -167,12 +168,13 @@ export function useRefreshWeather() {
 
 /* ---------- market rates ---------- */
 
+/** Market rates via the paged envelope + "Load more" (slice 11.8a). */
 export function useMarketRates() {
-  const { farmId, fetchJson } = useFarmApi();
-  return useQuery({
-    queryKey: farmKeys.list(farmId, 'market'),
-    queryFn: async () => (await fetchJson<{ rates: MarketRate[] }>('/api/farm/market')).rates,
-  });
+  const { farmId } = useFarmApi();
+  return usePagedList<MarketRate>(
+    farmKeys.list(farmId, 'market'),
+    (page, pageSize) => `/api/farm/market${qs({ page, pageSize })}`,
+  );
 }
 
 export function useMarketHistory(commodity: string) {

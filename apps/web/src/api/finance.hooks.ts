@@ -6,6 +6,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { qs, requestBlob } from '../lib/http';
+import { usePagedList } from './paged';
 import { useApiMutation } from '../lib/useApiMutation';
 import type {
   BatchCost,
@@ -111,13 +112,16 @@ export function useConsumeFeed() {
 
 // ---------- expenses & batch cost ----------
 
+/**
+ * Expenses via the server-pagination envelope + "Load more" (slice 11.8a) — the
+ * append-only expense table is no longer downloaded whole on every mount.
+ */
 export function useExpenses(batchId?: string) {
-  const { farmId, fetchJson } = useFarmApi();
-  return useQuery({
-    queryKey: farmKeys.list(farmId, 'expenses', { batchId: batchId ?? '' }),
-    queryFn: async () =>
-      (await fetchJson<{ expenses: Expense[] }>(`/api/farm/expenses${qs({ batchId })}`)).expenses,
-  });
+  const { farmId } = useFarmApi();
+  return usePagedList<Expense>(
+    farmKeys.list(farmId, 'expenses', { batchId: batchId ?? '' }),
+    (page, pageSize) => `/api/farm/expenses${qs({ page, pageSize, batchId })}`,
+  );
 }
 
 export function useBatchCost(batchId: string | undefined) {
@@ -224,21 +228,16 @@ export function useCustomers() {
 }
 
 /**
- * Invoice list via the paged envelope (the only list shape with the customer
- * join). v1 sweep loads one max-size page and lets DataTable paginate on the
- * client — the server-pagination upgrade is the later perf pass.
+ * Invoice list via the paged envelope + "Load more" (slice 11.8a). Older invoices
+ * (#101+) are no longer silently invisible: the first page loads, `total` is
+ * surfaced, and additional pages are appended on demand.
  */
 export function useInvoices() {
-  const { farmId, fetchJson } = useFarmApi();
-  return useQuery({
-    queryKey: farmKeys.list(farmId, 'invoices'),
-    queryFn: async () =>
-      (
-        await fetchJson<{ items: InvoiceListItem[]; total: number }>(
-          `/api/farm/invoices${qs({ page: 1, pageSize: 100 })}`,
-        )
-      ).items,
-  });
+  const { farmId } = useFarmApi();
+  return usePagedList<InvoiceListItem>(
+    farmKeys.list(farmId, 'invoices'),
+    (page, pageSize) => `/api/farm/invoices${qs({ page, pageSize })}`,
+  );
 }
 
 export function useInvoice(id: string | null) {

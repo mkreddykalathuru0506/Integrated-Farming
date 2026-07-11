@@ -42,6 +42,7 @@ import {
   type DataTableColumn,
 } from '../ui';
 import { buildTotals, isIntraState } from './gstPreview';
+import { LoadMore } from './LoadMore';
 import type { Batch } from './api';
 
 const GST_RATES_BPS = [0, 500, 1200, 1800, 2800] as const;
@@ -157,34 +158,42 @@ export function InvoicePanel({ canWrite }: { farmId: string; canWrite: boolean }
           </Button>
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={invoices.data}
-          isLoading={invoices.isLoading}
-          searchable
-          searchPlaceholderKey="invoices.search"
-          pageSize={10}
-          getRowId={(i) => i.id}
-          onRowClick={(i) => setDetailId(i.id)}
-          emptyState={
-            <EmptyState
-              icon={FileText}
-              title={t('invoices.empty')}
-              description={t('invoices.emptyDesc')}
-              action={
-                canWrite && hasCustomers ? (
-                  <Button size="sm" onClick={() => setCreateOpen(true)}>
-                    {t('invoices.create')}
-                  </Button>
-                ) : canWrite ? (
-                  <Button size="sm" onClick={() => setCustOpen(true)}>
-                    {t('invoices.addCustomer')}
-                  </Button>
-                ) : undefined
-              }
-            />
-          }
-        />
+        <>
+          <DataTable
+            columns={columns}
+            data={invoices.items}
+            isLoading={invoices.isPending}
+            searchable
+            searchPlaceholderKey="invoices.search"
+            pageSize={10}
+            getRowId={(i) => i.id}
+            onRowClick={(i) => setDetailId(i.id)}
+            emptyState={
+              <EmptyState
+                icon={FileText}
+                title={t('invoices.empty')}
+                description={t('invoices.emptyDesc')}
+                action={
+                  canWrite && hasCustomers ? (
+                    <Button size="sm" onClick={() => setCreateOpen(true)}>
+                      {t('invoices.create')}
+                    </Button>
+                  ) : canWrite ? (
+                    <Button size="sm" onClick={() => setCustOpen(true)}>
+                      {t('invoices.addCustomer')}
+                    </Button>
+                  ) : undefined
+                }
+              />
+            }
+          />
+          <LoadMore
+            shown={invoices.items?.length ?? 0}
+            total={invoices.total}
+            loading={invoices.isFetchingNextPage}
+            onLoadMore={() => void invoices.fetchNextPage()}
+          />
+        </>
       )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

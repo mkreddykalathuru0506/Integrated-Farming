@@ -37,7 +37,7 @@ const log = {
 function routes(overrides: Record<string, RouteHandler> = {}) {
   return mockFetchRoutes({
     '/api/farm/batches': () => jsonResponse(200, { batches: [batch] }),
-    '/api/farm/logs': () => jsonResponse(200, { logs: [log] }),
+    '/api/farm/logs': () => jsonResponse(200, { items: [log], total: 1, page: 1, pageSize: 100 }),
     ...overrides,
   });
 }
@@ -82,7 +82,7 @@ describe('DailyLogPanel (11.6a rewrite, offline queue intact)', () => {
           posts.push(body);
           return jsonResponse(201, { log: { ...log, id: 'l2', ...body } });
         }
-        return jsonResponse(200, { logs: [log] });
+        return jsonResponse(200, { items: [log], total: 1, page: 1, pageSize: 100 });
       },
     });
     renderPanel();
@@ -104,7 +104,7 @@ describe('DailyLogPanel (11.6a rewrite, offline queue intact)', () => {
     routes({
       '/api/farm/logs': (init) => {
         if (init?.method === 'POST') throw new TypeError('network down');
-        return jsonResponse(200, { logs: [log] });
+        return jsonResponse(200, { items: [log], total: 1, page: 1, pageSize: 100 });
       },
     });
     renderPanel();
@@ -123,7 +123,7 @@ describe('DailyLogPanel (11.6a rewrite, offline queue intact)', () => {
         if (init?.method === 'POST') {
           return jsonResponse(422, { error: { code: 'INVALID_TARGET', message: 'wrong farm' } });
         }
-        return jsonResponse(200, { logs: [log] });
+        return jsonResponse(200, { items: [log], total: 1, page: 1, pageSize: 100 });
       },
     });
     renderPanel();

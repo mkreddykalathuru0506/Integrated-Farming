@@ -42,7 +42,7 @@ const routes = (posts: unknown[]) => ({
       });
     }
     return jsonResponse(200, {
-      expenses: [
+      items: [
         {
           id: 'e1',
           category: 'MEDICINE',
@@ -52,6 +52,9 @@ const routes = (posts: unknown[]) => ({
           description: 'Vaccines',
         },
       ],
+      total: 1,
+      page: 1,
+      pageSize: 100,
     });
   },
   '/api/farm/batches': () => jsonResponse(200, { batches: [batch('b1', 'B-001')] }),

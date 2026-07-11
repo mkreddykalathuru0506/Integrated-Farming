@@ -45,7 +45,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe('MarketPanel', () => {
   it('renders rates with source badge and price per unit, plus the history section', async () => {
     mockFetchRoutes({
-      '/api/farm/market': () => jsonResponse(200, { rates: [rate] }),
+      '/api/farm/market': () => jsonResponse(200, { items: [rate], total: 1, page: 1, pageSize: 100 }),
       '/api/farm/market/history': () => jsonResponse(200, { rates: [rate] }),
     });
     renderPanel();
@@ -58,7 +58,7 @@ describe('MarketPanel', () => {
   it('wires the Phase-7 live adapter: per-row Refresh posts to /market/refresh', async () => {
     const posts: unknown[] = [];
     mockFetchRoutes({
-      '/api/farm/market': () => jsonResponse(200, { rates: [rate] }),
+      '/api/farm/market': () => jsonResponse(200, { items: [rate], total: 1, page: 1, pageSize: 100 }),
       '/api/farm/market/history': () => jsonResponse(200, { rates: [rate] }),
       '/api/farm/market/refresh': (init) => {
         posts.push(JSON.parse(String(init?.body)));
@@ -84,7 +84,7 @@ describe('MarketPanel', () => {
             risk: { atRisk: true, severity: 'CRITICAL', reason: 'Broiler: price dropped 36%' },
           });
         }
-        return jsonResponse(200, { rates: [rate] });
+        return jsonResponse(200, { items: [rate], total: 1, page: 1, pageSize: 100 });
       },
       '/api/farm/market/history': () => jsonResponse(200, { rates: [rate] }),
     });
