@@ -31,10 +31,12 @@ export async function listSchedules(farmId: string) {
   });
 }
 
-export async function listTasks(farmId: string, filter: { date?: string; status?: string }) {
+export async function listTasks(farmId: string, filter: { date?: string; status?: string; assigneeId?: string }) {
   const where: Prisma.TaskWhereInput = { farmId };
   if (filter.date) where.dueDate = dayBounds(new Date(`${filter.date}T00:00:00.000Z`));
   if (filter.status) where.status = filter.status as Prisma.EnumTaskStatusFilter['equals'];
+  // `assigneeId=none` → the unassigned view.
+  if (filter.assigneeId) where.assignedWorkerId = filter.assigneeId === 'none' ? null : filter.assigneeId;
   return prisma.task.findMany({ where, orderBy: { dueDate: 'desc' }, select: TASK_SELECT });
 }
 
@@ -59,6 +61,24 @@ export async function completeTask(farmId: string, id: string, userId: string, n
   return prisma.task.update({
     where: { id },
     data: { status: 'DONE', completedAt: new Date(), completedBy: userId, notes, updatedBy: userId },
+    select: TASK_SELECT,
+  });
+}
+
+/** Assign (or unassign with null) a task to a worker of the same farm. */
+export async function assignTask(farmId: string, id: string, userId: string, workerId: string | null) {
+  if (workerId) {
+    const worker = await prisma.worker.findFirst({
+      where: { id: workerId, farmId, deletedAt: null, isActive: true },
+      select: { id: true },
+    });
+    if (!worker) throw new AppError(422, 'INVALID_WORKER', 'Worker does not belong to this farm or is inactive');
+  }
+  const task = await prisma.task.findFirst({ where: { id, farmId }, select: { id: true } });
+  if (!task) throw new AppError(404, 'NOT_FOUND', 'Task not found');
+  return prisma.task.update({
+    where: { id: task.id },
+    data: { assignedWorkerId: workerId, updatedBy: userId },
     select: TASK_SELECT,
   });
 }
