@@ -96,7 +96,15 @@ function Authed() {
 }
 
 function Root() {
-  const { user } = useAuth();
+  const { t } = useTranslation();
+  const { user, restoring } = useAuth();
+  if (restoring) {
+    return (
+      <CenterShell>
+        <p className="text-sm text-muted-foreground">{t('auth.restoring')}</p>
+      </CenterShell>
+    );
+  }
   return user ? (
     <Authed />
   ) : (
