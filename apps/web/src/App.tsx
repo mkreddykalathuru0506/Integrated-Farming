@@ -7,7 +7,7 @@ import { LoginForm } from './components/LoginForm';
 import { LanguageToggle } from './components/LanguageToggle';
 import { AppLayout } from './components/AppLayout';
 import { CreateFarm } from './farm/CreateFarm';
-import { Card } from './ui';
+import { Card, ToastProvider } from './ui';
 
 function BrandHeader() {
   const { t } = useTranslation();
@@ -109,7 +109,9 @@ function Root() {
 export default function App() {
   return (
     <AuthProvider>
-      <Root />
+      <ToastProvider>
+        <Root />
+      </ToastProvider>
     </AuthProvider>
   );
 }

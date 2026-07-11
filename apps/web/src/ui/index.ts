@@ -7,3 +7,4 @@ export * from './Badge';
 export * from './DropdownMenu';
 export * from './Sheet';
 export * from './Panel';
+export * from './Toast';
