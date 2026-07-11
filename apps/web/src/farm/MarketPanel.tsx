@@ -1,81 +1,337 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useMemo, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Plus, RefreshCw, TrendingUp } from 'lucide-react';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { formatPaise, rupeesToPaise } from '@ifm/shared';
-import { useAuth } from '../auth/AuthContext';
-import { Button, DataRow, Input, PanelHeading, PanelNote } from '../ui';
-import { listMarketRates, recordMarketRate, type MarketRate } from './api';
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { z } from 'zod';
+import { useMarketHistory, useMarketRates, useRecordRate, useRefreshRate } from '../api/ops.hooks';
+import { fmtDate, fmtDateTime, fmtInr, rupeesToPaise } from '../lib/format';
+import {
+  Badge,
+  Button,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
+  Field,
+  InrInput,
+  Input,
+  PanelError,
+  PanelHeading,
+  PanelNote,
+  Select,
+  Skeleton,
+  useToast,
+  type DataTableColumn,
+} from '../ui';
+import type { MarketRate } from './api';
 
-function fmtTs(iso: string) {
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+function SourceBadge({ source }: { source: string }) {
+  const { t } = useTranslation();
+  if (source === 'mock') return <Badge variant="warning">{t('market.mockBadge')}</Badge>;
+  if (source === 'manual') return <Badge variant="muted">{source}</Badge>;
+  return <Badge variant="accent">{source}</Badge>;
 }
 
-export function MarketPanel({ farmId, canWrite }: { farmId: string; canWrite: boolean }) {
+/* ---------- record-rate dialog (manual entry is the primary path) ---------- */
+
+const rateSchema = z.object({
+  commodity: z.string().trim().min(1, 'market.commodityRequired'),
+  market: z.string(),
+  price: z.string().refine((v) => {
+    const p = rupeesToPaise(v);
+    return p !== null && p !== '0' && !p.startsWith('-');
+  }, 'market.invalidPrice'),
+  unit: z.string().trim().min(1, 'market.unitRequired'),
+});
+type RateValues = z.infer<typeof rateSchema>;
+
+function RecordRateDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const { t } = useTranslation();
-  const { accessToken } = useAuth();
-  const [rates, setRates] = useState<MarketRate[]>([]);
-  const [commodity, setCommodity] = useState('');
-  const [price, setPrice] = useState('');
-  const [unit, setUnit] = useState('kg');
+  const toast = useToast();
+  const recordRate = useRecordRate();
+  const form = useForm<RateValues>({
+    resolver: zodResolver(rateSchema),
+    defaultValues: { commodity: '', market: '', price: '', unit: 'kg' },
+  });
+  const err = (m?: string) => (m ? t(m) : undefined);
 
-  const refresh = useCallback(() => {
-    if (!accessToken) return;
-    listMarketRates(accessToken, farmId).then((r) => setRates(r.rates)).catch(() => undefined);
-  }, [accessToken, farmId]);
+  const onSubmit = form.handleSubmit((v) => {
+    recordRate.mutate(
+      {
+        commodity: v.commodity.trim(),
+        market: v.market.trim() || undefined,
+        pricePaise: rupeesToPaise(v.price)!,
+        unit: v.unit.trim(),
+      },
+      {
+        onSuccess: (res) => {
+          if (res.risk?.atRisk) toast.warning(`${t('market.priceDropWarn')}: ${res.risk.reason}`);
+          form.reset();
+          onOpenChange(false);
+        },
+      },
+    );
+  });
 
-  useEffect(refresh, [refresh]);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t('market.record')}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={(e) => void onSubmit(e)} className="space-y-3" noValidate>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={t('market.commodity')} required error={err(form.formState.errors.commodity?.message)}>
+              <Input placeholder={t('market.commodityPlaceholder')} {...form.register('commodity')} />
+            </Field>
+            <Field label={t('market.marketLabel')}>
+              <Input {...form.register('market')} />
+            </Field>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Controller
+              control={form.control}
+              name="price"
+              render={({ field }) => (
+                <Field label={t('market.price')} required error={err(form.formState.errors.price?.message)}>
+                  <InrInput value={field.value} onChangePaise={(_p, rupees) => field.onChange(rupees)} />
+                </Field>
+              )}
+            />
+            <Field label={t('market.unit')} required error={err(form.formState.errors.unit?.message)}>
+              <Input {...form.register('unit')} />
+            </Field>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" loading={recordRate.isPending}>
+              {t('market.save')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-  async function onRecord(e: FormEvent) {
-    e.preventDefault();
-    if (!accessToken) return;
-    await recordMarketRate(accessToken, farmId, {
-      commodity,
-      pricePaise: String(rupeesToPaise(Number(price))),
-      unit,
-    })
-      .then(() => {
-        setCommodity('');
-        setPrice('');
-        refresh();
-      })
-      .catch(() => undefined);
+/* ---------- price-history line chart (single series → no legend) ---------- */
+
+function HistoryChart({ commodity }: { commodity: string }) {
+  const { t } = useTranslation();
+  const history = useMarketHistory(commodity);
+
+  if (history.isPending) return <Skeleton className="h-48 w-full" />;
+  if (history.isError) return <PanelError>{t('market.historyError')}</PanelError>;
+
+  const points = (history.data ?? []).map((r) => ({
+    ts: r.observedAt,
+    rupees: Number(r.pricePaise) / 100, // display-only position; money stays integer paise
+    paise: r.pricePaise,
+    unit: r.unit,
+  }));
+  if (points.length === 0) return <PanelNote>{t('market.historyEmpty')}</PanelNote>;
+
+  return (
+    <div className="h-48 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="ts"
+            tickFormatter={(v: string) => fmtDate(v).slice(0, 5)}
+            tickLine={false}
+            axisLine={false}
+            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+            minTickGap={24}
+          />
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            width={56}
+            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+            domain={['auto', 'auto']}
+          />
+          <Tooltip
+            cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeDasharray: '3 3' }}
+            contentStyle={{
+              background: 'hsl(var(--card))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: 8,
+              fontSize: 12,
+              color: 'hsl(var(--foreground))',
+            }}
+            labelFormatter={(v) => fmtDateTime(String(v))}
+            formatter={(_v, _n, item) => {
+              const p = item.payload as { paise: string; unit: string };
+              return [`${fmtInr(p.paise)}/${p.unit}`, null];
+            }}
+          />
+          <Line
+            type="monotone"
+            dataKey="rupees"
+            stroke="hsl(var(--primary))"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 4, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ---------- panel ---------- */
+
+export function MarketPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const rates = useMarketRates();
+  const refreshRate = useRefreshRate();
+  const [recordOpen, setRecordOpen] = useState(false);
+  const [historyCommodity, setHistoryCommodity] = useState('');
+
+  const commodities = useMemo(
+    () => [...new Set((rates.data ?? []).map((r) => r.commodity))],
+    [rates.data],
+  );
+  const selectedCommodity = historyCommodity || commodities[0] || '';
+
+  function onRefresh(rate: MarketRate) {
+    refreshRate.mutate(
+      { commodity: rate.commodity, market: rate.market ?? undefined },
+      {
+        onSuccess: (res) => {
+          toast.success(t('market.refreshed', { source: res.rate.source }));
+          if (res.risk?.atRisk) toast.warning(`${t('market.priceDropWarn')}: ${res.risk.reason}`);
+        },
+      },
+    );
   }
+
+  const columns: DataTableColumn<MarketRate>[] = [
+    {
+      header: 'market.colCommodity',
+      accessor: 'commodity',
+      cell: (r) => <span className="font-medium text-foreground">{r.commodity}</span>,
+    },
+    { header: 'market.colMarket', accessor: (r) => r.market ?? '', cell: (r) => r.market ?? '—' },
+    {
+      header: 'market.colPrice',
+      align: 'right',
+      accessor: (r) => Number(r.pricePaise),
+      cell: (r) => `${fmtInr(r.pricePaise)}/${r.unit}`,
+    },
+    {
+      header: 'market.colSource',
+      accessor: 'source',
+      cell: (r) => <SourceBadge source={r.source} />,
+    },
+    {
+      header: 'market.colObserved',
+      accessor: 'observedAt',
+      cell: (r) => fmtDateTime(r.observedAt),
+    },
+    ...(canWrite
+      ? [
+          {
+            // Wires the Phase-7 live adapter (POST /api/farm/market/refresh) into the UI.
+            header: 'market.refreshSource',
+            cell: (r: MarketRate) => (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                loading={refreshRate.isPending && refreshRate.variables?.commodity === r.commodity}
+                onClick={() => onRefresh(r)}
+              >
+                <RefreshCw aria-hidden />
+                {t('market.refreshSource')}
+              </Button>
+            ),
+          } satisfies DataTableColumn<MarketRate>,
+        ]
+      : []),
+  ];
 
   return (
     <section className="space-y-3">
-      <PanelHeading>{t('market.title')}</PanelHeading>
+      <PanelHeading
+        action={
+          canWrite && (
+            <Button type="button" size="sm" onClick={() => setRecordOpen(true)}>
+              <Plus aria-hidden />
+              {t('market.record')}
+            </Button>
+          )
+        }
+      >
+        {t('market.title')}
+      </PanelHeading>
 
-      {rates.length === 0 ? (
-        <PanelNote>{t('market.empty')}</PanelNote>
-      ) : (
-        <ul className="space-y-1 text-sm">
-          {rates.map((r) => (
-            <DataRow key={r.id} className="py-1.5">
-              <span className="text-foreground">
-                {r.commodity}
-                <span className="block text-xs text-muted-foreground">{t('market.asOf', { ts: fmtTs(r.fetchedAt), source: r.source })}</span>
-              </span>
-              <span className="text-muted-foreground tabular">
-                {formatPaise(Number(r.pricePaise))}/{r.unit}
-              </span>
-            </DataRow>
-          ))}
-        </ul>
-      )}
-
-      {canWrite && (
-        <form onSubmit={onRecord} className="space-y-2 rounded-xl bg-secondary/60 p-3">
-          <p className="text-xs text-muted-foreground">{t('market.record')}</p>
-          <Input value={commodity} onChange={(e) => setCommodity(e.target.value)} placeholder={t('market.commodity')} required />
-          <div className="flex gap-2">
-            <Input type="number" min={0} value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t('market.price')} required className="flex-1" />
-            <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder={t('market.unit')} required className="w-24" />
-          </div>
-          <Button type="submit" full>
-            {t('market.save')}
+      {rates.isError ? (
+        <div className="space-y-2">
+          <PanelError>{t('market.error')}</PanelError>
+          <Button type="button" variant="secondary" size="sm" onClick={() => void rates.refetch()}>
+            {t('market.retry')}
           </Button>
-        </form>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={rates.data}
+          isLoading={rates.isPending}
+          searchable
+          pageSize={10}
+          getRowId={(r) => r.id}
+          emptyState={
+            <EmptyState
+              icon={TrendingUp}
+              title={t('market.empty')}
+              description={t('market.emptyDesc')}
+              action={
+                canWrite && (
+                  <Button type="button" onClick={() => setRecordOpen(true)}>
+                    <Plus aria-hidden />
+                    {t('market.record')}
+                  </Button>
+                )
+              }
+            />
+          }
+        />
       )}
+
+      {commodities.length > 0 && (
+        <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              {t('market.history')}
+            </p>
+            <Select
+              aria-label={t('market.colCommodity')}
+              value={selectedCommodity}
+              onChange={(e) => setHistoryCommodity(e.target.value)}
+              className="w-auto min-w-40"
+            >
+              {commodities.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
+          </div>
+          {selectedCommodity && <HistoryChart commodity={selectedCommodity} />}
+        </div>
+      )}
+
+      <RecordRateDialog open={recordOpen} onOpenChange={setRecordOpen} />
     </section>
   );
 }
