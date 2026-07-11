@@ -13,14 +13,30 @@ export default defineConfig({
         short_name: 'Samagra Krishi',
         description: 'Integrated farm management for India',
         lang: 'en',
-        theme_color: '#16a34a',
-        background_color: '#f8fafc',
+        // Harvest palette: deep-pine sidebar (matches index.html meta theme-color)
+        // over the warm bone canvas (--background: 42 38% 92% → #f2eee3).
+        theme_color: '#123322',
+        background_color: '#f2eee3',
         display: 'standalone',
         start_url: '/',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+        // Manifest strings cannot be localised at runtime (manifest lang is 'en'),
+        // so shortcut names stay English by design.
+        shortcuts: [
+          {
+            name: 'Dashboard',
+            url: '/',
+            icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
+          {
+            name: 'Daily logs',
+            url: '/daily',
+            icons: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }],
+          },
         ],
       },
       workbox: {

@@ -1,7 +1,8 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MyFarm } from '../auth/api';
-import { Card, cn, Sheet, SheetContent, SheetTitle } from '../ui';
+import { Card, CardSkeleton, cn, Sheet, SheetContent, SheetTitle, StatSkeleton, TableSkeleton } from '../ui';
+import { ErrorBoundary } from './ErrorBoundary';
 import { SidebarContent } from './Sidebar';
 import { Topbar } from './Topbar';
 import { SECTIONS, permsFor } from './nav';
@@ -18,8 +19,30 @@ type Props = {
 
 const COLLAPSE_KEY = 'ifm.sidebar.collapsed';
 
+/** Skeleton composition shown while a lazy section chunk loads. */
+function SectionFallback({ full }: { full: boolean }) {
+  return full ? (
+    <div className="mx-auto w-full max-w-7xl space-y-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatSkeleton />
+        <StatSkeleton />
+        <StatSkeleton />
+        <StatSkeleton />
+      </div>
+      <CardSkeleton />
+    </div>
+  ) : (
+    <div className="mx-auto w-full max-w-5xl space-y-5">
+      <Card>
+        <TableSkeleton rows={4} cols={3} />
+      </Card>
+      <CardSkeleton />
+    </div>
+  );
+}
+
 export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail, onLogout }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { key: routeKey, navigate } = useRoute();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
@@ -48,6 +71,22 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
   useEffect(() => {
     if (routeKey !== section.key) navigate(section.key, { replace: true });
   }, [routeKey, section.key, navigate]);
+
+  // Per-section document title, re-derived on language switch.
+  useEffect(() => {
+    document.title = `${t(`nav.${section.key}`)} · ${t('app.title')}`;
+  }, [section.key, t, i18n.resolvedLanguage]);
+
+  // A11y: on section change, scroll to top and move focus to the main heading
+  // so keyboard/screen-reader users land on the new content (not on first mount).
+  const mainHeadingRef = useRef<HTMLHeadingElement>(null);
+  const prevSectionKey = useRef(section.key);
+  useEffect(() => {
+    if (prevSectionKey.current === section.key) return;
+    prevSectionKey.current = section.key;
+    window.scrollTo({ top: 0 });
+    mainHeadingRef.current?.focus();
+  }, [section.key]);
 
   function selectFromDrawer(key: string) {
     navigate(key);
@@ -93,21 +132,27 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
         />
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <Suspense fallback={<p className="text-sm text-muted-foreground">{t('farms.loading')}</p>}>
-            {isOverview ? (
-              <div className="mx-auto w-full max-w-7xl">
-                {section.panels.map((p) => (
-                  <div key={p.key + selectedId}>{p.render(selectedId, perms)}</div>
-                ))}
-              </div>
-            ) : (
-              <div className="mx-auto w-full max-w-5xl space-y-5">
-                {section.panels.map((p) => (
-                  <Card key={p.key + selectedId}>{p.render(selectedId, perms)}</Card>
-                ))}
-              </div>
-            )}
-          </Suspense>
+          {/* Focus target on section change; the visible title lives in the Topbar. */}
+          <h1 ref={mainHeadingRef} tabIndex={-1} className="sr-only">
+            {t(`nav.${section.key}`)}
+          </h1>
+          <ErrorBoundary resetKey={section.key + selectedId}>
+            <Suspense fallback={<SectionFallback full={isOverview} />}>
+              {isOverview ? (
+                <div className="mx-auto w-full max-w-7xl">
+                  {section.panels.map((p) => (
+                    <div key={p.key + selectedId}>{p.render(selectedId, perms)}</div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mx-auto w-full max-w-5xl space-y-5">
+                  {section.panels.map((p) => (
+                    <Card key={p.key + selectedId}>{p.render(selectedId, perms)}</Card>
+                  ))}
+                </div>
+              )}
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
     </div>

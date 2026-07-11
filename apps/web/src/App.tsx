@@ -8,7 +8,7 @@ import { LanguageToggle } from './components/LanguageToggle';
 import { AppLayout } from './components/AppLayout';
 import { FarmProvider } from './api/FarmContext';
 import { CreateFarm } from './farm/CreateFarm';
-import { Card, ToastProvider } from './ui';
+import { Card, ToastProvider, TooltipProvider } from './ui';
 
 const FARM_KEY = 'ifm.farm';
 
@@ -142,7 +142,9 @@ export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <Root />
+        <TooltipProvider>
+          <Root />
+        </TooltipProvider>
       </ToastProvider>
     </AuthProvider>
   );

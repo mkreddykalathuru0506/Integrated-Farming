@@ -58,7 +58,8 @@ export function Topbar({
           {t('nav.workspace')}
         </span>
         <span className="hidden shrink-0 text-muted-foreground/60 sm:inline">/</span>
-        <h1 className="truncate font-display text-xl font-semibold text-foreground">{title}</h1>
+        {/* Visual title only — the page's <h1> is the focus target inside <main> (AppLayout). */}
+        <p className="truncate font-display text-xl font-semibold text-foreground">{title}</p>
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
