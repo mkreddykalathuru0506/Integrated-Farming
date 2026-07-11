@@ -11,6 +11,10 @@ import { useHotkeys } from './useHotkeys';
 import type { NavTarget } from './commands';
 import type { Role } from './nav';
 
+// Dialog-heavy userEvent flows can exceed the 5s default under parallel CI load
+// — allow more headroom for this file (same pattern as the sales sweep files).
+vi.setConfig({ testTimeout: 20_000 });
+
 beforeAll(() => {
   // cmdk scrolls the selected item into view; jsdom has no scrollIntoView.
   Element.prototype.scrollIntoView = vi.fn();

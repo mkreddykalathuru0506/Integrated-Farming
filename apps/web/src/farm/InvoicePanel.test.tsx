@@ -8,6 +8,10 @@ import { ToastProvider } from '../ui/Toast';
 import { jsonResponse, mockFetchRoutes } from '../test/mockFetch';
 import { InvoicePanel } from './InvoicePanel';
 
+// Dialog-heavy userEvent flows can exceed the 5s default under parallel CI load
+// — allow more headroom for this file (same pattern as the sales sweep files).
+vi.setConfig({ testTimeout: 20_000 });
+
 const listInvoice = {
   id: 'i1',
   invoiceNumber: 'INV-2026-27-0001',

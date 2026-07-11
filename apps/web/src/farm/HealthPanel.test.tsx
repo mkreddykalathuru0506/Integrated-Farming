@@ -8,6 +8,10 @@ import { ToastProvider } from '../ui/Toast';
 import { jsonResponse, mockFetchRoutes, type RouteHandler } from '../test/mockFetch';
 import { HealthPanel } from './HealthPanel';
 
+// Dialog-heavy userEvent flows can exceed the 5s default under parallel CI load
+// — allow more headroom for this file (same pattern as the sales sweep files).
+vi.setConfig({ testTimeout: 20_000 });
+
 const species = { id: 's1', code: 'CHICKEN', name: 'Chicken' };
 const makeBatch = (id: string, code: string, name: string | null) => ({
   id,
