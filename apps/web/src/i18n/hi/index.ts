@@ -30,6 +30,10 @@ import invoices from './invoices';
 import assets from './assets';
 import byproducts from './byproducts';
 import circularity from './circularity';
+import orders from './orders';
+import cold from './cold';
+import processing from './processing';
+import dispatch from './dispatch';
 import species from './species';
 import batches from './batches';
 import animals from './animals';
@@ -70,6 +74,10 @@ export const hi = {
     assets,
     byproducts,
     circularity,
+    orders,
+    cold,
+    processing,
+    dispatch,
     species,
     batches,
     animals,
