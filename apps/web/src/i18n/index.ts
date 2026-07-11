@@ -24,6 +24,7 @@ export const CORE_NS = [
   'palette',
   'shortcuts',
   'bell',
+  'unitTypes',
   'weather',
   'market',
   'dashboard',

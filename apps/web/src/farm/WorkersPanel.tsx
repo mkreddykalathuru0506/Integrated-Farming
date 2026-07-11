@@ -194,12 +194,15 @@ function AttendanceView({
   }, [attendance.data]);
 
   const counts = useMemo(() => {
-    const c = { PRESENT: 0, HALF_DAY: 0, ABSENT: 0, unmarked: 0 };
+    // LEAVE is an API-valid status (written by integrations) — count it in its own
+    // bucket, not as 'unmarked' (finding 11.8a).
+    const c = { PRESENT: 0, HALF_DAY: 0, ABSENT: 0, LEAVE: 0, unmarked: 0 };
     for (const w of activeWorkers) {
       const s = statusByWorker[w.id];
       if (s === 'PRESENT') c.PRESENT += 1;
       else if (s === 'HALF_DAY') c.HALF_DAY += 1;
       else if (s === 'ABSENT') c.ABSENT += 1;
+      else if (s === 'LEAVE') c.LEAVE += 1;
       else c.unmarked += 1;
     }
     return c;
@@ -235,6 +238,9 @@ function AttendanceView({
         <Badge variant="success">{t('workers.chipPresent', { count: counts.PRESENT })}</Badge>
         <Badge variant="accent">{t('workers.chipHalfDay', { count: counts.HALF_DAY })}</Badge>
         <Badge variant="destructive">{t('workers.chipAbsent', { count: counts.ABSENT })}</Badge>
+        {counts.LEAVE > 0 && (
+          <Badge variant="secondary">{t('workers.chipLeave', { count: counts.LEAVE })}</Badge>
+        )}
         <Badge variant="muted">{t('workers.chipUnmarked', { count: counts.unmarked })}</Badge>
       </div>
 

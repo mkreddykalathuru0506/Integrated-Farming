@@ -6,4 +6,9 @@ export default {
     LOW_STOCK: 'Low stock',
     OTHER: 'Alert',
   },
+  severity: {
+    CRITICAL: 'Critical',
+    WARNING: 'Warning',
+    INFO: 'Info',
+  },
 };

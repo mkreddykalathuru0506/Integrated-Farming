@@ -30,11 +30,13 @@ export default {
   chipPresent: '{{count}} उपस्थित',
   chipHalfDay: '{{count}} आधा-दिन',
   chipAbsent: '{{count}} अनुपस्थित',
+  chipLeave: '{{count}} अवकाश पर',
   chipUnmarked: '{{count}} बिना चिह्न',
   att: {
     PRESENT: 'उपस्थित',
     HALF_DAY: 'आधा-दिन',
     ABSENT: 'अनुपस्थित',
+    LEAVE: 'अवकाश पर',
   },
   form: {
     name: 'कर्मचारी का नाम',
