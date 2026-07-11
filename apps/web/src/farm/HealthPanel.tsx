@@ -8,12 +8,13 @@ import { useBatches } from '../api/hooks';
 import {
   HEALTH_EVENT_TYPES,
   todayISO,
+  useActiveWithdrawals,
   useAnimals,
   useCreateHealthRecord,
   useHealthRecords,
   useMarkSaleReady,
   useRecordMedication,
-  useWithdrawals,
+  type ActiveWithdrawal,
 } from '../api/health.hooks';
 import { pathForSection } from '../components/router';
 import { fmtDate } from '../lib/format';
@@ -61,14 +62,14 @@ export function HealthPanel({ canWrite }: { farmId: string; canWrite: boolean })
     [animals.data],
   );
 
-  const withdrawals = useWithdrawals(activeBatches.map((b) => b.id));
+  // One farm-wide query (slice 11.8a) — no more one request per active batch.
+  const withdrawals = useActiveWithdrawals();
   const withdrawalByBatch = useMemo(() => {
-    const map = new Map<string, { underWithdrawal: boolean; until: string | null }>();
-    for (const q of withdrawals) if (q.data) map.set(q.data.batchId, q.data);
+    const map = new Map<string, ActiveWithdrawal>();
+    for (const w of withdrawals.data ?? []) map.set(w.batchId, w);
     return map;
-  }, [withdrawals]);
-  const withdrawalsLoading = withdrawals.some((q) => q.isPending);
-  const withdrawalErrors = withdrawals.filter((q) => q.isError);
+  }, [withdrawals.data]);
+  const withdrawalsLoading = withdrawals.isPending;
 
   const saleReady = useMarkSaleReady();
   const [medOpen, setMedOpen] = useState(false);
@@ -84,7 +85,8 @@ export function HealthPanel({ canWrite }: { farmId: string; canWrite: boolean })
     [animals.data],
   );
 
-  type Row = { batch: Batch; status?: { underWithdrawal: boolean; until: string | null } };
+  // A batch present in the map is under an active withdrawal; absent = clear.
+  type Row = { batch: Batch; status?: ActiveWithdrawal };
   const rows: Row[] = activeBatches.map((b) => ({ batch: b, status: withdrawalByBatch.get(b.id) }));
 
   const withdrawalColumns: DataTableColumn<Row>[] = [
@@ -106,19 +108,25 @@ export function HealthPanel({ canWrite }: { farmId: string; canWrite: boolean })
       align: 'right',
     },
     {
+      id: 'drug',
+      header: 'health.drug',
+      accessor: (r) => r.status?.drugName ?? '',
+      cell: (r) => r.status?.drugName ?? '—',
+    },
+    {
       id: 'until',
       header: 'health.until',
-      accessor: (r) => (r.status?.until ? r.status.until : ''),
-      cell: (r) => (r.status?.underWithdrawal && r.status.until ? fmtDate(r.status.until) : '—'),
+      accessor: (r) => (r.status ? r.status.until : ''),
+      cell: (r) => (r.status ? fmtDate(r.status.until) : '—'),
     },
     {
       id: 'status',
       header: 'health.status',
-      accessor: (r) => (r.status ? (r.status.underWithdrawal ? 1 : 0) : -1),
+      accessor: (r) => (r.status ? 1 : 0),
       cell: (r) =>
-        !r.status ? (
+        withdrawalsLoading ? (
           <Badge variant="muted">{t('health.checking')}</Badge>
-        ) : r.status.underWithdrawal && r.status.until ? (
+        ) : r.status ? (
           <Badge variant="destructive">{t('health.daysLeft', { count: daysLeft(r.status.until) })}</Badge>
         ) : (
           <Badge variant="success">{t('health.clearBadge')}</Badge>
@@ -220,14 +228,10 @@ export function HealthPanel({ canWrite }: { farmId: string; canWrite: boolean })
           </div>
         ) : (
           <>
-            {withdrawalErrors.length > 0 && (
+            {withdrawals.isError && (
               <div className="flex items-center gap-2">
                 <PanelError>{t('health.loadError')}</PanelError>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => withdrawalErrors.forEach((q) => void q.refetch())}
-                >
+                <Button size="sm" variant="secondary" onClick={() => void withdrawals.refetch()}>
                   {t('health.retry')}
                 </Button>
               </div>

@@ -58,6 +58,15 @@ healthRouter.get(
   }),
 );
 
+// Farm-wide active batch withdrawals in one query (member-readable, farm-scoped) —
+// the single read surface behind the Health panel's withdrawal table.
+healthRouter.get(
+  '/withdrawals',
+  asyncHandler(async (req, res) => {
+    res.json({ withdrawals: await health.listActiveWithdrawals(farmScope(req).farmId) });
+  }),
+);
+
 healthRouter.post(
   '/sale-ready',
   requireRole('OWNER', 'MANAGER'),
