@@ -1,6 +1,7 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, type InvoiceStatus } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
+import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import { buildTotals } from './gst';
 import { PdfKitInvoicePdf, type InvoiceForPdf } from './pdf';
 import { batchCost } from '../finance/service';
@@ -20,12 +21,33 @@ export async function createCustomer(farmId: string, userId: string, input: Crea
   }
 }
 
-export async function listCustomers(farmId: string) {
+const CUSTOMER_SELECT = { id: true, name: true, gstin: true, state: true } satisfies Prisma.CustomerSelect;
+
+export type CustomerListFilter = { q?: string; from?: Date; to?: Date };
+
+function customerWhere(farmId: string, f: CustomerListFilter): Prisma.CustomerWhereInput {
+  const where: Prisma.CustomerWhereInput = { farmId, deletedAt: null };
+  if (f.q) where.OR = [{ name: contains(f.q) }, { phone: contains(f.q) }, { gstin: contains(f.q) }];
+  const range = dateRange(f.from, f.to);
+  if (range) where.createdAt = range;
+  return where;
+}
+
+export async function listCustomers(farmId: string, filter: CustomerListFilter = {}) {
   return prisma.customer.findMany({
-    where: { farmId, deletedAt: null },
+    where: customerWhere(farmId, filter),
     orderBy: { name: 'asc' },
-    select: { id: true, name: true, gstin: true, state: true },
+    select: CUSTOMER_SELECT,
   });
+}
+
+export async function listCustomersPaged(farmId: string, p: ListQuery & CustomerListFilter) {
+  const where = customerWhere(farmId, p);
+  const [items, total] = await Promise.all([
+    prisma.customer.findMany({ where, orderBy: { name: 'asc' }, ...skipTake(p), select: CUSTOMER_SELECT }),
+    prisma.customer.count({ where }),
+  ]);
+  return envelope(items, total, p);
 }
 
 export async function createVendor(farmId: string, userId: string, input: CreateVendorInput) {
@@ -146,9 +168,89 @@ export async function createInvoice(farmId: string, userId: string, input: Creat
   return toInvoiceDTO(invoice);
 }
 
-export async function listInvoices(farmId: string) {
-  const rows = await prisma.invoice.findMany({ where: { farmId }, orderBy: { issueDate: 'desc' }, select: INVOICE_SELECT });
+export type InvoiceListFilter = { q?: string; status?: InvoiceStatus; from?: Date; to?: Date };
+
+function invoiceWhere(farmId: string, f: InvoiceListFilter): Prisma.InvoiceWhereInput {
+  const where: Prisma.InvoiceWhereInput = { farmId };
+  if (f.q) where.OR = [{ invoiceNumber: contains(f.q) }, { customer: { name: contains(f.q) } }];
+  if (f.status) where.status = f.status;
+  const range = dateRange(f.from, f.to);
+  if (range) where.issueDate = range;
+  return where;
+}
+
+export async function listInvoices(farmId: string, filter: InvoiceListFilter = {}) {
+  const rows = await prisma.invoice.findMany({
+    where: invoiceWhere(farmId, filter),
+    orderBy: { issueDate: 'desc' },
+    select: INVOICE_SELECT,
+  });
   return rows.map(toInvoiceDTO);
+}
+
+/** Paged list. Same DTO as legacy plus a light `customer: {id,name}` join for list views. */
+export async function listInvoicesPaged(farmId: string, p: ListQuery & InvoiceListFilter) {
+  const where = invoiceWhere(farmId, p);
+  const [rows, total] = await Promise.all([
+    prisma.invoice.findMany({
+      where,
+      orderBy: { issueDate: 'desc' },
+      ...skipTake(p),
+      select: { ...INVOICE_SELECT, customer: { select: { id: true, name: true } } },
+    }),
+    prisma.invoice.count({ where }),
+  ]);
+  return envelope(
+    rows.map((r) => ({ ...toInvoiceDTO(r), customer: r.customer })),
+    total,
+    p,
+  );
+}
+
+/** Invoice detail JSON — legacy DTO plus customer, place of supply, notes and line items. */
+export async function getInvoice(farmId: string, id: string) {
+  const inv = await prisma.invoice.findFirst({
+    where: { id, farmId },
+    select: {
+      ...INVOICE_SELECT,
+      placeOfSupplyState: true,
+      notes: true,
+      customer: { select: { id: true, name: true, gstin: true, state: true } },
+      lines: {
+        select: {
+          id: true,
+          description: true,
+          hsnSac: true,
+          qty: true,
+          unitPricePaise: true,
+          gstRateBps: true,
+          taxablePaise: true,
+          gstPaise: true,
+          lineTotalPaise: true,
+          batchId: true,
+        },
+      },
+    },
+  });
+  if (!inv) throw new AppError(404, 'NOT_FOUND', 'Invoice not found');
+  return {
+    ...toInvoiceDTO(inv),
+    customer: inv.customer,
+    placeOfSupplyState: inv.placeOfSupplyState,
+    notes: inv.notes,
+    lines: inv.lines.map((l) => ({
+      id: l.id,
+      description: l.description,
+      hsnSac: l.hsnSac,
+      qty: l.qty.toString(),
+      unitPricePaise: l.unitPricePaise.toString(),
+      gstRateBps: l.gstRateBps,
+      taxablePaise: l.taxablePaise.toString(),
+      gstPaise: l.gstPaise.toString(),
+      lineTotalPaise: l.lineTotalPaise.toString(),
+      batchId: l.batchId,
+    })),
+  };
 }
 
 export async function renderInvoicePdf(farmId: string, id: string): Promise<Buffer> {

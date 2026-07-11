@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
+import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import type { CreateWorkerInput, MarkAttendanceInput, UpdateWorkerInput } from './schemas';
 
 type WorkerRow = {
@@ -61,13 +62,33 @@ export async function createWorker(farmId: string, userId: string, input: Create
   return workerToDTO(w);
 }
 
-export async function listWorkers(farmId: string) {
+export type WorkerListFilter = { q?: string; active?: boolean; from?: Date; to?: Date };
+
+function workerWhere(farmId: string, f: WorkerListFilter): Prisma.WorkerWhereInput {
+  const where: Prisma.WorkerWhereInput = { farmId, deletedAt: null };
+  if (f.q) where.OR = [{ name: contains(f.q) }, { phone: contains(f.q) }];
+  if (f.active !== undefined) where.isActive = f.active;
+  const range = dateRange(f.from, f.to);
+  if (range) where.createdAt = range;
+  return where;
+}
+
+export async function listWorkers(farmId: string, filter: WorkerListFilter = {}) {
   const rows = await prisma.worker.findMany({
-    where: { farmId, deletedAt: null },
+    where: workerWhere(farmId, filter),
     orderBy: { name: 'asc' },
     select: WORKER_SELECT,
   });
   return rows.map(workerToDTO);
+}
+
+export async function listWorkersPaged(farmId: string, p: ListQuery & WorkerListFilter) {
+  const where = workerWhere(farmId, p);
+  const [rows, total] = await Promise.all([
+    prisma.worker.findMany({ where, orderBy: { name: 'asc' }, ...skipTake(p), select: WORKER_SELECT }),
+    prisma.worker.count({ where }),
+  ]);
+  return envelope(rows.map(workerToDTO), total, p);
 }
 
 async function findWorkerInFarm(farmId: string, id: string) {

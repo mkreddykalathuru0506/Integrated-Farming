@@ -1,9 +1,14 @@
 import { Router } from 'express';
+import { z } from 'zod';
+import { SalesOrderStatus } from '@prisma/client';
 import { asyncHandler } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
+import { ListQuerySchema } from '../http/list-query';
 import { CreateOrderSchema, UpdateOrderStatusSchema } from './schemas';
 import * as sales from './service';
+
+const OrderListSchema = ListQuerySchema.extend({ status: z.nativeEnum(SalesOrderStatus).optional() });
 
 /** /api/farm/orders — sales orders (write = OWNER/MANAGER/ACCOUNTANT). */
 export const orderRouter = Router();
@@ -11,7 +16,11 @@ orderRouter.use(requireAuth, requireFarmAccess);
 
 orderRouter.get(
   '/',
-  asyncHandler(async (req, res) => res.json({ orders: await sales.listOrders(farmScope(req).farmId) })),
+  asyncHandler(async (req, res) => {
+    const p = OrderListSchema.parse(req.query);
+    if (p.page) res.json(await sales.listOrdersPaged(farmScope(req).farmId, p));
+    else res.json({ orders: await sales.listOrders(farmScope(req).farmId, p) });
+  }),
 );
 
 orderRouter.get(

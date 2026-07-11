@@ -1,7 +1,8 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, type AssetStatus } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
 import { dueWithin } from '../finance/calc';
+import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import type { CreateAssetInput, CreateScheduleInput, RecordMaintenanceInput } from './schemas';
 
 const ASSET_SELECT = {
@@ -55,9 +56,33 @@ export async function createAsset(farmId: string, userId: string, input: CreateA
   return assetDTO(asset);
 }
 
-export async function listAssets(farmId: string) {
-  const rows = await prisma.asset.findMany({ where: { farmId, deletedAt: null }, orderBy: { createdAt: 'desc' }, select: ASSET_SELECT });
+export type AssetListFilter = { q?: string; status?: AssetStatus; from?: Date; to?: Date };
+
+function assetWhere(farmId: string, f: AssetListFilter): Prisma.AssetWhereInput {
+  const where: Prisma.AssetWhereInput = { farmId, deletedAt: null };
+  if (f.q) where.OR = [{ name: contains(f.q) }, { code: contains(f.q) }];
+  if (f.status) where.status = f.status;
+  const range = dateRange(f.from, f.to);
+  if (range) where.createdAt = range;
+  return where;
+}
+
+export async function listAssets(farmId: string, filter: AssetListFilter = {}) {
+  const rows = await prisma.asset.findMany({
+    where: assetWhere(farmId, filter),
+    orderBy: { createdAt: 'desc' },
+    select: ASSET_SELECT,
+  });
   return rows.map(assetDTO);
+}
+
+export async function listAssetsPaged(farmId: string, p: ListQuery & AssetListFilter) {
+  const where = assetWhere(farmId, p);
+  const [rows, total] = await Promise.all([
+    prisma.asset.findMany({ where, orderBy: { createdAt: 'desc' }, ...skipTake(p), select: ASSET_SELECT }),
+    prisma.asset.count({ where }),
+  ]);
+  return envelope(rows.map(assetDTO), total, p);
 }
 
 async function findAsset(farmId: string, id: string) {

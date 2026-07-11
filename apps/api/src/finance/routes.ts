@@ -1,11 +1,20 @@
 import { Router } from 'express';
+import { z } from 'zod';
+import { ExpenseCategory } from '@prisma/client';
 import { asyncHandler, AppError } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
+import { ListQuerySchema } from '../http/list-query';
 import { CreateExpenseSchema } from './schemas';
 import * as finance from './service';
 
 const q = (v: unknown) => (typeof v === 'string' ? v : undefined);
+
+const ExpenseListSchema = ListQuerySchema.extend({
+  status: z.nativeEnum(ExpenseCategory).optional(),
+  batchId: z.string().optional(),
+  category: z.string().optional(), // legacy param, passed through as before
+});
 
 /** /api/farm/expenses — costs (member reads; OWNER/MANAGER/ACCOUNTANT writes). */
 export const expenseRouter = Router();
@@ -14,7 +23,9 @@ expenseRouter.use(requireAuth, requireFarmAccess);
 expenseRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    res.json({ expenses: await finance.listExpenses(farmScope(req).farmId, { batchId: q(req.query.batchId), category: q(req.query.category) }) });
+    const p = ExpenseListSchema.parse(req.query);
+    if (p.page) res.json(await finance.listExpensesPaged(farmScope(req).farmId, p));
+    else res.json({ expenses: await finance.listExpenses(farmScope(req).farmId, p) });
   }),
 );
 

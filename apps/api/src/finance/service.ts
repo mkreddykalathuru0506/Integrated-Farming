@@ -1,6 +1,7 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, type ExpenseCategory } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
+import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import { perUnitPaise } from './calc';
 import type { CreateExpenseInput } from './schemas';
 
@@ -26,16 +27,56 @@ export async function createExpense(farmId: string, userId: string, input: Creat
   return { ...e, amountPaise: e.amountPaise.toString() };
 }
 
-export async function listExpenses(farmId: string, filter: { batchId?: string; category?: string }) {
+const EXPENSE_SELECT = {
+  id: true,
+  category: true,
+  amountPaise: true,
+  occurredAt: true,
+  batchId: true,
+  description: true,
+} satisfies Prisma.ExpenseSelect;
+
+const expenseDTO = (e: Prisma.ExpenseGetPayload<{ select: typeof EXPENSE_SELECT }>) => ({
+  ...e,
+  amountPaise: e.amountPaise.toString(),
+});
+
+export type ExpenseListFilter = {
+  batchId?: string;
+  category?: string;
+  q?: string;
+  status?: ExpenseCategory; // `status` maps to the category enum (validated at the route)
+  from?: Date;
+  to?: Date;
+};
+
+function expenseWhere(farmId: string, f: ExpenseListFilter): Prisma.ExpenseWhereInput {
   const where: Prisma.ExpenseWhereInput = { farmId };
-  if (filter.batchId) where.batchId = filter.batchId;
-  if (filter.category) where.category = filter.category as Prisma.EnumExpenseCategoryFilter['equals'];
+  if (f.batchId) where.batchId = f.batchId;
+  if (f.category) where.category = f.category as Prisma.EnumExpenseCategoryFilter['equals'];
+  if (f.status) where.category = f.status;
+  if (f.q) where.description = contains(f.q);
+  const range = dateRange(f.from, f.to);
+  if (range) where.occurredAt = range;
+  return where;
+}
+
+export async function listExpenses(farmId: string, filter: ExpenseListFilter) {
   const rows = await prisma.expense.findMany({
-    where,
+    where: expenseWhere(farmId, filter),
     orderBy: { occurredAt: 'desc' },
-    select: { id: true, category: true, amountPaise: true, occurredAt: true, batchId: true, description: true },
+    select: EXPENSE_SELECT,
   });
-  return rows.map((e) => ({ ...e, amountPaise: e.amountPaise.toString() }));
+  return rows.map(expenseDTO);
+}
+
+export async function listExpensesPaged(farmId: string, p: ListQuery & ExpenseListFilter) {
+  const where = expenseWhere(farmId, p);
+  const [rows, total] = await Promise.all([
+    prisma.expense.findMany({ where, orderBy: { occurredAt: 'desc' }, ...skipTake(p), select: EXPENSE_SELECT }),
+    prisma.expense.count({ where }),
+  ]);
+  return envelope(rows.map(expenseDTO), total, p);
 }
 
 export async function batchCost(farmId: string, batchId: string) {
