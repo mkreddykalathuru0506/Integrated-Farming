@@ -14,6 +14,7 @@ export const CORE_NS = [
   'common',
   'table',
   'auth',
+  'account',
   'errors',
   'farms',
   'farm',
