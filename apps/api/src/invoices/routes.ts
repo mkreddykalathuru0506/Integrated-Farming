@@ -5,7 +5,13 @@ import { asyncHandler, AppError } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
 import { ListQuerySchema } from '../http/list-query';
-import { CreateCustomerSchema, CreateInvoiceSchema, CreateVendorSchema } from './schemas';
+import {
+  CreateCustomerSchema,
+  CreateInvoiceSchema,
+  CreateVendorSchema,
+  UpdateCustomerSchema,
+  UpdateVendorSchema,
+} from './schemas';
 import * as inv from './service';
 
 const q = (v: unknown) => (typeof v === 'string' ? v : undefined);
@@ -31,6 +37,14 @@ customerRouter.post(
     res.status(201).json({ customer: await inv.createCustomer(farmScope(req).farmId, req.userId!, input) });
   }),
 );
+customerRouter.patch(
+  '/:id',
+  requireRole('OWNER', 'MANAGER', 'ACCOUNTANT'),
+  asyncHandler(async (req, res) => {
+    const input = UpdateCustomerSchema.parse(req.body);
+    res.json({ customer: await inv.updateCustomer(farmScope(req).farmId, req.userId!, req.params.id!, input) });
+  }),
+);
 
 /** /api/farm/vendors */
 export const vendorRouter = Router();
@@ -42,6 +56,14 @@ vendorRouter.post(
   asyncHandler(async (req, res) => {
     const input = CreateVendorSchema.parse(req.body);
     res.status(201).json({ vendor: await inv.createVendor(farmScope(req).farmId, req.userId!, input) });
+  }),
+);
+vendorRouter.patch(
+  '/:id',
+  requireRole('OWNER', 'MANAGER', 'ACCOUNTANT'),
+  asyncHandler(async (req, res) => {
+    const input = UpdateVendorSchema.parse(req.body);
+    res.json({ vendor: await inv.updateVendor(farmScope(req).farmId, req.userId!, req.params.id!, input) });
   }),
 );
 
@@ -75,6 +97,23 @@ invoiceRouter.post(
   asyncHandler(async (req, res) => {
     const input = CreateInvoiceSchema.parse(req.body);
     res.status(201).json({ invoice: await inv.createInvoice(farmScope(req).farmId, req.userId!, input) });
+  }),
+);
+
+// Money/billing lifecycle — same roles as invoice create (OWNER/ACCOUNTANT).
+invoiceRouter.post(
+  '/:id/mark-paid',
+  requireRole('OWNER', 'ACCOUNTANT'),
+  asyncHandler(async (req, res) => {
+    res.json({ invoice: await inv.markInvoicePaid(farmScope(req).farmId, req.userId!, req.params.id!) });
+  }),
+);
+
+invoiceRouter.post(
+  '/:id/void',
+  requireRole('OWNER', 'ACCOUNTANT'),
+  asyncHandler(async (req, res) => {
+    res.json({ invoice: await inv.voidInvoice(farmScope(req).farmId, req.userId!, req.params.id!) });
   }),
 );
 
