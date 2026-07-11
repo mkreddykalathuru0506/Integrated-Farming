@@ -27,6 +27,9 @@ import feed from './feed';
 import expenses from './expenses';
 import emi from './emi';
 import invoices from './invoices';
+import assets from './assets';
+import byproducts from './byproducts';
+import circularity from './circularity';
 
 export const hi = {
   translation: {
@@ -57,5 +60,8 @@ export const hi = {
     expenses,
     emi,
     invoices,
+    assets,
+    byproducts,
+    circularity,
   },
 };

@@ -1,49 +1,44 @@
-import { useState, type FormEvent } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../auth/AuthContext';
-import { Button, Input, PanelError, PanelNote } from '../ui';
-import { createFarm } from './api';
+import { z } from 'zod';
+import { useCreateFarm } from '../api/ops.hooks';
+import { Button, Field, Input, PanelNote } from '../ui';
 
+const createFarmSchema = z.object({
+  name: z.string().trim().min(1, 'farm.create.nameRequired'),
+  state: z.string(),
+});
+type CreateFarmValues = z.infer<typeof createFarmSchema>;
+
+/** First-run experience: create the initial farm (RHF + zod, toast on success/error). */
 export function CreateFarm({ onCreated }: { onCreated: () => void }) {
   const { t } = useTranslation();
-  const { accessToken } = useAuth();
-  const [name, setName] = useState('');
-  const [state, setState] = useState('');
-  const [error, setError] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const createFarm = useCreateFarm();
+  const form = useForm<CreateFarmValues>({
+    resolver: zodResolver(createFarmSchema),
+    defaultValues: { name: '', state: '' },
+  });
+  const err = (m?: string) => (m ? t(m) : undefined);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!accessToken) return;
-    setError(false);
-    setSaving(true);
-    try {
-      await createFarm(accessToken, { name, state: state || undefined });
-      onCreated();
-    } catch {
-      setError(true);
-    } finally {
-      setSaving(false);
-    }
-  }
+  const onSubmit = form.handleSubmit((v) => {
+    createFarm.mutate(
+      { name: v.name.trim(), state: v.state.trim() || undefined },
+      { onSuccess: () => onCreated() },
+    );
+  });
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3">
+    <form onSubmit={(e) => void onSubmit(e)} className="space-y-3" noValidate>
       <PanelNote>{t('farm.create.prompt')}</PanelNote>
-      <Input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder={t('farm.create.name')}
-        required
-      />
-      <Input
-        value={state}
-        onChange={(e) => setState(e.target.value)}
-        placeholder={t('farm.create.state')}
-      />
-      {error && <PanelError>{t('farm.create.error')}</PanelError>}
-      <Button type="submit" full disabled={saving}>
-        {saving ? t('common.saving') : t('farm.create.submit')}
+      <Field label={t('farm.create.name')} required error={err(form.formState.errors.name?.message)}>
+        <Input autoFocus {...form.register('name')} />
+      </Field>
+      <Field label={t('farm.create.state')} hint={t('farm.create.stateHint')}>
+        <Input {...form.register('state')} />
+      </Field>
+      <Button type="submit" full loading={createFarm.isPending}>
+        {t('farm.create.submit')}
       </Button>
     </form>
   );

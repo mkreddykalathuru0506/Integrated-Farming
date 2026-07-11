@@ -1,110 +1,281 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { CalendarClock, FileDown, FileSpreadsheet, Play, Plus } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../auth/AuthContext';
-import { Button, DataRow, Input, PanelHeading, PanelNote, Select } from '../ui';
+import { z } from 'zod';
 import {
-  createReportSchedule,
-  downloadReport,
-  listReportSchedules,
-  runReportSchedule,
-  type ReportSchedule,
-} from './api';
+  useCreateReportSchedule,
+  useDownloadReport,
+  useReportSchedules,
+  useRunReportSchedule,
+} from '../api/ops.hooks';
+import { fmtDate } from '../lib/format';
+import {
+  Badge,
+  Button,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
+  Field,
+  Input,
+  PanelError,
+  PanelHeading,
+  PanelNote,
+  Select,
+  type DataTableColumn,
+} from '../ui';
+import type { ReportSchedule } from './api';
 
-function fmtDate(iso: string) {
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+const CHANNELS = ['EMAIL', 'SMS', 'WHATSAPP', 'WEBHOOK', 'PUSH'] as const;
+const FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY'] as const;
+
+/* ---------- create-schedule dialog ---------- */
+
+const scheduleSchema = z.object({
+  name: z.string().trim().min(1, 'reports.nameRequired'),
+  frequency: z.string(),
+  format: z.string(),
+  channel: z.string(),
+  recipient: z.string().trim().min(1, 'reports.recipientRequired'),
+});
+type ScheduleValues = z.infer<typeof scheduleSchema>;
+
+function CreateScheduleDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const { t } = useTranslation();
+  const createSchedule = useCreateReportSchedule();
+  const form = useForm<ScheduleValues>({
+    resolver: zodResolver(scheduleSchema),
+    defaultValues: { name: '', frequency: 'WEEKLY', format: 'pdf', channel: 'EMAIL', recipient: '' },
+  });
+  const err = (m?: string) => (m ? t(m) : undefined);
+
+  const onSubmit = form.handleSubmit((v) => {
+    createSchedule.mutate(
+      {
+        name: v.name.trim(),
+        frequency: v.frequency,
+        format: v.format,
+        // dormant API field now exposed: delivery channel (was silently EMAIL)
+        channel: v.channel,
+        recipient: v.recipient.trim(),
+      },
+      {
+        onSuccess: () => {
+          form.reset();
+          onOpenChange(false);
+        },
+      },
+    );
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t('reports.schedule')}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={(e) => void onSubmit(e)} className="space-y-3" noValidate>
+          <Field label={t('reports.scheduleName')} required error={err(form.formState.errors.name?.message)}>
+            <Input placeholder={t('reports.scheduleNamePlaceholder')} {...form.register('name')} />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label={t('reports.colFreq')}>
+              <Select {...form.register('frequency')}>
+                {FREQUENCIES.map((f) => (
+                  <option key={f} value={f}>
+                    {t(`reports.freq.${f}`)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label={t('reports.formatLabel')}>
+              <Select {...form.register('format')}>
+                <option value="pdf">{t('reports.formatPdf')}</option>
+                <option value="xlsx">{t('reports.formatXlsx')}</option>
+              </Select>
+            </Field>
+            <Field label={t('reports.channelLabel')}>
+              <Select {...form.register('channel')}>
+                {CHANNELS.map((c) => (
+                  <option key={c} value={c}>
+                    {t(`reports.channel.${c}`)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <Field label={t('reports.recipient')} required error={err(form.formState.errors.recipient?.message)}>
+            <Input {...form.register('recipient')} />
+          </Field>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" loading={createSchedule.isPending}>
+              {t('reports.addSchedule')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
-export function ReportsPanel({ farmId, canWrite }: { farmId: string; canWrite: boolean }) {
+/* ---------- panel ---------- */
+
+export function ReportsPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
   const { t } = useTranslation();
-  const { accessToken } = useAuth();
-  const [schedules, setSchedules] = useState<ReportSchedule[]>([]);
-  const [name, setName] = useState('');
-  const [frequency, setFrequency] = useState('WEEKLY');
-  const [format, setFormat] = useState('pdf');
-  const [recipient, setRecipient] = useState('');
+  const schedules = useReportSchedules();
+  const download = useDownloadReport();
+  const runNow = useRunReportSchedule();
+  const [createOpen, setCreateOpen] = useState(false);
 
-  const refresh = useCallback(() => {
-    if (!accessToken) return;
-    listReportSchedules(accessToken, farmId).then((r) => setSchedules(r.schedules)).catch(() => undefined);
-  }, [accessToken, farmId]);
+  // Pause/delete for schedules ship with PR #60 (schedule PATCH/DELETE) — do not
+  // wire those endpoints until it merges.
 
-  useEffect(refresh, [refresh]);
-
-  async function onCreate(e: FormEvent) {
-    e.preventDefault();
-    if (!accessToken) return;
-    await createReportSchedule(accessToken, farmId, { name, frequency, format, recipient })
-      .then(() => {
-        setName('');
-        setRecipient('');
-        refresh();
-      })
-      .catch(() => undefined);
-  }
-
-  async function onRun(id: string) {
-    if (!accessToken) return;
-    await runReportSchedule(accessToken, farmId, id).then(refresh).catch(() => undefined);
-  }
+  const columns: DataTableColumn<ReportSchedule>[] = [
+    {
+      header: 'reports.colName',
+      accessor: 'name',
+      cell: (s) => <span className="font-medium text-foreground">{s.name}</span>,
+    },
+    { header: 'reports.colFreq', accessor: (s) => t(`reports.freq.${s.frequency}`) },
+    {
+      header: 'reports.colFormat',
+      accessor: (s) => s.format,
+      cell: (s) => <Badge variant="muted">{s.format.toUpperCase()}</Badge>,
+    },
+    { header: 'reports.colChannel', accessor: (s) => t(`reports.channel.${s.channel}`) },
+    { header: 'reports.colRecipient', accessor: 'recipient' },
+    {
+      header: 'reports.colActive',
+      accessor: (s) => (s.isActive ? t('reports.active') : t('reports.paused')),
+      cell: (s) => (
+        <Badge variant={s.isActive ? 'success' : 'muted'}>
+          {s.isActive ? t('reports.active') : t('reports.paused')}
+        </Badge>
+      ),
+    },
+    {
+      header: 'reports.colLastRun',
+      accessor: (s) => s.lastRunAt ?? '',
+      cell: (s) => (s.lastRunAt ? fmtDate(s.lastRunAt) : '—'),
+    },
+    {
+      header: 'reports.colNextRun',
+      accessor: 'nextRunAt',
+      cell: (s) => fmtDate(s.nextRunAt),
+    },
+    ...(canWrite
+      ? [
+          {
+            header: 'reports.runNow',
+            cell: (s: ReportSchedule) => (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                loading={runNow.isPending && runNow.variables === s.id}
+                onClick={() => runNow.mutate(s.id)}
+              >
+                <Play aria-hidden />
+                {t('reports.runNow')}
+              </Button>
+            ),
+          } satisfies DataTableColumn<ReportSchedule>,
+        ]
+      : []),
+  ];
 
   return (
     <section className="space-y-3">
-      <PanelHeading>{t('reports.title')}</PanelHeading>
-      <PanelNote>{t('reports.blurb')}</PanelNote>
-      <div className="flex gap-2">
-        <Button type="button" variant="secondary" onClick={() => accessToken && void downloadReport(accessToken, farmId, 'pdf')} className="flex-1">
-          {t('reports.pdf')}
-        </Button>
-        <Button type="button" variant="secondary" onClick={() => accessToken && void downloadReport(accessToken, farmId, 'xlsx')} className="flex-1">
-          {t('reports.xlsx')}
-        </Button>
+      <PanelHeading
+        action={
+          canWrite && (
+            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus aria-hidden />
+              {t('reports.addSchedule')}
+            </Button>
+          )
+        }
+      >
+        {t('reports.title')}
+      </PanelHeading>
+
+      {/* On-demand download card */}
+      <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+        <PanelNote>{t('reports.blurb')}</PanelNote>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            type="button"
+            variant="secondary"
+            className="flex-1"
+            loading={download.isPending && download.variables === 'pdf'}
+            disabled={download.isPending}
+            onClick={() => download.mutate('pdf')}
+          >
+            <FileDown aria-hidden />
+            {t('reports.pdf')}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="flex-1"
+            loading={download.isPending && download.variables === 'xlsx'}
+            disabled={download.isPending}
+            onClick={() => download.mutate('xlsx')}
+          >
+            <FileSpreadsheet aria-hidden />
+            {t('reports.xlsx')}
+          </Button>
+        </div>
       </div>
 
-      <div>
-        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('reports.schedules')}</p>
-        {schedules.length === 0 ? (
-          <PanelNote>{t('reports.noSchedules')}</PanelNote>
+      {/* Scheduled delivery */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          {t('reports.schedules')}
+        </p>
+        {schedules.isError ? (
+          <div className="space-y-2">
+            <PanelError>{t('reports.error')}</PanelError>
+            <Button type="button" variant="secondary" size="sm" onClick={() => void schedules.refetch()}>
+              {t('reports.retry')}
+            </Button>
+          </div>
         ) : (
-          <ul className="space-y-1.5 text-sm">
-            {schedules.map((s) => (
-              <DataRow key={s.id} className="py-1.5">
-                <span className="truncate text-foreground">
-                  {s.name} · {t(`reports.freq.${s.frequency}`)} · {s.format.toUpperCase()}
-                  <span className="block text-xs text-muted-foreground tabular">{t('reports.next', { date: fmtDate(s.nextRunAt) })}</span>
-                </span>
-                {canWrite && (
-                  <button type="button" onClick={() => void onRun(s.id)} className="shrink-0 text-xs font-semibold text-success hover:underline">
-                    {t('reports.runNow')}
-                  </button>
-                )}
-              </DataRow>
-            ))}
-          </ul>
+          <DataTable
+            columns={columns}
+            data={schedules.data}
+            isLoading={schedules.isPending}
+            pageSize={10}
+            getRowId={(s) => s.id}
+            emptyState={
+              <EmptyState
+                icon={CalendarClock}
+                title={t('reports.noSchedules')}
+                description={t('reports.noSchedulesDesc')}
+                size="compact"
+                action={
+                  canWrite && (
+                    <Button type="button" onClick={() => setCreateOpen(true)}>
+                      <Plus aria-hidden />
+                      {t('reports.addSchedule')}
+                    </Button>
+                  )
+                }
+              />
+            }
+          />
         )}
       </div>
 
-      {canWrite && (
-        <form onSubmit={onCreate} className="space-y-2 rounded-xl bg-secondary/60 p-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('reports.schedule')}</p>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('reports.scheduleName')} required />
-          <div className="flex gap-2">
-            <Select value={frequency} onChange={(e) => setFrequency(e.target.value)} className="flex-1">
-              <option value="DAILY">{t('reports.freq.DAILY')}</option>
-              <option value="WEEKLY">{t('reports.freq.WEEKLY')}</option>
-              <option value="MONTHLY">{t('reports.freq.MONTHLY')}</option>
-            </Select>
-            <Select value={format} onChange={(e) => setFormat(e.target.value)} className="w-28">
-              <option value="pdf">PDF</option>
-              <option value="xlsx">Excel</option>
-            </Select>
-          </div>
-          <Input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder={t('reports.recipient')} required />
-          <Button type="submit" full variant="secondary">
-            {t('reports.addSchedule')}
-          </Button>
-        </form>
-      )}
+      <CreateScheduleDialog open={createOpen} onOpenChange={setCreateOpen} />
     </section>
   );
 }

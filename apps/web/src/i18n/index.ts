@@ -37,6 +37,9 @@ export const CORE_NS = [
   'expenses',
   'emi',
   'invoices',
+  'assets',
+  'byproducts',
+  'circularity',
 ] as const;
 
 export const resources = { en, hi };
