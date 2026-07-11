@@ -209,6 +209,30 @@ describe('Dashboard role-aware ordering', () => {
   });
 });
 
+describe('Dashboard finance "All time" period', () => {
+  it('fetches the summary for "All time" even when the farm response omits createdAt', async () => {
+    const summaryCalls: string[] = [];
+    mockFetchRoutes(
+      routes({
+        // Farm payload WITHOUT createdAt (the contract-drift scenario).
+        '/api/farm': () => jsonResponse(200, { farm: { id: 'f1', name: 'Demo' } }),
+        '/api/farm/finance/summary': (_init, url) => {
+          summaryCalls.push(url);
+          return jsonResponse(200, summary);
+        },
+      }),
+    );
+    renderDash('OWNER');
+
+    expect(await screen.findByText('Finance trend')).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'All' }));
+
+    // The 'all' period must issue a summary request (never disabled → skeleton forever).
+    await waitFor(() => expect(summaryCalls.some((u) => u.includes('from='))).toBe(true));
+    expect(await screen.findByText('₹3.0k')).toBeInTheDocument();
+  });
+});
+
 describe('Dashboard error handling + weather refresh', () => {
   it('shows a real error state with Retry (never a fake empty), and retries', async () => {
     let calls = 0;

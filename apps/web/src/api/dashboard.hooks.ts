@@ -123,17 +123,29 @@ export function istMonthStart(now = new Date()): string {
 }
 
 /**
+ * "All time" fallback start when the farm's createdAt is unavailable — a fixed
+ * early FY boundary, so the query can never be permanently disabled.
+ */
+export const ALL_TIME_FROM = '2000-04-01T00:00:00+05:30';
+
+/**
  * Finance summary for a period: 'fy' = server default (current Indian FY),
- * 'month' = from the 1st of the current IST month, 'all' = from the farm's creation.
+ * 'month' = from the 1st of the current IST month, 'all' = from the farm's
+ * creation (falling back to ALL_TIME_FROM so 'all' always fetches — a missing
+ * createdAt must never leave the panel on a permanent skeleton).
  */
 export function useFinanceSummary(period: FinancePeriod, farmCreatedAt: string | undefined) {
   const { farmId, fetchJson } = useFarmApi();
-  const from = period === 'month' ? istMonthStart() : period === 'all' ? farmCreatedAt : undefined;
+  const from =
+    period === 'month'
+      ? istMonthStart()
+      : period === 'all'
+        ? new Date(farmCreatedAt ?? ALL_TIME_FROM).toISOString()
+        : undefined;
   return useQuery({
     queryKey: farmKeys.list(farmId, 'finance-summary', { period, from: from ?? null }),
     queryFn: () =>
       fetchJson<FinanceSummary>(`/api/farm/finance/summary${from ? `?from=${encodeURIComponent(from)}` : ''}`),
-    enabled: period !== 'all' || from !== undefined,
   });
 }
 
