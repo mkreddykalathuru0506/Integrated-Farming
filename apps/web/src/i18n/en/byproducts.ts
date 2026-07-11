@@ -1,0 +1,20 @@
+export default {
+  title: 'Byproducts',
+  empty: 'No byproduct transfers yet',
+  record: 'Record a transfer',
+  fromAny: 'From (any)',
+  toAny: 'To (any)',
+  qtyKg: 'Qty (kg)',
+  credit: 'Value saved (₹)',
+  transfer: 'Transfer',
+  type: {
+    LITTER: 'Litter',
+    MANURE: 'Manure',
+    COMPOST: 'Compost',
+    SLURRY: 'Slurry',
+    EGGSHELL: 'Eggshell',
+    SLAUGHTER_WASTE: 'Slaughter waste',
+    CROP_RESIDUE: 'Crop residue',
+    OTHER: 'Other',
+  },
+};

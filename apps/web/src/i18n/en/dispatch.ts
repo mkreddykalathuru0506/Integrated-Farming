@@ -1,0 +1,15 @@
+export default {
+  title: 'Dispatch',
+  empty: 'No dispatches yet',
+  create: 'Dispatch a confirmed order',
+  qtyKg: 'Qty kg',
+  refrigerated: 'Refrigerated transport',
+  tempC: 'Load temp °C',
+  vehicle: 'Vehicle no.',
+  dispatch: 'Dispatch',
+  chainOk: 'Cold chain OK',
+  chainBroken: 'Cold chain broken',
+  coldChainFail: 'Blocked: this load would break the cold chain',
+  needOrderAndLot: 'Need a confirmed order and an available product lot',
+  error: 'Could not dispatch',
+};

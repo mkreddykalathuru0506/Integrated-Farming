@@ -1,0 +1,21 @@
+export default {
+  title: 'Expenses & cost',
+  loading: 'Loading…',
+  error: 'Could not load expenses',
+  empty: 'No expenses yet',
+  add: 'Add expense',
+  amount: 'Amount (₹)',
+  noBatch: 'Farm-level (no batch)',
+  batchCost: 'Selected batch cost',
+  total: 'Total',
+  perBird: 'Per bird',
+  category: {
+    FEED: 'Feed',
+    LABOUR: 'Labour',
+    MEDICINE: 'Medicine',
+    UTILITIES: 'Utilities',
+    MAINTENANCE: 'Maintenance',
+    CAPITAL: 'Capital',
+    OTHER: 'Other',
+  },
+};

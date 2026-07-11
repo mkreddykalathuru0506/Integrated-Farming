@@ -1,0 +1,21 @@
+export default {
+  title: 'Loans & insurance',
+  reminder: '{{emi}} EMI due soon · {{policies}} policy(ies) expiring',
+  due: 'due',
+  expires: 'expires',
+  addLoan: 'Add a loan',
+  lender: 'Lender (e.g. NABARD / bank)',
+  principal: 'Principal (₹)',
+  emi: 'EMI/month (₹)',
+  addLoanBtn: 'Add loan',
+  addPolicy: 'Add an insurance policy',
+  provider: 'Insurer',
+  premium: 'Premium (₹)',
+  addPolicyBtn: 'Add policy',
+  insType: {
+    LIVESTOCK: 'Livestock',
+    ASSET: 'Asset',
+    CROP: 'Crop',
+    OTHER: 'Other',
+  },
+};
