@@ -30,6 +30,10 @@ import invoices from './invoices';
 import assets from './assets';
 import byproducts from './byproducts';
 import circularity from './circularity';
+import orders from './orders';
+import cold from './cold';
+import processing from './processing';
+import dispatch from './dispatch';
 
 export const hi = {
   translation: {
@@ -63,5 +67,9 @@ export const hi = {
     assets,
     byproducts,
     circularity,
+    orders,
+    cold,
+    processing,
+    dispatch,
   },
 };

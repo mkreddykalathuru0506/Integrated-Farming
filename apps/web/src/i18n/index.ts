@@ -40,6 +40,10 @@ export const CORE_NS = [
   'assets',
   'byproducts',
   'circularity',
+  'orders',
+  'cold',
+  'processing',
+  'dispatch',
 ] as const;
 
 export const resources = { en, hi };
