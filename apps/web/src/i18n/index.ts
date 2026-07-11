@@ -29,6 +29,13 @@ export const CORE_NS = [
   'dashboard',
   'reports',
   'risk',
+  'species',
+  'batches',
+  'animals',
+  'events',
+  'workers',
+  'tasks',
+  'logs',
 ] as const;
 
 export const resources = { en, hi };

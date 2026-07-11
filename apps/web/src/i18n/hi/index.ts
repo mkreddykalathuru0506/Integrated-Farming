@@ -19,6 +19,13 @@ import market from './market';
 import dashboard from './dashboard';
 import reports from './reports';
 import risk from './risk';
+import species from './species';
+import batches from './batches';
+import animals from './animals';
+import events from './events';
+import workers from './workers';
+import tasks from './tasks';
+import logs from './logs';
 
 export const hi = {
   translation: {
@@ -41,5 +48,12 @@ export const hi = {
     dashboard,
     reports,
     risk,
+    species,
+    batches,
+    animals,
+    events,
+    workers,
+    tasks,
+    logs,
   },
 };

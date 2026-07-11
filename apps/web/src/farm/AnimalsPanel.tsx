@@ -1,151 +1,594 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Download, PawPrint, Plus, Printer, QrCode } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useAuth } from '../auth/AuthContext';
-import { isApiError } from '../lib/http';
-import { Button, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
+import { useSpecies, useUnits } from '../api/hooks';
 import {
-  createAnimal,
-  listAnimals,
-  listSpecies,
-  listUnits,
-  recordMortality,
-  recordMovement,
-  type Animal,
-  type SpeciesSummary,
-  type Unit,
-} from './api';
+  useAnimals,
+  useCreateAnimal,
+  useMovements,
+  useRecordMortality,
+  useRecordMovement,
+  useSpeciesDetail,
+  type MovementRow,
+} from '../api/livestock.hooks';
+import { fmtDate } from '../lib/format';
+import type { Animal } from './api';
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
+  Field,
+  Input,
+  PanelHeading,
+  PanelNote,
+  Select,
+  type DataTableColumn,
+} from '../ui';
+import { MoveDialog } from './BatchesPanel';
+import { LoadErrorNote } from './LoadErrorNote';
 
-type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; animals: Animal[] };
 const SEXES = ['UNKNOWN', 'FEMALE', 'MALE'] as const;
+type LossType = 'MORTALITY' | 'CULL';
 
-export function AnimalsPanel({ farmId, canWrite }: { farmId: string; canWrite: boolean }) {
+const createSchema = z.object({
+  speciesId: z.string().min(1, 'animals.form.speciesRequired'),
+  tagNumber: z.string().max(60, 'animals.form.tagTooLong'),
+  name: z.string().max(120, 'animals.form.nameTooLong'),
+  sex: z.string(),
+  breedId: z.string(),
+  unitId: z.string(),
+  dob: z.string(),
+});
+type CreateForm = z.infer<typeof createSchema>;
+
+/** Display label for an animal: tag, else name, else QR code. */
+function animalLabel(a: Animal): string {
+  return a.tagNumber ?? a.name ?? a.qrCode ?? a.id;
+}
+
+/**
+ * Animals panel (slice 11.6a rewrite): DataTable list, RHF create dialog with
+ * the dormant name/breed/unit/dob fields, QR enlarge dialog with print + PNG
+ * download, detail dialog with movement history, and confirmed cull/dead.
+ */
+export function AnimalsPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
   const { t } = useTranslation();
-  const { accessToken } = useAuth();
-  const [load, setLoad] = useState<Load>({ status: 'loading' });
-  const [indivSpecies, setIndivSpecies] = useState<SpeciesSummary[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [speciesId, setSpeciesId] = useState('');
-  const [tag, setTag] = useState('');
-  const [sex, setSex] = useState<string>('UNKNOWN');
-  const [formError, setFormError] = useState<string | null>(null);
-  const [moveTo, setMoveTo] = useState<Record<string, string>>({});
+  const animals = useAnimals();
+  const species = useSpecies();
+  const units = useUnits();
+  const recordMortality = useRecordMortality();
+  const recordMovement = useRecordMovement();
 
-  const refresh = useCallback(() => {
-    if (!accessToken) return;
-    setLoad({ status: 'loading' });
-    listAnimals(accessToken, farmId)
-      .then((r) => setLoad({ status: 'ready', animals: r.animals }))
-      .catch(() => setLoad({ status: 'error' }));
-  }, [accessToken, farmId]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [qrAnimal, setQrAnimal] = useState<Animal | null>(null);
+  const [lossTarget, setLossTarget] = useState<{ animal: Animal; type: LossType } | null>(null);
+  const [moveTarget, setMoveTarget] = useState<Animal | null>(null);
 
-  useEffect(refresh, [refresh]);
+  const detailAnimal = useMemo(
+    () => animals.data?.find((a) => a.id === detailId) ?? null,
+    [animals.data, detailId],
+  );
+  const indivSpecies = useMemo(
+    () => (species.data ?? []).filter((s) => s.trackingMode === 'INDIVIDUAL'),
+    [species.data],
+  );
 
-  useEffect(() => {
-    if (!accessToken) return;
-    listSpecies(accessToken, farmId)
-      .then((r) => {
-        const indiv = r.species.filter((s) => s.trackingMode === 'INDIVIDUAL');
-        setIndivSpecies(indiv);
-        setSpeciesId((prev) => prev || indiv[0]?.id || '');
-      })
-      .catch(() => undefined);
-    listUnits(accessToken, farmId)
-      .then((r) => setUnits(r.units))
-      .catch(() => undefined);
-  }, [accessToken, farmId]);
-
-  const act = (p: Promise<unknown>) => void p.then(refresh).catch(() => undefined);
-
-  async function onAdd(e: FormEvent) {
-    e.preventDefault();
-    if (!accessToken) return;
-    setFormError(null);
-    try {
-      await createAnimal(accessToken, farmId, { speciesId, tagNumber: tag || undefined, sex });
-      setTag('');
-      refresh();
-    } catch (err) {
-      setFormError(
-        isApiError(err) && err.code === 'ANIMAL_TAG_TAKEN' ? t('animals.duplicate') : t('animals.addError'),
-      );
-    }
-  }
+  const columns: DataTableColumn<Animal>[] = [
+    {
+      header: 'animals.cols.tag',
+      accessor: (a) => animalLabel(a),
+      cell: (a) => (
+        <span className="font-medium text-foreground">
+          {animalLabel(a)}
+          {a.tagNumber && a.name && (
+            <span className="ml-1.5 text-xs text-muted-foreground">{a.name}</span>
+          )}
+        </span>
+      ),
+    },
+    { header: 'animals.cols.species', accessor: (a) => a.species.name },
+    { header: 'animals.cols.stage', accessor: (a) => a.currentStage?.name ?? '—' },
+    { header: 'animals.cols.sex', accessor: (a) => t(`animals.sex.${a.sex}`) },
+    {
+      header: 'animals.cols.status',
+      accessor: 'status',
+      cell: (a) => (
+        <Badge
+          variant={
+            a.status === 'ACTIVE'
+              ? 'success'
+              : a.status === 'SOLD'
+                ? 'accent'
+                : a.status === 'CULLED'
+                  ? 'warning'
+                  : 'destructive'
+          }
+        >
+          {t(`animals.status.${a.status}`)}
+        </Badge>
+      ),
+    },
+    {
+      id: 'qr',
+      header: 'animals.cols.qr',
+      cell: (a) =>
+        a.qrCode ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={t('animals.showQr', { tag: animalLabel(a) })}
+            onClick={(e) => {
+              e.stopPropagation();
+              setQrAnimal(a);
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <QrCode aria-hidden />
+          </Button>
+        ) : null,
+      enableSorting: false,
+    },
+  ];
 
   return (
     <section className="space-y-3">
-      <PanelHeading>{t('animals.title')}</PanelHeading>
+      <PanelHeading
+        action={
+          canWrite ? (
+            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus aria-hidden />
+              {t('animals.add')}
+            </Button>
+          ) : undefined
+        }
+      >
+        {t('animals.title')}
+      </PanelHeading>
 
-      {load.status === 'loading' && <PanelNote>{t('animals.loading')}</PanelNote>}
-      {load.status === 'error' && <PanelError>{t('animals.error')}</PanelError>}
-      {load.status === 'ready' && load.animals.length === 0 && <PanelNote>{t('animals.empty')}</PanelNote>}
-      {load.status === 'ready' && load.animals.length > 0 && (
-        <ul className="space-y-2">
-          {load.animals.map((a) => (
-            <li key={a.id} className="space-y-2 rounded-xl border border-border bg-card px-3 py-2">
-              <div className="flex items-center gap-3">
-                {a.qrCode && (
-                  <QRCodeSVG value={a.qrCode} size={48} className="shrink-0" aria-label={a.qrCode} />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-foreground">
-                    {a.tagNumber ?? a.name ?? a.qrCode}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {a.species.name} · {a.currentStage?.name ?? '—'} · {t(`animals.status.${a.status}`)}
-                  </p>
-                </div>
-              </div>
+      {animals.isError && !animals.data ? (
+        <LoadErrorNote
+          text={t('animals.error')}
+          retryLabel={t('animals.retry')}
+          onRetry={() => void animals.refetch()}
+        />
+      ) : (
+        <DataTable
+          columns={columns}
+          data={animals.data}
+          isLoading={animals.isPending}
+          searchable
+          pageSize={10}
+          onRowClick={(a) => setDetailId(a.id)}
+          getRowId={(a) => a.id}
+          emptyState={
+            <EmptyState
+              icon={PawPrint}
+              title={t('animals.empty')}
+              description={t('animals.emptyHint')}
+              action={
+                canWrite ? (
+                  <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                    <Plus aria-hidden />
+                    {t('animals.add')}
+                  </Button>
+                ) : undefined
+              }
+            />
+          }
+        />
+      )}
 
-              {canWrite && a.status === 'ACTIVE' && accessToken && (
-                <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
-                  <Button size="sm" variant="danger" onClick={() => act(recordMortality(accessToken, farmId, { animalId: a.id, type: 'CULL' }))}>
-                    {t('events.cull')}
-                  </Button>
-                  <Button size="sm" variant="danger" onClick={() => act(recordMortality(accessToken, farmId, { animalId: a.id, type: 'MORTALITY' }))}>
-                    {t('events.dead')}
-                  </Button>
-                  <Select value={moveTo[a.id] ?? ''} onChange={(e) => setMoveTo({ ...moveTo, [a.id]: e.target.value })} className="flex-1">
-                    <option value="">{t('events.moveTo')}</option>
-                    {units.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </Select>
-                  <Button size="sm" variant="secondary" disabled={!moveTo[a.id]} onClick={() => act(recordMovement(accessToken, farmId, { animalId: a.id, toUnitId: moveTo[a.id]! }))}>
+      {canWrite && (
+        <CreateAnimalDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          indivSpecies={indivSpecies}
+          units={units.data ?? []}
+        />
+      )}
+
+      <AnimalDetailDialog
+        animal={detailAnimal}
+        onOpenChange={(open) => {
+          if (!open) setDetailId(null);
+        }}
+        unitNameOf={(id) => (units.data ?? []).find((u) => u.id === id)?.name ?? '—'}
+        canWrite={canWrite}
+        onShowQr={setQrAnimal}
+        onLoss={(animal, type) => setLossTarget({ animal, type })}
+        onMove={setMoveTarget}
+      />
+
+      <QrDialog
+        animal={qrAnimal}
+        onOpenChange={(open) => {
+          if (!open) setQrAnimal(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={lossTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setLossTarget(null);
+        }}
+        title={lossTarget ? t(`events.recordLossTitle.${lossTarget.type}`) : ''}
+        description={
+          lossTarget
+            ? t(`events.confirmAnimalBody.${lossTarget.type}`, {
+                target: animalLabel(lossTarget.animal),
+              })
+            : undefined
+        }
+        confirmLabel={t('events.confirmLoss')}
+        variant="danger"
+        loading={recordMortality.isPending}
+        onConfirm={() => {
+          if (!lossTarget) return;
+          recordMortality.mutate(
+            { animalId: lossTarget.animal.id, type: lossTarget.type },
+            { onSuccess: () => setLossTarget(null) },
+          );
+        }}
+      />
+
+      <MoveDialog
+        target={moveTarget ? { label: animalLabel(moveTarget) } : null}
+        units={units.data ?? []}
+        loading={recordMovement.isPending}
+        onOpenChange={(open) => {
+          if (!open) setMoveTarget(null);
+        }}
+        onMove={(toUnitId) => {
+          if (!moveTarget) return;
+          recordMovement.mutate(
+            { animalId: moveTarget.id, toUnitId },
+            { onSuccess: () => setMoveTarget(null) },
+          );
+        }}
+      />
+    </section>
+  );
+}
+
+// ---------- create dialog ----------
+
+function CreateAnimalDialog({
+  open,
+  onOpenChange,
+  indivSpecies,
+  units,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  indivSpecies: { id: string; name: string }[];
+  units: { id: string; name: string }[];
+}) {
+  const { t } = useTranslation();
+  const createAnimal = useCreateAnimal();
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<CreateForm>({
+    resolver: zodResolver(createSchema),
+    defaultValues: {
+      speciesId: '',
+      tagNumber: '',
+      name: '',
+      sex: 'UNKNOWN',
+      breedId: '',
+      unitId: '',
+      dob: '',
+    },
+  });
+
+  const speciesId = watch('speciesId');
+  const speciesDetail = useSpeciesDetail(open && speciesId ? speciesId : null);
+  const breeds = speciesDetail.data?.breeds ?? [];
+
+  const err = (key: keyof CreateForm) => {
+    const message = errors[key]?.message;
+    return message ? t(message) : undefined;
+  };
+
+  const onSubmit = handleSubmit((v) => {
+    createAnimal.mutate(
+      {
+        speciesId: v.speciesId,
+        tagNumber: v.tagNumber.trim() || undefined,
+        name: v.name.trim() || undefined,
+        sex: v.sex,
+        breedId: v.breedId || undefined,
+        unitId: v.unitId || undefined,
+        dob: v.dob ? new Date(`${v.dob}T00:00:00.000Z`).toISOString() : undefined,
+      },
+      {
+        onSuccess: () => {
+          reset();
+          onOpenChange(false);
+        },
+      },
+    );
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="md" aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t('animals.add')}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={(e) => void onSubmit(e)} className="space-y-3" noValidate>
+          <Field label={t('animals.form.species')} required error={err('speciesId')}>
+            <Select {...register('speciesId')}>
+              <option value="">{t('animals.form.choose')}</option>
+              {indivSpecies.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={t('animals.form.tag')} error={err('tagNumber')} hint={t('animals.form.tagHint')}>
+              <Input {...register('tagNumber')} />
+            </Field>
+            <Field label={t('animals.form.name')} error={err('name')}>
+              <Input {...register('name')} />
+            </Field>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={t('animals.form.sex')}>
+              <Select {...register('sex')}>
+                {SEXES.map((s) => (
+                  <option key={s} value={s}>
+                    {t(`animals.sex.${s}`)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label={t('animals.form.dob')} hint={t('animals.form.optional')}>
+              <Input {...register('dob')} type="date" />
+            </Field>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={t('animals.form.breed')} hint={t('animals.form.optional')}>
+              <Select {...register('breedId')} disabled={!speciesId || breeds.length === 0}>
+                <option value="">
+                  {speciesId && breeds.length === 0
+                    ? t('animals.form.noBreeds')
+                    : t('animals.form.none')}
+                </option>
+                {breeds.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label={t('animals.form.unit')} hint={t('animals.form.optional')}>
+              <Select {...register('unitId')}>
+                <option value="">{t('animals.form.none')}</option>
+                {units.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" loading={createAnimal.isPending}>
+              {t('animals.add')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------- QR enlarge dialog (print + PNG download) ----------
+
+function QrDialog({
+  animal,
+  onOpenChange,
+}: {
+  animal: Animal | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const qrRef = useRef<HTMLDivElement>(null);
+
+  function svgMarkup(): string | null {
+    const svg = qrRef.current?.querySelector('svg');
+    return svg ? new XMLSerializer().serializeToString(svg) : null;
+  }
+
+  function onPrint() {
+    const markup = svgMarkup();
+    if (!markup || !animal) return;
+    const label = animalLabel(animal);
+    const win = window.open('', '_blank', 'width=420,height=520');
+    if (!win) return;
+    win.document.write(
+      `<!doctype html><html><head><title>${label}</title></head>` +
+        `<body style="display:grid;place-items:center;gap:12px;font-family:sans-serif;padding:24px">` +
+        `${markup}<p style="font-size:14px;margin:0">${label}</p>` +
+        `<p style="font-size:12px;color:#555;margin:0">${animal.qrCode ?? ''}</p></body></html>`,
+    );
+    win.document.close();
+    win.focus();
+    win.print();
+  }
+
+  function onDownload() {
+    const markup = svgMarkup();
+    if (!markup || !animal) return;
+    const label = animalLabel(animal);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 16, 16, 480, 480);
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = `${label}-qr.png`;
+      a.click();
+    };
+    img.src = `data:image/svg+xml;base64,${window.btoa(markup)}`;
+  }
+
+  return (
+    <Dialog open={animal !== null} onOpenChange={onOpenChange}>
+      <DialogContent size="sm">
+        {animal && (
+          <>
+            <DialogHeader>
+              <DialogTitle>{animalLabel(animal)}</DialogTitle>
+              <DialogDescription className="font-mono">{animal.qrCode}</DialogDescription>
+            </DialogHeader>
+            <div ref={qrRef} className="grid place-items-center rounded-lg bg-card p-4">
+              {animal.qrCode && <QRCodeSVG value={animal.qrCode} size={208} aria-label={animal.qrCode} />}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={onDownload}>
+                <Download aria-hidden />
+                {t('animals.qrDownload')}
+              </Button>
+              <Button type="button" onClick={onPrint}>
+                <Printer aria-hidden />
+                {t('animals.qrPrint')}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------- detail dialog ----------
+
+function AnimalDetailDialog({
+  animal,
+  onOpenChange,
+  unitNameOf,
+  canWrite,
+  onShowQr,
+  onLoss,
+  onMove,
+}: {
+  animal: Animal | null;
+  onOpenChange: (open: boolean) => void;
+  unitNameOf: (id: string | null) => string;
+  canWrite: boolean;
+  onShowQr: (animal: Animal) => void;
+  onLoss: (animal: Animal, type: LossType) => void;
+  onMove: (animal: Animal) => void;
+}) {
+  const { t } = useTranslation();
+  const movements = useMovements({ animalId: animal?.id ?? '' }, animal !== null);
+
+  const movementCols: DataTableColumn<MovementRow>[] = [
+    { header: 'animals.detail.date', accessor: (m) => fmtDate(m.movedAt) },
+    { header: 'animals.detail.from', accessor: (m) => unitNameOf(m.fromUnitId) },
+    { header: 'animals.detail.to', accessor: (m) => unitNameOf(m.toUnitId) },
+    { header: 'animals.detail.reason', accessor: (m) => m.reason ?? '—' },
+  ];
+
+  return (
+    <Dialog open={animal !== null} onOpenChange={onOpenChange}>
+      <DialogContent size="lg">
+        {animal && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex flex-wrap items-center gap-2">
+                {animalLabel(animal)}
+                <Badge
+                  variant={
+                    animal.status === 'ACTIVE'
+                      ? 'success'
+                      : animal.status === 'SOLD'
+                        ? 'accent'
+                        : animal.status === 'CULLED'
+                          ? 'warning'
+                          : 'destructive'
+                  }
+                >
+                  {t(`animals.status.${animal.status}`)}
+                </Badge>
+              </DialogTitle>
+              <DialogDescription>
+                {animal.species.name}
+                {animal.breed ? ` · ${animal.breed.name}` : ''} ·{' '}
+                {animal.currentStage?.name ?? '—'} · {t(`animals.sex.${animal.sex}`)}
+                {animal.dob ? ` · ${t('animals.detail.born', { date: fmtDate(animal.dob) })}` : ''}
+                {animal.unit ? ` · ${animal.unit.name}` : ''}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mb-4 flex flex-wrap gap-2">
+              {animal.qrCode && (
+                <Button type="button" size="sm" variant="secondary" onClick={() => onShowQr(animal)}>
+                  <QrCode aria-hidden />
+                  {t('animals.qrShow')}
+                </Button>
+              )}
+              {canWrite && animal.status === 'ACTIVE' && (
+                <>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => onMove(animal)}>
                     {t('events.move')}
                   </Button>
-                </div>
+                  <Button type="button" size="sm" variant="danger" onClick={() => onLoss(animal, 'CULL')}>
+                    {t('events.cull')}
+                  </Button>
+                  <Button type="button" size="sm" variant="danger" onClick={() => onLoss(animal, 'MORTALITY')}>
+                    {t('events.dead')}
+                  </Button>
+                </>
               )}
-            </li>
-          ))}
-        </ul>
-      )}
+            </div>
 
-      {canWrite && indivSpecies.length > 0 && (
-        <form onSubmit={onAdd} className="space-y-2 rounded-xl bg-secondary/60 p-3">
-          <Select value={speciesId} onChange={(e) => setSpeciesId(e.target.value)}>
-            {indivSpecies.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
-          <Input value={tag} onChange={(e) => setTag(e.target.value)} placeholder={t('animals.tag')} required />
-          <Select value={sex} onChange={(e) => setSex(e.target.value)}>
-            {SEXES.map((s) => (
-              <option key={s} value={s}>
-                {t(`animals.sex.${s}`)}
-              </option>
-            ))}
-          </Select>
-          {formError && <PanelError>{formError}</PanelError>}
-          <Button type="submit" full>
-            {t('animals.add')}
-          </Button>
-        </form>
-      )}
-    </section>
+            <div>
+              <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('animals.detail.movementHistory')}
+              </h3>
+              <DataTable
+                columns={movementCols}
+                data={movements.data}
+                isLoading={movements.isPending}
+                pageSize={5}
+                getRowId={(m) => m.id}
+                emptyState={<PanelNote>{t('animals.detail.noMovements')}</PanelNote>}
+              />
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
