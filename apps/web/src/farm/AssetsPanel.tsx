@@ -12,6 +12,7 @@ import {
   useRecordMaintenance,
 } from '../api/ops.hooks';
 import { fmtDate, fmtInr, rupeesToPaise } from '../lib/format';
+import { rupeeField } from '../lib/moneyField';
 import {
   Badge,
   Button,
@@ -51,9 +52,7 @@ const createSchema = z.object({
   name: z.string().trim().min(1, 'assets.nameRequired'),
   type: z.string(),
   purchaseDate: z.string(),
-  purchaseCost: z
-    .string()
-    .refine((v) => v.trim() === '' || rupeesToPaise(v) !== null, 'assets.invalidCost'),
+  purchaseCost: rupeeField('assets.invalidCost', true),
 });
 type CreateValues = z.infer<typeof createSchema>;
 
@@ -134,7 +133,7 @@ function CreateAssetDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
 const serviceSchema = z.object({
   type: z.string(),
-  cost: z.string().refine((v) => v.trim() === '' || rupeesToPaise(v) !== null, 'assets.invalidCost'),
+  cost: rupeeField('assets.invalidCost', true),
   vendor: z.string(),
 });
 type ServiceValues = z.infer<typeof serviceSchema>;

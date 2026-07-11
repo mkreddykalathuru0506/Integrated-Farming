@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { Plus, Users } from 'lucide-react';
 import { useAttendance, useCreateWorker, useMarkAttendance, useWorkers } from '../api/daily.hooks';
 import { fmtInr, rupeesToPaise, todayIST } from '../lib/format';
+import { rupeeField } from '../lib/moneyField';
 import type { Worker } from './api';
 import {
   Badge,
@@ -43,9 +44,7 @@ const createSchema = z.object({
   phone: z.string().max(20, 'workers.form.phoneTooLong'),
   designation: z.string().max(80, 'workers.form.designationTooLong'),
   wageType: z.string(),
-  wage: z
-    .string()
-    .refine((v) => v.trim() === '' || rupeesToPaise(v) !== null, 'workers.form.wageInvalid'),
+  wage: rupeeField('workers.form.wageInvalid', true),
 });
 type CreateForm = z.infer<typeof createSchema>;
 
