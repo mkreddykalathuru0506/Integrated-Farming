@@ -78,7 +78,13 @@ type OrderForm = z.infer<typeof orderSchema>;
 
 const EMPTY_LINE: OrderForm['lines'][number] = { description: '', qty: '', unit: 'kg', price: '', link: '' };
 
-function CreateOrderDialog({ onOpenChange }: { onOpenChange: (open: boolean) => void }) {
+function CreateOrderDialog({
+  onOpenChange,
+  canAddCustomer,
+}: {
+  onOpenChange: (open: boolean) => void;
+  canAddCustomer: boolean;
+}) {
   const { t } = useTranslation();
   const customers = useCustomers();
   const lots = useLots();
@@ -127,9 +133,15 @@ function CreateOrderDialog({ onOpenChange }: { onOpenChange: (open: boolean) => 
         {customers.data && customers.data.length === 0 ? (
           <div className="space-y-3">
             <PanelNote>{t('orders.addCustomerFirst')}</PanelNote>
-            <Button type="button" variant="secondary" onClick={() => goToPanel('finance', 'invoices')}>
-              {t('orders.goToCustomers')}
-            </Button>
+            {/* The customers screen (Invoices panel) only lets OWNER/ACCOUNTANT add a
+                customer — for a MANAGER the CTA would dead-end, so show guidance instead. */}
+            {canAddCustomer ? (
+              <Button type="button" variant="secondary" onClick={() => goToPanel('finance', 'invoices')}>
+                {t('orders.goToCustomers')}
+              </Button>
+            ) : (
+              <PanelNote>{t('orders.customersAskOwner')}</PanelNote>
+            )}
           </div>
         ) : (
           <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-4" noValidate>
@@ -244,7 +256,14 @@ function CreateOrderDialog({ onOpenChange }: { onOpenChange: (open: boolean) => 
   );
 }
 
-export function OrdersPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
+export function OrdersPanel({
+  canWrite,
+  canAddCustomer,
+}: {
+  farmId: string;
+  canWrite: boolean;
+  canAddCustomer: boolean;
+}) {
   const { t } = useTranslation();
   const orders = useOrders();
   const confirmOrder = useConfirmOrder();
@@ -326,7 +345,7 @@ export function OrdersPanel({ canWrite }: { farmId: string; canWrite: boolean })
         />
       )}
 
-      {createOpen && <CreateOrderDialog onOpenChange={setCreateOpen} />}
+      {createOpen && <CreateOrderDialog onOpenChange={setCreateOpen} canAddCustomer={canAddCustomer} />}
 
       {detail && (
         <Dialog open onOpenChange={(open) => !open && setDetailId(null)}>

@@ -85,10 +85,14 @@ export function WeatherPanel({ canWrite }: { farmId: string; canWrite: boolean }
           title={t('weather.needLocationTitle')}
           description={t('weather.needLocation')}
           size="compact"
+          // Farm settings is OWNER/MANAGER-only (canWrite): for VET/ACCOUNTANT the
+          // link would resolve to Overview, so drop the dead-end CTA for them.
           action={
-            <SpaLink href="/settings/settings" className="text-sm">
-              {t('weather.goSettings')} →
-            </SpaLink>
+            canWrite ? (
+              <SpaLink href="/settings/settings" className="text-sm">
+                {t('weather.goSettings')} →
+              </SpaLink>
+            ) : undefined
           }
         />
       )}

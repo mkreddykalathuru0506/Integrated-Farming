@@ -146,7 +146,7 @@ export const SECTIONS: Section[] = [
     icon: ShoppingCart,
     roles: ['OWNER', 'MANAGER', 'ACCOUNTANT', 'LABOUR'],
     panels: [
-      { key: 'orders', render: (f, p) => <OrdersPanel farmId={f} canWrite={p.canWriteFinance} /> },
+      { key: 'orders', render: (f, p) => <OrdersPanel farmId={f} canWrite={p.canWriteFinance} canAddCustomer={p.canBill} /> },
       { key: 'coldstorage', render: (f, p) => <ColdStoragePanel farmId={f} canWrite={p.canWriteUnits} canLog={p.canLogTemp} /> },
       { key: 'processing', render: (f, p) => <ProcessingPanel farmId={f} canWrite={p.canWriteUnits} /> },
       { key: 'dispatch', render: (f, p) => <DispatchPanel farmId={f} canWrite={p.canWriteUnits} /> },

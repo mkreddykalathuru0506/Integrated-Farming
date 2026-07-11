@@ -5,6 +5,7 @@ export default {
   emptyDesc: 'Take your first order to start the order → processing → dispatch flow.',
   addCustomerFirst: 'Add a customer before taking orders — customers live in the Invoices panel.',
   goToCustomers: 'Go to invoices',
+  customersAskOwner: 'Ask an owner or accountant to add a customer first.',
   loadError: 'Could not load orders',
   retry: 'Retry',
   colNumber: 'Order #',

@@ -137,4 +137,31 @@ describe('CommandPalette', () => {
     await user.click(hit);
     expect(onNavigate).toHaveBeenCalledWith({ key: 'livestock', panel: 'batches' });
   });
+
+  it('role-gates search hits: a LABOUR user never sees an invoice hit routing to Finance', async () => {
+    mockFetchRoutes({
+      '/api/farm/search': (_init, url) => {
+        const q = new URL(url).searchParams.get('q') ?? '';
+        return jsonResponse(200, {
+          q,
+          total: 1,
+          groups: [
+            {
+              type: 'invoice',
+              route: { section: 'finance', panel: 'invoices' },
+              items: [{ id: 'i1', invoiceNumber: 'INV-2026-0042' }],
+            },
+          ],
+        });
+      },
+    });
+    // Finance is hidden from LABOUR — the hit must be dropped (would deep-link to Overview).
+    renderPalette('LABOUR');
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+
+    const user = userEvent.setup();
+    await user.type(await screen.findByPlaceholderText('Type a command or search…'), 'INV-2026');
+    await waitFor(() => expect(screen.getByText('No results')).toBeInTheDocument());
+    expect(screen.queryByText('INV-2026-0042')).not.toBeInTheDocument();
+  });
 });

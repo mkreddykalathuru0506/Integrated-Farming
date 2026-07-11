@@ -27,7 +27,7 @@ import {
 import { useDueRollup, useOpenRisks } from './bellData';
 import type { OpenRisk } from './bell';
 import type { NavTarget } from './commands';
-import type { Role } from './nav';
+import { visibleSections, type Role } from './nav';
 
 const MAX_ITEMS = 20;
 
@@ -68,12 +68,19 @@ export function NotificationBell({ role, onNavigate }: Props) {
   // Farm switch must not leak unread counts across farms.
   useEffect(() => setLastSeen(readLastSeen(farmId)), [farmId]);
 
+  // Only surface items whose destination section is visible for this role —
+  // otherwise the deep-link resolves to Overview and the click looks like a no-op.
+  const visibleKeys = useMemo(() => new Set(visibleSections(role).map((s) => s.key)), [role]);
+
   const now = new Date().toISOString();
   const items = useMemo(
     // Canonical RiskFlag[] widens severity to string; the bell only reads the
     // three known enum values, so narrow to OpenRisk for normalizeBell.
-    () => normalizeBell((risksQ.data ?? []) as OpenRisk[], dueQ.data, new Date().toISOString()),
-    [risksQ.data, dueQ.data],
+    () =>
+      normalizeBell((risksQ.data ?? []) as OpenRisk[], dueQ.data, new Date().toISOString()).filter(
+        (i) => visibleKeys.has(i.route.key),
+      ),
+    [risksQ.data, dueQ.data, visibleKeys],
   );
   const badge = unreadCount(items, lastSeen, now);
   const shown = items.slice(0, MAX_ITEMS);
