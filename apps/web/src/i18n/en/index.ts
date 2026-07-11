@@ -11,6 +11,9 @@ import units from './units';
 import settings from './settings';
 import roles from './roles';
 import nav from './nav';
+import palette from './palette';
+import shortcuts from './shortcuts';
+import bell from './bell';
 import unitTypes from './unitTypes';
 import species from './species';
 import batches from './batches';
@@ -53,6 +56,9 @@ export const en = {
     settings,
     roles,
     nav,
+    palette,
+    shortcuts,
+    bell,
     unitTypes,
     species,
     batches,

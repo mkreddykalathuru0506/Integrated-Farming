@@ -11,6 +11,9 @@ import units from './units';
 import settings from './settings';
 import roles from './roles';
 import nav from './nav';
+import palette from './palette';
+import shortcuts from './shortcuts';
+import bell from './bell';
 import weather from './weather';
 import market from './market';
 import dashboard from './dashboard';
@@ -30,6 +33,9 @@ export const hi = {
     settings,
     roles,
     nav,
+    palette,
+    shortcuts,
+    bell,
     weather,
     market,
     dashboard,
