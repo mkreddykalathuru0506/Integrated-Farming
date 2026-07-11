@@ -1,12 +1,14 @@
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-
-// English is the source of truth. Hindi is a partial seed; missing keys fall back to English.
-// No hard-coded UI strings — every visible string lives here.
-const en = {
+// English resources — the source of truth. No hard-coded UI strings anywhere else.
+export const en = {
   translation: {
     app: { title: 'Samagra Krishi', tagline: 'Integrated Farm Manager' },
-    common: { save: 'Save', saving: 'Saving…', delete: 'Delete' },
+    common: {
+      save: 'Save',
+      saving: 'Saving…',
+      delete: 'Delete',
+      close: 'Close',
+      notifications: 'Notifications',
+    },
     auth: {
       login: {
         title: 'Sign in',
@@ -14,10 +16,46 @@ const en = {
         password: 'Password',
         submit: 'Sign in',
         submitting: 'Signing in…',
+        demo: 'Use demo account (dev)',
       },
-      errors: { invalid: 'Invalid email or password' },
+      errors: {
+        invalid: 'Invalid email or password',
+        rateLimited: 'Too many attempts — please wait a minute and try again',
+        offline: 'Cannot reach the server — check your connection',
+      },
+      restoring: 'Signing you in…',
       welcome: 'Welcome, {{name}}',
       logout: 'Sign out',
+    },
+    errors: {
+      generic: 'Something went wrong. Please try again.',
+      NETWORK: 'Cannot reach the server — check your connection',
+      UNAUTHORIZED: 'Your session has expired. Please sign in again.',
+      FORBIDDEN: 'You do not have permission to do this',
+      NOT_FOUND: 'Not found — it may have been removed',
+      RATE_LIMITED: 'Too many requests — please wait and try again',
+      REQUEST_FAILED: 'The request failed. Please try again.',
+      VALIDATION: 'Some fields are invalid — please check and retry',
+      INVALID_CREDENTIALS: 'Invalid email or password',
+      EMAIL_TAKEN: 'An account with this email already exists',
+      UNIT_NAME_TAKEN: 'A unit with this name already exists',
+      BATCH_CODE_TAKEN: 'A batch with this code already exists',
+      ANIMAL_TAG_TAKEN: 'An animal with this tag already exists',
+      SPECIES_CODE_TAKEN: 'A species with this code already exists',
+      BREED_NAME_TAKEN: 'A breed with this name already exists',
+      CUSTOMER_NAME_TAKEN: 'A customer with this name already exists',
+      VENDOR_NAME_TAKEN: 'A vendor with this name already exists',
+      FEED_NAME_TAKEN: 'A feed item with this name already exists',
+      HATCHERY_CODE_TAKEN: 'A hatchery batch with this code already exists',
+      COLD_STORAGE_NAME_TAKEN: 'A cold store with this name already exists',
+      COLD_CHAIN_FAIL: 'Blocked: this dispatch would break the cold chain',
+      WITHDRAWAL_ACTIVE: 'Blocked: under medication withdrawal period',
+      INSUFFICIENT_STOCK: 'Not enough stock',
+      INSUFFICIENT_LOT_QTY: 'Not enough quantity left in this lot',
+      INSUFFICIENT_COUNT: 'Not enough animals in the batch',
+      LOT_UNAVAILABLE: 'This product lot is not available',
+      BATCH_CLOSED: 'This batch is closed',
+      BAD_TRANSITION: 'This change is not allowed from the current stage',
     },
     farms: {
       title: 'Your farms',
@@ -43,6 +81,8 @@ const en = {
       add: 'Add unit',
       addError: 'Could not add the unit',
       duplicate: 'A unit with this name already exists',
+      added: 'Unit added',
+      deleted: 'Unit deleted',
     },
     settings: {
       title: 'Farm settings',
@@ -517,223 +557,3 @@ const en = {
     },
   },
 };
-
-// Hindi seed (partial — proves the bilingual structure; rest falls back to English).
-// Hindi — complete for the CORE_NS namespaces (see i18n.parity.test); other namespaces
-// fall back to English by design until translated.
-const hi = {
-  translation: {
-    app: { title: 'समग्र कृषि', tagline: 'एकीकृत फार्म प्रबंधक' },
-    common: { save: 'सहेजें', saving: 'सहेजा जा रहा है…', delete: 'हटाएँ' },
-    auth: {
-      login: {
-        title: 'साइन इन करें',
-        email: 'ईमेल',
-        password: 'पासवर्ड',
-        submit: 'साइन इन करें',
-        submitting: 'साइन इन हो रहा है…',
-      },
-      errors: { invalid: 'अमान्य ईमेल या पासवर्ड' },
-      welcome: 'स्वागत है, {{name}}',
-      logout: 'साइन आउट',
-    },
-    farms: {
-      title: 'आपके फार्म',
-      loading: 'फार्म लोड हो रहे हैं…',
-      error: 'आपके फार्म लोड नहीं हो सके',
-      empty: 'आप अभी किसी फार्म के सदस्य नहीं हैं',
-    },
-    farm: {
-      create: {
-        prompt: 'शुरू करने के लिए अपना पहला फार्म बनाएँ।',
-        name: 'फार्म का नाम',
-        state: 'राज्य (वैकल्पिक)',
-        submit: 'फार्म बनाएँ',
-        error: 'फार्म नहीं बनाया जा सका',
-      },
-    },
-    units: {
-      title: 'इकाइयाँ',
-      loading: 'इकाइयाँ लोड हो रही हैं…',
-      error: 'इकाइयाँ लोड नहीं हो सकीं',
-      empty: 'अभी कोई इकाई नहीं',
-      namePlaceholder: 'इकाई का नाम (जैसे पोल्ट्री शेड 1)',
-      add: 'इकाई जोड़ें',
-      addError: 'इकाई नहीं जोड़ी जा सकी',
-      duplicate: 'इस नाम की इकाई पहले से मौजूद है',
-    },
-    settings: {
-      title: 'फार्म सेटिंग्स',
-      loading: 'सेटिंग्स लोड हो रही हैं…',
-      error: 'सेटिंग्स लोड नहीं हो सकीं',
-      saved: 'सेटिंग्स सहेजी गईं',
-      fssai: 'FSSAI लाइसेंस संख्या',
-      tier: 'FSSAI श्रेणी',
-      tierNone: '— निर्धारित नहीं —',
-      gstin: 'GSTIN',
-      latitude: 'अक्षांश',
-      longitude: 'देशांतर',
-    },
-    roles: {
-      OWNER: 'मालिक',
-      MANAGER: 'प्रबंधक',
-      VETERINARIAN: 'पशु चिकित्सक',
-      ACCOUNTANT: 'लेखाकार',
-      LABOUR: 'श्रमिक',
-      BUYER: 'खरीदार',
-    },
-    nav: {
-      brand: 'समग्र कृषि',
-      os: 'फार्म OS',
-      workspace: 'कार्यक्षेत्र',
-      sections: 'अनुभाग',
-      overview: 'अवलोकन',
-      livestock: 'पशुधन',
-      daily: 'दैनिक कार्य',
-      health: 'स्वास्थ्य व प्रजनन',
-      finance: 'चारा व वित्त',
-      sales: 'बिक्री व मांस',
-      maintenance: 'रखरखाव',
-      intelligence: 'सूचना',
-      reports: 'रिपोर्ट',
-      settings: 'सेटिंग्स',
-      selectFarm: 'फार्म चुनें',
-      account: 'खाता',
-      openMenu: 'मेनू खोलें',
-      closeMenu: 'मेनू बंद करें',
-      collapse: 'साइडबार छोटा करें',
-      expand: 'साइडबार बड़ा करें',
-      themeDark: 'डार्क थीम पर जाएँ',
-      themeLight: 'लाइट थीम पर जाएँ',
-    },
-    weather: {
-      title: 'मौसम और चेतावनियाँ',
-      loading: 'मौसम लोड हो रहा है…',
-      needLocation: 'मौसम देखने के लिए सेटिंग्स में फार्म का अक्षांश/देशांतर सेट करें',
-      asOf: '{{ts}} तक, स्रोत {{source}}',
-      refresh: 'ताज़ा करें',
-      alerts: 'जोखिम चेतावनियाँ',
-      noAlerts: 'कोई खुली चेतावनी नहीं',
-      ack: 'स्वीकार करें',
-    },
-    market: {
-      title: 'बाज़ार भाव',
-      empty: 'अभी कोई बाज़ार भाव नहीं',
-      record: 'भाव दर्ज करें',
-      commodity: 'वस्तु (जैसे ब्रॉयलर, अंडा)',
-      price: 'भाव (₹)',
-      unit: 'इकाई (किग्रा…)',
-      save: 'भाव सहेजें',
-      asOf: '{{ts}} तक, स्रोत {{source}}',
-    },
-    dashboard: {
-      title: 'डैशबोर्ड',
-      loading: 'डैशबोर्ड लोड हो रहा है…',
-      critical: 'गंभीर',
-      warning: 'चेतावनी',
-      alertsSent: 'भेजी गई चेतावनियाँ',
-      weatherLine: 'मौसम: {{temp}}°C (स्रोत {{source}})',
-      dispatch: 'खुले जोखिमों के लिए चेतावनी भेजें',
-      recentAlerts: 'हाल की चेतावनियाँ',
-      greeting: 'वापसी पर स्वागत है, {{name}}',
-      subtitle: 'आज आपके फार्म पर यह हो रहा है।',
-      profit: 'शुद्ध लाभ',
-      revenue: 'राजस्व',
-      openRisks: 'खुले जोखिम',
-      batches: 'सक्रिय बैच',
-      feedLow: 'कम स्टॉक चारा',
-      temp: 'तापमान',
-      riskBreakdown: 'जोखिम गंभीरता',
-      marketTitle: 'बाज़ार भाव',
-      openRisksTitle: 'खुले जोखिम फ्लैग',
-      noRisks: 'कोई खुला जोखिम नहीं — सब ठीक है।',
-      noMarket: 'अभी तक कोई बाज़ार भाव दर्ज नहीं।',
-      noAlerts: 'अभी तक कोई चेतावनी नहीं भेजी गई।',
-      ack: 'स्वीकार करें',
-      asOf: '{{ts}} तक',
-      greetMorning: 'सुप्रभात, {{name}}',
-      greetAfternoon: 'नमस्कार, {{name}}',
-      greetEvening: 'शुभ संध्या, {{name}}',
-      profitable: 'लाभ में',
-      loss: 'हानि में',
-      costLabel: 'लागत',
-      criticalCount: '{{count}} गंभीर',
-      birds: '{{count}} पक्षी',
-      belowReorder: '{{count}} पुनःऑर्डर से नीचे',
-      allStocked: 'सभी पर्याप्त स्टॉक',
-      costByCategory: 'श्रेणी अनुसार लागत',
-      thisFarm: 'यह फार्म',
-      live: 'लाइव',
-      coldChain: 'कोल्ड चेन',
-      inRange: 'सीमा में',
-      outOfRange: 'सीमा से बाहर',
-      noCost: 'अभी तक कोई खर्च दर्ज नहीं।',
-      noCold: 'अभी तक कोई कोल्ड स्टोरेज सेट नहीं।',
-    },
-    reports: {
-      title: 'रिपोर्ट',
-      blurb: 'फार्म सारांश डाउनलोड करें (वित्त, पशुधन, चारा, बाज़ार, जोखिम)।',
-      pdf: 'PDF डाउनलोड करें',
-      xlsx: 'Excel डाउनलोड करें',
-      schedules: 'निर्धारित रिपोर्ट',
-      noSchedules: 'कोई निर्धारित रिपोर्ट नहीं',
-      schedule: 'रिपोर्ट निर्धारित करें',
-      scheduleName: 'नाम (जैसे साप्ताहिक सारांश)',
-      recipient: 'प्राप्तकर्ता (ईमेल/फ़ोन)',
-      addSchedule: 'शेड्यूल जोड़ें',
-      runNow: 'अभी चलाएँ',
-      next: 'अगली {{date}}',
-      freq: { DAILY: 'दैनिक', WEEKLY: 'साप्ताहिक', MONTHLY: 'मासिक' },
-    },
-    risk: {
-      type: {
-        HEAT_STRESS: 'गर्मी का तनाव',
-        COLD_STRESS: 'ठंड का तनाव',
-        PRICE_DROP: 'भाव गिरावट',
-        LOW_STOCK: 'कम स्टॉक',
-        OTHER: 'चेतावनी',
-      },
-    },
-  },
-};
-
-export const SUPPORTED_LANGS = [
-  { code: 'en', label: 'EN' },
-  { code: 'hi', label: 'हि' },
-] as const;
-
-// Namespaces fully translated into every supported language (enforced by i18n.parity.test).
-export const CORE_NS = [
-  'app',
-  'common',
-  'auth',
-  'farms',
-  'farm',
-  'units',
-  'settings',
-  'roles',
-  'nav',
-  'weather',
-  'market',
-  'dashboard',
-  'reports',
-  'risk',
-] as const;
-
-export const resources = { en, hi };
-
-void i18n.use(initReactI18next).init({
-  resources,
-  lng: 'en',
-  fallbackLng: 'en',
-  interpolation: { escapeValue: false },
-});
-
-// A11y: keep <html lang> in sync with the active language for screen readers.
-function syncHtmlLang(lng: string) {
-  if (typeof document !== 'undefined') document.documentElement.lang = lng;
-}
-syncHtmlLang(i18n.resolvedLanguage ?? 'en');
-i18n.on('languageChanged', syncHtmlLang);
-
-export default i18n;
