@@ -7,6 +7,7 @@
  */
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qs } from '../lib/http';
+import { todayIST } from '../lib/format';
 import { useApiMutation } from '../lib/useApiMutation';
 import type { Animal, SpeciesDetail } from '../farm/api';
 import { useFarmApi } from './FarmContext';
@@ -32,10 +33,9 @@ export function useSpeciesDetail(id: string | undefined) {
   });
 }
 
-/** `YYYY-MM-DD` for today in Asia/Kolkata — default value for date inputs. */
-export function todayISO(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
-}
+/** `YYYY-MM-DD` for today in Asia/Kolkata — default value for date inputs.
+ * @deprecated re-export of the shared lib/format `todayIST`; import that directly. */
+export const todayISO = todayIST;
 
 // ------------------------------------------------------ health records
 

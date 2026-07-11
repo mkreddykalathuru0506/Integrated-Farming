@@ -1,5 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { fmtDate, fmtDateTime, fmtInr, fmtInrCompact, rupeesToPaise } from './format';
+import { fmtDate, fmtDateTime, fmtInr, fmtInrCompact, rupeesToPaise, todayIST } from './format';
+
+describe('todayIST — YYYY-MM-DD in Asia/Kolkata (§6, not UTC)', () => {
+  it('returns the IST day, not the UTC day, in the 00:00–05:30 IST window', () => {
+    // 2026-07-11T22:30:00Z = 2026-07-12 04:00 IST → the IST day is the 12th
+    // (the naive UTC .toISOString().slice(0,10) would wrongly give the 11th).
+    const early = new Date('2026-07-11T22:30:00Z');
+    expect(todayIST(early)).toBe('2026-07-12');
+    expect(early.toISOString().slice(0, 10)).toBe('2026-07-11'); // the bug being fixed
+  });
+
+  it('agrees with UTC once past 05:30 IST', () => {
+    // 2026-07-11T06:00:00Z = 2026-07-11 11:30 IST → same day as UTC
+    expect(todayIST(new Date('2026-07-11T06:00:00Z'))).toBe('2026-07-11');
+  });
+
+  it('handles the exact IST midnight rollover (18:30 UTC)', () => {
+    // 18:29 UTC = 23:59 IST (still the 11th); 18:30 UTC = 00:00 IST (the 12th)
+    expect(todayIST(new Date('2026-07-11T18:29:00Z'))).toBe('2026-07-11');
+    expect(todayIST(new Date('2026-07-11T18:30:00Z'))).toBe('2026-07-12');
+  });
+});
 
 describe('fmtDate — DD-MM-YYYY in Asia/Kolkata (§6)', () => {
   it('formats an ISO timestamp', () => {

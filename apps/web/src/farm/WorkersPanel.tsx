@@ -5,7 +5,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Plus, Users } from 'lucide-react';
 import { useAttendance, useCreateWorker, useMarkAttendance, useWorkers } from '../api/daily.hooks';
-import { fmtInr, rupeesToPaise } from '../lib/format';
+import { fmtInr, rupeesToPaise, todayIST } from '../lib/format';
 import type { Worker } from './api';
 import {
   Badge,
@@ -36,7 +36,7 @@ import { LoadErrorNote } from './LoadErrorNote';
 const WAGE_TYPES = ['DAILY', 'PIECE_RATE', 'MONTHLY'] as const;
 const ATT_STATUSES = ['PRESENT', 'HALF_DAY', 'ABSENT'] as const;
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayIST();
 
 const createSchema = z.object({
   name: z.string().min(1, 'workers.form.nameRequired').max(120, 'workers.form.nameTooLong'),
