@@ -57,20 +57,20 @@ the shared foundation every later slice (11.2–11.8) builds on.
     boot-restore, 401 single-flight replay, Toast render/auto-dismiss/variants,
     useApiMutation success/error mapping, UnitsPanel smoke (mocked fetch).
 
-### Acceptance criteria (11.1a)
+### Acceptance criteria (11.1a) — ✅ all met
 
-- Given a logged-in user who reloads the page, when a refresh token is stored, then the
+- [x] Given a logged-in user who reloads the page, when a refresh token is stored, then the
   session is restored silently (loading state shown, no login screen flash), the rotated
   refresh token is persisted, and a failed refresh lands on a clean logged-out state.
-- Given any API call that receives 401, when a refresh token exists, then exactly one
+- [x] Given any API call that receives 401, when a refresh token exists, then exactly one
   refresh happens (even for N concurrent 401s) and each original request is replayed once.
-- Given an API error response, when a panel mutation fails, then `ApiError.code` is
+- [x] Given an API error response, when a panel mutation fails, then `ApiError.code` is
   available and `useApiMutation` shows a translated toast (mapped → `errors.<code>` →
   `errors.generic`); success shows a toast and invalidates the given query keys.
-- Given `openInvoicePdf`/`downloadReport` against a failing endpoint, then an `ApiError`
+- [x] Given `openInvoicePdf`/`downloadReport` against a failing endpoint, then an `ApiError`
   is thrown and no JSON-as-PDF file is downloaded.
-- Given a selected farm and language, when the app reloads, both are restored.
-- All existing web tests (21) still pass; new component tests pass; typecheck, lint and
+- [x] Given a selected farm and language, when the app reloads, both are restored.
+- [x] All existing web tests (21) still pass; new component tests pass; typecheck, lint and
   build are green; `apps/api` untouched.
 
 ## 11.1b — UI kit (companion sub-slice, same branch)
@@ -81,8 +81,39 @@ Kit components on Harvest tokens: `Dialog`/confirm, `Tabs`, `Table`/`DataTable`
 (RHF-integrated), `Kbd`, `Spinner`, `Button loading` prop; `fmtDate` (DD-MM-YYYY),
 `fmtInr`/`InrInput` (integer-paise-safe); self-hosted fonts wired via `@fontsource/*`;
 ErrorBoundary + per-section `document.title` + scroll/focus reset on nav; PWA manifest
-colours onto Harvest palette. Acceptance: kit components render in both themes at 360 px,
-i18n en+hi parity, all gates green.
+colours onto Harvest palette.
+
+### Acceptance criteria (11.1b) — ✅ all met
+
+- [x] `ui/Dialog.tsx` centered modal (sm/md/lg, Header/Title/Description/Footer,
+  animated, Radix focus-trap/Esc) + `ConfirmDialog` (danger|default, i18n defaults);
+  UnitsPanel delete wired through it as the reference adoption.
+- [x] `ui/Tabs.tsx` underline-style Radix tabs; `ui/Tooltip.tsx` wrapper (delay 300,
+  Provider mounted in App).
+- [x] `ui/Table.tsx` primitives + `ui/DataTable.tsx` (typed columns w/ i18n-key headers,
+  sort + chevrons + aria-sort, global search, client pagination "x–y of N" hidden at
+  ≤1 page, sticky header, onRowClick, loading→TableSkeleton, empty→EmptyState,
+  `<sm` stacked-card rows for 360 px).
+- [x] `ui/Skeleton.tsx` (+ Table/Card/Stat variants), `ui/EmptyState.tsx`
+  (compact/default), `ui/Textarea.tsx`, `ui/Kbd.tsx`, `ui/Spinner.tsx`,
+  Button `loading` prop (width-preserving) + solid `destructive` variant.
+- [x] `ui/Field.tsx`: real `<label htmlFor>` + aria-invalid/aria-describedby wiring
+  (RHF-compatible).
+- [x] `lib/format.ts`: `fmtDate`/`fmtDateTime` (DD-MM-YYYY, Asia/Kolkata),
+  `fmtInr` (BigInt, Indian grouping), `fmtInrCompact` (extracted from Dashboard,
+  which now imports it), `rupeesToPaise` (max 2 decimals, never floats) —
+  thoroughly unit-tested; `ui/InrInput.tsx` money input on top of it.
+- [x] Shell polish: `ErrorBoundary` around `<main>` (reset on section change),
+  per-section `document.title`, scroll-to-top + focus to the main heading on nav,
+  skeleton Suspense fallback.
+- [x] Self-hosted `@fontsource` fonts; Google Fonts CDN removed from index.html;
+  woff2 in the build + workbox precache (dist greps 0 for googleapis).
+- [x] PWA manifest on the Harvest palette (`#123322`/`#f2eee3`) + Dashboard and
+  Daily-logs shortcuts (manifest strings are English by design — no runtime i18n
+  in manifests, lang en).
+- [x] Every string i18n en+hi (new `table` namespace enforced by the parity test);
+  all styling via Harvest semantic tokens; typecheck/lint/test/build green
+  (93 web tests).
 
 ## Out of scope (lands later)
 
