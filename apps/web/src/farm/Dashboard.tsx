@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import {
@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { fmtInrCompact } from '../lib/format';
 import { Button, cn } from '../ui';
 import {
   acknowledgeRisk,
@@ -39,17 +40,6 @@ import {
 /* Data-viz palette (explicit hex appropriate for chart series; mirrors the theme tokens). */
 const SEV_HEX: Record<string, string> = { CRITICAL: '#C0392F', WARNING: '#C15A2B', INFO: '#1C6B43', DEFAULT: '#8A8270' };
 const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
-
-/** Compact Indian-currency from paise: ₹1.24L, ₹2.3Cr, ₹4.5k, ₹820. */
-function compactInr(paise: number): string {
-  const r = paise / 100;
-  const a = Math.abs(r);
-  const s = r < 0 ? '-' : '';
-  if (a >= 1e7) return `${s}₹${(a / 1e7).toFixed(2)}Cr`;
-  if (a >= 1e5) return `${s}₹${(a / 1e5).toFixed(2)}L`;
-  if (a >= 1e3) return `${s}₹${(a / 1e3).toFixed(1)}k`;
-  return `${s}₹${inr.format(a)}`;
-}
 
 type Tone = 'primary' | 'danger' | 'warning' | 'success' | 'gold' | 'neutral';
 const BADGE: Record<Tone, string> = {
@@ -257,7 +247,7 @@ export function Dashboard({ farmId, canWrite }: { farmId: string; canWrite: bool
             <span className="italic text-primary">{(greeting.split(',')[1] ?? '').trim()}</span>
           </h2>
           <p className="mt-1.5 max-w-xl text-sm text-muted-foreground">
-            {today ? `${today} · ` : ''}
+            {today ? `${today} Â· ` : ''}
             {t('dashboard.subtitle')}
           </p>
         </div>
@@ -280,23 +270,23 @@ export function Dashboard({ farmId, canWrite }: { farmId: string; canWrite: bool
             </span>
           </div>
           <p className="mt-3 font-display text-[40px] font-medium leading-none tracking-tight tabular text-foreground">
-            {compactInr(profitPaise)}
+            {fmtInrCompact(profitPaise)}
           </p>
           <div className="mt-3 flex items-center gap-3">
             <TrendChip up={profitPaise >= 0}>{profitPaise >= 0 ? t('dashboard.profitable') : t('dashboard.loss')}</TrendChip>
             {pnl && (
               <span className="text-xs text-muted-foreground">
-                {t('dashboard.revenue')} {compactInr(Number(pnl.revenuePaise))} · {t('dashboard.costLabel')}{' '}
-                {compactInr(Number(pnl.costPaise))}
+                {t('dashboard.revenue')} {fmtInrCompact(Number(pnl.revenuePaise))} Â· {t('dashboard.costLabel')}{' '}
+                {fmtInrCompact(Number(pnl.costPaise))}
               </span>
             )}
           </div>
         </div>
 
         <Kpi label={t('dashboard.openRisks')} value={data.risks.open} sub={t('dashboard.criticalCount', { count: critical })} icon={AlertTriangle} tone={data.risks.open > 0 ? 'danger' : 'success'} />
-        <Kpi label={t('dashboard.batches')} value={activeBatches ?? '—'} sub={t('dashboard.birds', { count: birds })} icon={Bird} tone="primary" />
-        <Kpi label={t('dashboard.feedLow')} value={lowFeed ?? '—'} sub={lowFeed && lowFeed > 0 ? t('dashboard.belowReorder', { count: lowFeed }) : t('dashboard.allStocked')} icon={Wheat} tone={lowFeed && lowFeed > 0 ? 'warning' : 'gold'} />
-        <Kpi label={t('dashboard.temp')} value={data.weather ? `${Math.round(data.weather.tempC)}°` : '—'} sub={data.weather ? data.weather.source : '—'} icon={Thermometer} tone="primary" />
+        <Kpi label={t('dashboard.batches')} value={activeBatches ?? 'â€”'} sub={t('dashboard.birds', { count: birds })} icon={Bird} tone="primary" />
+        <Kpi label={t('dashboard.feedLow')} value={lowFeed ?? 'â€”'} sub={lowFeed && lowFeed > 0 ? t('dashboard.belowReorder', { count: lowFeed }) : t('dashboard.allStocked')} icon={Wheat} tone={lowFeed && lowFeed > 0 ? 'warning' : 'gold'} />
+        <Kpi label={t('dashboard.temp')} value={data.weather ? `${Math.round(data.weather.tempC)}Â°` : 'â€”'} sub={data.weather ? data.weather.source : 'â€”'} icon={Thermometer} tone="primary" />
       </div>
 
       {/* Charts row */}
@@ -317,7 +307,7 @@ export function Dashboard({ farmId, canWrite }: { farmId: string; canWrite: bool
                     />
                   </div>
                   <span className="mono w-20 shrink-0 text-right text-sm font-semibold text-foreground">
-                    {compactInr(c.value)}
+                    {fmtInrCompact(c.value)}
                   </span>
                 </div>
               ))}
@@ -396,7 +386,7 @@ export function Dashboard({ farmId, canWrite }: { farmId: string; canWrite: bool
                   <span className="absolute -left-[13px] top-3 h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_4px_hsl(var(--card))]" />
                   <p className="line-clamp-2 text-sm font-medium text-foreground">{a.body}</p>
                   <p className="mono text-xs text-muted-foreground">
-                    {a.channel} · {a.status.toLowerCase()}
+                    {a.channel} Â· {a.status.toLowerCase()}
                   </p>
                 </li>
               ))}
@@ -443,8 +433,8 @@ function ColdGauge({ store }: { store: ColdStorage }) {
   const hi = store.maxTempC;
   const pct = Math.min(1, Math.max(0, (temp - lo) / Math.max(0.001, hi - lo)));
   const ok = !store.latest!.isOutOfRange;
-  // Semi-circle arc 180°, radius 46, center (58,58)
-  const angle = Math.PI * (1 - pct); // pct 0 → left (180°), 1 → right (0°)
+  // Semi-circle arc 180Â°, radius 46, center (58,58)
+  const angle = Math.PI * (1 - pct); // pct 0 â†’ left (180Â°), 1 â†’ right (0Â°)
   const x = 58 + 46 * Math.cos(angle);
   const y = 58 - 46 * Math.sin(angle);
   const stroke = ok ? 'hsl(var(--success))' : 'hsl(var(--destructive))';
@@ -457,10 +447,10 @@ function ColdGauge({ store }: { store: ColdStorage }) {
       </svg>
       <div>
         <p className="font-display text-[34px] font-semibold leading-none tabular text-foreground">
-          {temp.toFixed(1)}°<span className="text-lg text-muted-foreground">C</span>
+          {temp.toFixed(1)}Â°<span className="text-lg text-muted-foreground">C</span>
         </p>
         <p className="mt-1.5 text-xs font-medium text-muted-foreground">
-          {store.name} · {store.mode === 'FROZEN' ? '≤ −18°C' : `${lo}–${hi}°C`}
+          {store.name} Â· {store.mode === 'FROZEN' ? 'â‰¤ âˆ’18Â°C' : `${lo}â€“${hi}Â°C`}
         </p>
         <span className={cn('mt-1 inline-block text-xs font-bold', ok ? 'text-success' : 'text-destructive')}>
           {ok ? t('dashboard.inRange') : t('dashboard.outOfRange')}
@@ -481,7 +471,7 @@ function MarketBars({ rows }: { rows: { name: string; unit: string; value: numbe
           <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
             <div className="h-full rounded-full bg-gradient-to-r from-success to-accent" style={{ width: `${Math.max(8, (r.value / max) * 100)}%` }} />
           </div>
-          <span className="mono w-16 shrink-0 text-right text-sm font-semibold text-foreground">₹{inr.format(r.value)}</span>
+          <span className="mono w-16 shrink-0 text-right text-sm font-semibold text-foreground">â‚¹{inr.format(r.value)}</span>
         </div>
       ))}
     </div>
