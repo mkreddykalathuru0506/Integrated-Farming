@@ -46,7 +46,7 @@ import {
   type BadgeProps,
   type DataTableColumn,
 } from '../ui';
-import { goToPanel } from './panelNav';
+import { goToPanel } from './SpaLink';
 
 const STATUS_VARIANT: Record<SalesOrder['status'], BadgeProps['variant']> = {
   DRAFT: 'muted',

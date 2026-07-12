@@ -10,6 +10,7 @@ import { useBatchCost, useCreateExpense, useExpenses } from '../api/finance.hook
 import { fmtDate, fmtInr, rupeesToPaise } from '../lib/format';
 import { pathForSection } from '../components/router';
 import { LoadMore } from './LoadMore';
+import { SpaLink } from './SpaLink';
 import {
   Badge,
   Button,
@@ -95,14 +96,7 @@ export function ExpensesPanel({ canWrite }: { farmId: string; canWrite: boolean 
       cell: (e) => {
         if (!e.batchId) return t('expenses.farmLevel');
         const code = batchById.get(e.batchId)?.code ?? e.batchId;
-        return (
-          <a
-            href={pathForSection('livestock', 'batches')}
-            className="font-medium text-primary underline-offset-2 hover:underline"
-          >
-            {code}
-          </a>
-        );
+        return <SpaLink href={pathForSection('livestock', 'batches')}>{code}</SpaLink>;
       },
     },
     {

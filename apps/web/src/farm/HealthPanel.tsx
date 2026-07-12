@@ -18,6 +18,7 @@ import {
 } from '../api/health.hooks';
 import { pathForSection } from '../components/router';
 import { fmtDate } from '../lib/format';
+import { SpaLink } from './SpaLink';
 import type { Animal, Batch } from './api';
 import {
   Badge,
@@ -187,12 +188,9 @@ export function HealthPanel({ canWrite }: { farmId: string; canWrite: boolean })
   ];
 
   const goBatches = (
-    <a
-      href={pathForSection('livestock', 'batches')}
-      className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-    >
+    <SpaLink href={pathForSection('livestock', 'batches')} className="text-sm">
       {t('health.goBatches')}
-    </a>
+    </SpaLink>
   );
 
   return (
