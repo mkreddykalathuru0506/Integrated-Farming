@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Leaf } from 'lucide-react';
+import { ArrowLeft, Leaf } from 'lucide-react';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { myFarmsRequest, type MyFarm } from './auth/api';
 import { PreAuth } from './auth/PreAuth';
@@ -8,6 +8,7 @@ import { LanguageToggle } from './components/LanguageToggle';
 import { AppLayout } from './components/AppLayout';
 import { FarmProvider } from './api/FarmContext';
 import { CreateFarm } from './farm/CreateFarm';
+import { LandingGate } from './landing/LandingGate';
 import { Card, ToastProvider, TooltipProvider } from './ui';
 
 const FARM_KEY = 'ifm.farm';
@@ -36,7 +37,8 @@ function BrandHeader() {
 }
 
 /** Centered, branded shell for unauthenticated / pre-farm states (login, create-farm, loading). */
-function CenterShell({ children }: { children: ReactNode }) {
+function CenterShell({ children, onBack }: { children: ReactNode; onBack?: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="grid min-h-dvh place-items-center bg-gradient-to-b from-secondary to-background px-4 py-10">
       <div className="w-full max-w-sm">
@@ -44,6 +46,16 @@ function CenterShell({ children }: { children: ReactNode }) {
           <BrandHeader />
           <LanguageToggle />
         </div>
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-3 inline-flex items-center gap-1.5 rounded text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            {t('landing.back')}
+          </button>
+        )}
         <Card className="shadow-elevated">{children}</Card>
       </div>
     </div>
@@ -113,7 +125,12 @@ function Authed() {
         onSelectFarm={setSelectedId}
         userName={user?.name ?? ''}
         userEmail={user?.email ?? ''}
-        onLogout={() => void logout()}
+        onLogout={() => {
+          // Signing out returns to the landing page: reset any deep-linked path
+          // to `/` before dropping the session (slice 11.11).
+          window.history.replaceState(null, '', '/');
+          void logout();
+        }}
       />
     </FarmProvider>
   );
@@ -132,9 +149,13 @@ function Root() {
   return user ? (
     <Authed />
   ) : (
-    <CenterShell>
-      <PreAuth />
-    </CenterShell>
+    <LandingGate
+      renderAuth={(initialView, onBack) => (
+        <CenterShell onBack={onBack}>
+          <PreAuth initialView={initialView} />
+        </CenterShell>
+      )}
+    />
   );
 }
 
