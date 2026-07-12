@@ -85,4 +85,37 @@ suite('Health + withdrawal gate (integration)', () => {
     const res = await request(app).post('/api/farm/health/medications').set(h(labourToken)).send({ batchId: batchActive, drugName: 'X', withdrawalDays: 3 });
     expect(res.status).toBe(403);
   });
+
+  it('GET /health/withdrawals returns one farm-wide row per batch under active withdrawal', async () => {
+    // batchActive got Enrofloxacin (7-day) earlier; batchClear's med has elapsed.
+    const res = await request(app).get('/api/farm/health/withdrawals').set(h(labourToken)); // member-readable
+    expect(res.status).toBe(200);
+    const rows = res.body.withdrawals as {
+      batchId: string;
+      batchCode: string;
+      drugName: string;
+      until: string;
+      currentCount: number;
+    }[];
+    const active = rows.find((r) => r.batchId === batchActive);
+    expect(active).toBeTruthy();
+    expect(active!.batchCode).toBe('HB-ACT');
+    expect(active!.drugName).toBe('Enrofloxacin');
+    expect(new Date(active!.until).getTime()).toBeGreaterThan(Date.now());
+    // The elapsed-withdrawal batch is NOT listed.
+    expect(rows.find((r) => r.batchId === batchClear)).toBeUndefined();
+  });
+
+  it('withdrawals is farm-scoped — another farm cannot see this farm rows', async () => {
+    // A fresh farm owned by the same user has its own (empty) withdrawal set.
+    const otherFarm = (
+      await request(app).post('/api/farms').set('Authorization', `Bearer ${ownerToken}`).send({ name: 'Health Farm 2' })
+    ).body.farm.id;
+    const res = await request(app)
+      .get('/api/farm/health/withdrawals')
+      .set({ Authorization: `Bearer ${ownerToken}`, 'X-Farm-Id': otherFarm });
+    expect(res.status).toBe(200);
+    expect(res.body.withdrawals).toEqual([]); // no leak of Health Farm's medication rows
+    await prisma.farm.deleteMany({ where: { id: otherFarm } });
+  });
 });

@@ -1,193 +1,588 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useMemo, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { formatPaise, rupeesToPaise } from '@ifm/shared';
-import { useAuth } from '../auth/AuthContext';
-import { isApiError } from '../lib/http';
-import { Badge, Button, DataRow, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
+import { Package, ShoppingCart, Soup } from 'lucide-react';
+import { useBatches } from '../api/hooks';
 import {
-  consumeFeed,
-  createFeedItem,
-  getFcr,
-  listBatches,
-  listFeedItems,
-  purchaseFeed,
-  type Batch,
-  type FeedItem,
-  type Fcr,
-} from './api';
+  useConsumeFeed,
+  useCreateFeedItem,
+  useCreateVendor,
+  useFcr,
+  useFeedItems,
+  usePurchaseFeed,
+  useVendors,
+} from '../api/finance.hooks';
+import { fmtInr, rupeesToPaise } from '../lib/format';
+import {
+  Badge,
+  Button,
+  Card,
+  CardSkeleton,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
+  Field,
+  Input,
+  InrInput,
+  PanelError,
+  PanelHeading,
+  PanelNote,
+  Select,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  type DataTableColumn,
+} from '../ui';
+import type { Batch, FeedItem } from './api';
 
-type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; items: FeedItem[] };
-const isLow = (i: FeedItem) => i.reorderThreshold !== null && Number(i.stockQty) < Number(i.reorderThreshold);
+// Quantities are Prisma Decimals (never money) — Number comparison is fine here.
+const isLow = (i: FeedItem) =>
+  i.reorderThreshold !== null && Number(i.stockQty) <= Number(i.reorderThreshold);
 
-export function FeedPanel({ farmId, canWrite }: { farmId: string; canWrite: boolean }) {
-  const { t } = useTranslation();
-  const { accessToken } = useAuth();
-  const [load, setLoad] = useState<Load>({ status: 'loading' });
-  const [name, setName] = useState('');
-  const [threshold, setThreshold] = useState('');
-  const [buyId, setBuyId] = useState('');
-  const [qty, setQty] = useState('');
-  const [price, setPrice] = useState('');
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [consBatch, setConsBatch] = useState('');
-  const [consQty, setConsQty] = useState('');
-  const [fcr, setFcr] = useState<Fcr | null>(null);
-  const [consError, setConsError] = useState<string | null>(null);
+const dayISO = (s: string) => `${s}T00:00:00.000Z`;
 
-  const refresh = useCallback(() => {
-    if (!accessToken) return;
-    setLoad({ status: 'loading' });
-    listFeedItems(accessToken, farmId)
-      .then((r) => {
-        setLoad({ status: 'ready', items: r.items });
-        setBuyId((prev) => prev || r.items[0]?.id || '');
-      })
-      .catch(() => setLoad({ status: 'error' }));
-  }, [accessToken, farmId]);
+const batchLabel = (b: Batch) =>
+  `${b.code}${b.name ? ` — ${b.name}` : ''} (${b.currentCount})`;
 
-  useEffect(refresh, [refresh]);
+// Validation messages are i18n keys, translated at render time.
+const qtyString = z
+  .string()
+  .refine((s) => Number.isFinite(Number(s)) && Number(s) > 0, 'feed.errQty');
+/** Rupee text that converts to a non-negative integer-paise string. */
+const paiseString = (msg: string) =>
+  z.string().refine((s) => {
+    const p = rupeesToPaise(s);
+    return p !== null && !p.startsWith('-');
+  }, msg);
 
-  useEffect(() => {
-    if (!accessToken) return;
-    listBatches(accessToken, farmId)
-      .then((r) => {
-        const active = r.batches.filter((b) => b.status === 'ACTIVE');
-        setBatches(active);
-        setConsBatch((prev) => prev || active[0]?.id || '');
-      })
-      .catch(() => undefined);
-  }, [accessToken, farmId]);
+const addItemSchema = z.object({
+  name: z.string().min(1, 'feed.errName'),
+  unit: z.string(),
+  threshold: z
+    .string()
+    .refine((s) => s === '' || (Number.isFinite(Number(s)) && Number(s) >= 0), 'feed.errThreshold'),
+});
+type AddItemValues = z.infer<typeof addItemSchema>;
 
-  useEffect(() => {
-    if (!accessToken || !consBatch) return;
-    getFcr(accessToken, farmId, consBatch)
-      .then(setFcr)
-      .catch(() => setFcr(null));
-  }, [accessToken, farmId, consBatch]);
+/** Sentinel option value that switches the vendor picker into quick-add mode. */
+const NEW_VENDOR = '__new__';
 
-  async function onConsume(e: FormEvent) {
-    e.preventDefault();
-    if (!accessToken || !buyId || !consBatch) return;
-    setConsError(null);
-    try {
-      await consumeFeed(accessToken, farmId, { feedItemId: buyId, batchId: consBatch, qty: Number(consQty) });
-      setConsQty('');
-      refresh();
-      getFcr(accessToken, farmId, consBatch).then(setFcr).catch(() => undefined);
-    } catch (err) {
-      setConsError(isApiError(err) && err.code === 'INSUFFICIENT_STOCK' ? t('feed.insufficient') : t('feed.consumeError'));
+const purchaseSchema = z
+  .object({
+    feedItemId: z.string().min(1, 'feed.errItem'),
+    qty: qtyString,
+    price: paiseString('feed.errPrice'),
+    /** '' (none) | vendor id | NEW_VENDOR (quick-add name below). */
+    vendorId: z.string(),
+    newVendorName: z.string().trim().max(160, 'feed.errVendorName'),
+    occurredAt: z.string(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.vendorId === NEW_VENDOR && v.newVendorName.trim() === '') {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['newVendorName'], message: 'feed.errVendorName' });
     }
-  }
+  });
+type PurchaseValues = z.infer<typeof purchaseSchema>;
 
-  async function onAddItem(e: FormEvent) {
-    e.preventDefault();
-    if (!accessToken) return;
-    await createFeedItem(accessToken, farmId, { name, reorderThreshold: threshold ? Number(threshold) : undefined })
-      .then(() => {
-        setName('');
-        setThreshold('');
-        refresh();
-      })
-      .catch(() => undefined);
-  }
+const consumeSchema = z.object({
+  feedItemId: z.string().min(1, 'feed.errItem'),
+  batchId: z.string().min(1, 'feed.errBatch'),
+  qty: qtyString,
+  occurredAt: z.string(),
+});
+type ConsumeValues = z.infer<typeof consumeSchema>;
 
-  async function onBuy(e: FormEvent) {
-    e.preventDefault();
-    if (!accessToken || !buyId) return;
-    await purchaseFeed(accessToken, farmId, { feedItemId: buyId, qty: Number(qty), unitPricePaise: String(rupeesToPaise(Number(price))) })
-      .then(() => {
-        setQty('');
-        setPrice('');
-        refresh();
-      })
-      .catch(() => undefined);
-  }
+export function FeedPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
+  const { t } = useTranslation();
+  const items = useFeedItems();
+  const batches = useBatches();
+  const activeBatches = useMemo(
+    () => (batches.data ?? []).filter((b) => b.status === 'ACTIVE'),
+    [batches.data],
+  );
+  const [dialog, setDialog] = useState<null | 'add' | 'buy' | 'consume'>(null);
+
+  const columns: DataTableColumn<FeedItem>[] = [
+    {
+      header: 'feed.colName',
+      accessor: 'name',
+      cell: (i) => <span className="font-medium text-foreground">{i.name}</span>,
+    },
+    {
+      header: 'feed.colStock',
+      accessor: (i) => Number(i.stockQty),
+      align: 'right',
+      cell: (i) => `${i.stockQty} ${i.unit}`,
+    },
+    {
+      header: 'feed.colReorder',
+      accessor: (i) => (i.reorderThreshold === null ? -1 : Number(i.reorderThreshold)),
+      align: 'right',
+      cell: (i) => (i.reorderThreshold === null ? '—' : `${i.reorderThreshold} ${i.unit}`),
+    },
+    {
+      header: 'feed.colLastPrice',
+      accessor: (i) => i.lastUnitPricePaise ?? '',
+      align: 'right',
+      cell: (i) => (i.lastUnitPricePaise === null ? '—' : `${fmtInr(i.lastUnitPricePaise)}/${i.unit}`),
+    },
+    {
+      header: 'feed.colStatus',
+      id: 'status',
+      cell: (i) => (isLow(i) ? <Badge variant="warning">{t('feed.low')}</Badge> : null),
+    },
+  ];
 
   return (
     <section className="space-y-3">
-      <PanelHeading>{t('feed.title')}</PanelHeading>
-
-      {load.status === 'loading' && <PanelNote>{t('feed.loading')}</PanelNote>}
-      {load.status === 'error' && <PanelError>{t('feed.error')}</PanelError>}
-      {load.status === 'ready' && load.items.length === 0 && <PanelNote>{t('feed.empty')}</PanelNote>}
-      {load.status === 'ready' && load.items.length > 0 && (
-        <ul className="space-y-2">
-          {load.items.map((i) => (
-            <DataRow key={i.id}>
-              <div className="min-w-0">
-                <p className="truncate font-medium text-foreground">{i.name}</p>
-                <p className="text-xs text-muted-foreground tabular">
-                  {i.stockQty} {i.unit}
-                  {i.lastUnitPricePaise ? ` · ${formatPaise(Number(i.lastUnitPricePaise))}/${i.unit}` : ''}
-                </p>
-              </div>
-              {isLow(i) && <Badge variant="warning">{t('feed.low')}</Badge>}
-            </DataRow>
-          ))}
-        </ul>
-      )}
-
-      {canWrite && (
-        <>
-          {load.status === 'ready' && load.items.length > 0 && (
-            <form onSubmit={onBuy} className="space-y-2 rounded-xl bg-secondary/60 p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('feed.buy')}</p>
-              <Select value={buyId} onChange={(e) => setBuyId(e.target.value)}>
-                {load.items.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name}
-                  </option>
-                ))}
-              </Select>
-              <div className="flex gap-2">
-                <Input type="number" min={0.01} step="0.01" value={qty} onChange={(e) => setQty(e.target.value)} placeholder={t('feed.qty')} required className="flex-1" />
-                <Input type="number" min={0} value={price} onChange={(e) => setPrice(e.target.value)} placeholder={t('feed.unitPrice')} required className="flex-1" />
-              </div>
-              <Button type="submit" full>
-                {t('feed.recordPurchase')}
+      <PanelHeading
+        action={
+          canWrite ? (
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setDialog('add')}>
+                {t('feed.addItem')}
               </Button>
-            </form>
+              <Button
+                size="sm"
+                onClick={() => setDialog('buy')}
+                disabled={(items.data?.length ?? 0) === 0}
+              >
+                <ShoppingCart aria-hidden /> {t('feed.buy')}
+              </Button>
+              <Button
+                size="sm"
+                variant="accent"
+                onClick={() => setDialog('consume')}
+                disabled={(items.data?.length ?? 0) === 0 || activeBatches.length === 0}
+              >
+                <Soup aria-hidden /> {t('feed.consume')}
+              </Button>
+            </div>
+          ) : undefined
+        }
+      >
+        {t('feed.title')}
+      </PanelHeading>
+
+      <Tabs defaultValue="inventory">
+        <TabsList>
+          <TabsTrigger value="inventory">{t('feed.tabInventory')}</TabsTrigger>
+          <TabsTrigger value="fcr">{t('feed.tabFcr')}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="inventory">
+          {items.isError ? (
+            <div className="space-y-2">
+              <PanelError>{t('feed.error')}</PanelError>
+              <Button size="sm" variant="secondary" onClick={() => void items.refetch()}>
+                {t('feed.retry')}
+              </Button>
+            </div>
+          ) : (
+            <DataTable
+              columns={columns}
+              data={items.data}
+              isLoading={items.isLoading}
+              searchable
+              searchPlaceholderKey="feed.search"
+              pageSize={10}
+              getRowId={(i) => i.id}
+              emptyState={
+                <EmptyState
+                  icon={Package}
+                  title={t('feed.empty')}
+                  description={t('feed.emptyDesc')}
+                  action={
+                    canWrite ? (
+                      <Button size="sm" onClick={() => setDialog('add')}>
+                        {t('feed.addItem')}
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              }
+            />
           )}
-          {load.status === 'ready' && load.items.length > 0 && batches.length > 0 && (
-            <form onSubmit={onConsume} className="space-y-2 rounded-xl bg-secondary/60 p-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('feed.consume')}</p>
-              <div className="flex gap-2">
-                <Select value={buyId} onChange={(e) => setBuyId(e.target.value)} className="flex-1">
-                  {load.items.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {i.name}
-                    </option>
-                  ))}
-                </Select>
-                <Select value={consBatch} onChange={(e) => setConsBatch(e.target.value)} className="flex-1">
-                  {batches.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.code}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input type="number" min={0.01} step="0.01" value={consQty} onChange={(e) => setConsQty(e.target.value)} placeholder={t('feed.qty')} required className="flex-1" />
-                <Button type="submit">{t('feed.recordConsume')}</Button>
-              </div>
-              {consError && <PanelError>{consError}</PanelError>}
-              {fcr && (
-                <p className="text-xs text-muted-foreground tabular">
-                  {t('feed.fcrLine', { feed: fcr.feedConsumedKg, gain: fcr.weightGainKg, fcr: fcr.fcr ?? '—' })}
-                </p>
-              )}
-            </form>
-          )}
-          <form onSubmit={onAddItem} className="space-y-2 rounded-xl bg-secondary/60 p-3">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('feed.name')} required />
-            <Input type="number" min={0} value={threshold} onChange={(e) => setThreshold(e.target.value)} placeholder={t('feed.reorder')} />
-            <Button type="submit" full variant="secondary">
-              {t('feed.addItem')}
-            </Button>
-          </form>
+        </TabsContent>
+
+        <TabsContent value="fcr">
+          <FcrCard batches={activeBatches} />
+        </TabsContent>
+      </Tabs>
+
+      <AddItemDialog open={dialog === 'add'} onOpenChange={(o) => setDialog(o ? 'add' : null)} />
+      {/* Purchase and consumption are fully separate forms — each owns its own
+          feed-item selection (fixes the legacy shared-buyId state bug). */}
+      <PurchaseDialog
+        open={dialog === 'buy'}
+        onOpenChange={(o) => setDialog(o ? 'buy' : null)}
+        items={items.data ?? []}
+      />
+      <ConsumeDialog
+        open={dialog === 'consume'}
+        onOpenChange={(o) => setDialog(o ? 'consume' : null)}
+        items={items.data ?? []}
+        batches={activeBatches}
+      />
+    </section>
+  );
+}
+
+/** Headline Phase-4 metric, promoted out of the old form corner into stat tiles. */
+function FcrCard({ batches }: { batches: Batch[] }) {
+  const { t } = useTranslation();
+  const [picked, setPicked] = useState('');
+  const batchId = picked || batches[0]?.id || '';
+  const fcr = useFcr(batchId || undefined);
+
+  if (batches.length === 0) return <PanelNote>{t('feed.fcrEmpty')}</PanelNote>;
+
+  return (
+    <div className="space-y-3">
+      <div className="max-w-sm">
+        <Field label={t('feed.fcrBatch')}>
+          <Select value={batchId} onChange={(e) => setPicked(e.target.value)}>
+            {batches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {batchLabel(b)}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+
+      {fcr.isLoading && <CardSkeleton />}
+      {fcr.isError && (
+        <div className="space-y-2">
+          <PanelError>{t('feed.fcrError')}</PanelError>
+          <Button size="sm" variant="secondary" onClick={() => void fcr.refetch()}>
+            {t('feed.retry')}
+          </Button>
+        </div>
+      )}
+      {fcr.data && (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatTile label={t('feed.fcrFeed')} value={`${fcr.data.feedConsumedKg} ${t('feed.kg')}`} />
+            <StatTile label={t('feed.fcrGain')} value={`${fcr.data.weightGainKg} ${t('feed.kg')}`} />
+            <StatTile label={t('feed.fcrCost')} value={fmtInr(fcr.data.feedCostPaise)} />
+            <StatTile label={t('feed.fcrRatio')} value={fcr.data.fcr === null ? '—' : String(fcr.data.fcr)} />
+          </div>
+          {fcr.data.fcr === null && <PanelNote>{t('feed.fcrHint')}</PanelNote>}
         </>
       )}
-    </section>
+    </div>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <Card className="p-4">
+      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="mt-2 font-display text-2xl font-semibold tabular text-foreground">{value}</p>
+    </Card>
+  );
+}
+
+function AddItemDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const { t } = useTranslation();
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t('feed.addItemTitle')}</DialogTitle>
+        </DialogHeader>
+        <AddItemForm onDone={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddItemForm({ onDone }: { onDone: () => void }) {
+  const { t } = useTranslation();
+  const createItem = useCreateFeedItem();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<AddItemValues>({
+    resolver: zodResolver(addItemSchema),
+    defaultValues: { name: '', unit: '', threshold: '' },
+  });
+  const err = (m?: string) => (m ? t(m) : undefined);
+
+  const onSubmit = handleSubmit((v) => {
+    createItem.mutate(
+      {
+        name: v.name,
+        unit: v.unit.trim() || undefined,
+        reorderThreshold: v.threshold === '' ? undefined : Number(v.threshold),
+      },
+      { onSuccess: onDone },
+    );
+  });
+
+  return (
+    <form onSubmit={(e) => void onSubmit(e)} className="space-y-3">
+      <Field label={t('feed.name')} required error={err(errors.name?.message)}>
+        <Input {...register('name')} placeholder={t('feed.namePlaceholder')} />
+      </Field>
+      <Field label={t('feed.unit')} hint={t('feed.unitHint')}>
+        <Input {...register('unit')} />
+      </Field>
+      <Field label={t('feed.reorder')} hint={t('feed.reorderHint')} error={err(errors.threshold?.message)}>
+        <Input type="number" min={0} step="0.01" inputMode="decimal" {...register('threshold')} />
+      </Field>
+      <DialogFooter>
+        <Button type="button" variant="secondary" onClick={onDone}>
+          {t('common.cancel')}
+        </Button>
+        <Button type="submit" loading={createItem.isPending}>
+          {t('feed.addItem')}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+function PurchaseDialog({
+  open,
+  onOpenChange,
+  items,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  items: FeedItem[];
+}) {
+  const { t } = useTranslation();
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t('feed.buyTitle')}</DialogTitle>
+        </DialogHeader>
+        <PurchaseForm items={items} onDone={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PurchaseForm({ items, onDone }: { items: FeedItem[]; onDone: () => void }) {
+  const { t } = useTranslation();
+  const purchase = usePurchaseFeed();
+  const vendors = useVendors();
+  const createVendor = useCreateVendor();
+  const {
+    register,
+    control,
+    watch,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<PurchaseValues>({
+    resolver: zodResolver(purchaseSchema),
+    defaultValues: {
+      feedItemId: items[0]?.id ?? '',
+      qty: '',
+      price: '',
+      vendorId: '',
+      newVendorName: '',
+      occurredAt: '',
+    },
+  });
+  const err = (m?: string) => (m ? t(m) : undefined);
+  const vendorChoice = watch('vendorId');
+
+  const onSubmit = handleSubmit(async (v) => {
+    // Quick-add path: create the vendor first, then purchase against its id.
+    let vendorId = v.vendorId && v.vendorId !== NEW_VENDOR ? v.vendorId : undefined;
+    if (v.vendorId === NEW_VENDOR) {
+      try {
+        const created = await createVendor.mutateAsync({ name: v.newVendorName.trim() });
+        vendorId = created.vendor.id;
+      } catch {
+        return; // toast already shown by useApiMutation; keep the dialog open
+      }
+    }
+    purchase.mutate(
+      {
+        feedItemId: v.feedItemId,
+        qty: Number(v.qty),
+        unitPricePaise: rupeesToPaise(v.price)!, // integer-paise string passthrough
+        vendorId, // dormant API field surfaced (11.6c deferred item)
+        occurredAt: v.occurredAt ? dayISO(v.occurredAt) : undefined,
+      },
+      { onSuccess: onDone },
+    );
+  });
+
+  return (
+    <form onSubmit={(e) => void onSubmit(e)} className="space-y-3">
+      <Field label={t('feed.item')} required error={err(errors.feedItemId?.message)}>
+        <Select {...register('feedItemId')}>
+          {items.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label={t('feed.qty')} required error={err(errors.qty?.message)}>
+          <Input type="number" min={0.01} step="0.01" inputMode="decimal" {...register('qty')} />
+        </Field>
+        <Controller
+          name="price"
+          control={control}
+          render={({ field }) => (
+            <Field label={t('feed.unitPrice')} required error={err(errors.price?.message)}>
+              <InrInput
+                value={field.value}
+                onChangePaise={(_, rupees) => field.onChange(rupees)}
+                onBlur={field.onBlur}
+              />
+            </Field>
+          )}
+        />
+      </div>
+      <Field label={t('feed.vendor')} hint={t('feed.vendorHint')}>
+        <Select {...register('vendorId')}>
+          <option value="">{t('feed.vendorNone')}</option>
+          {(vendors.data ?? []).map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name}
+            </option>
+          ))}
+          <option value={NEW_VENDOR}>{t('feed.vendorNew')}</option>
+        </Select>
+      </Field>
+      {vendorChoice === NEW_VENDOR && (
+        <Field label={t('feed.vendorName')} required error={err(errors.newVendorName?.message)}>
+          <Input {...register('newVendorName')} />
+        </Field>
+      )}
+      {/* Dormant API field surfaced: purchases are backdatable via occurredAt. */}
+      <Field label={t('feed.occurredAt')} hint={t('feed.occurredAtHint')}>
+        <Input type="date" {...register('occurredAt')} />
+      </Field>
+      <DialogFooter>
+        <Button type="button" variant="secondary" onClick={onDone}>
+          {t('common.cancel')}
+        </Button>
+        <Button type="submit" loading={purchase.isPending || createVendor.isPending}>
+          {t('feed.buy')}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+function ConsumeDialog({
+  open,
+  onOpenChange,
+  items,
+  batches,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  items: FeedItem[];
+  batches: Batch[];
+}) {
+  const { t } = useTranslation();
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t('feed.consumeTitle')}</DialogTitle>
+        </DialogHeader>
+        <ConsumeForm items={items} batches={batches} onDone={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ConsumeForm({
+  items,
+  batches,
+  onDone,
+}: {
+  items: FeedItem[];
+  batches: Batch[];
+  onDone: () => void;
+}) {
+  const { t } = useTranslation();
+  const consume = useConsumeFeed();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ConsumeValues>({
+    resolver: zodResolver(consumeSchema),
+    defaultValues: {
+      feedItemId: items[0]?.id ?? '',
+      batchId: batches[0]?.id ?? '',
+      qty: '',
+      occurredAt: '',
+    },
+  });
+  const err = (m?: string) => (m ? t(m) : undefined);
+
+  const onSubmit = handleSubmit((v) => {
+    consume.mutate(
+      {
+        feedItemId: v.feedItemId,
+        batchId: v.batchId,
+        qty: Number(v.qty),
+        occurredAt: v.occurredAt ? dayISO(v.occurredAt) : undefined,
+      },
+      { onSuccess: onDone },
+    );
+  });
+
+  return (
+    <form onSubmit={(e) => void onSubmit(e)} className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label={t('feed.item')} required error={err(errors.feedItemId?.message)}>
+          <Select {...register('feedItemId')}>
+            {items.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name} · {i.stockQty} {i.unit}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label={t('feed.batch')} required error={err(errors.batchId?.message)}>
+          <Select {...register('batchId')}>
+            {batches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {batchLabel(b)}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label={t('feed.qty')} required error={err(errors.qty?.message)}>
+          <Input type="number" min={0.01} step="0.01" inputMode="decimal" {...register('qty')} />
+        </Field>
+        <Field label={t('feed.consumedAt')} hint={t('feed.occurredAtHint')}>
+          <Input type="date" {...register('occurredAt')} />
+        </Field>
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="secondary" onClick={onDone}>
+          {t('common.cancel')}
+        </Button>
+        <Button type="submit" loading={consume.isPending}>
+          {t('feed.consume')}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

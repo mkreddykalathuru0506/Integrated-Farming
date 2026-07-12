@@ -48,6 +48,8 @@ export type Role = 'OWNER' | 'MANAGER' | 'VETERINARIAN' | 'ACCOUNTANT' | 'LABOUR
 
 /** Role-derived write permissions, computed once from the selected farm membership. */
 export type Perms = {
+  /** The membership role itself — for role-aware layouts (e.g. dashboard ordering). */
+  role?: Role;
   canWriteUnits: boolean;
   canWriteSettings: boolean;
   canWriteFinance: boolean;
@@ -56,9 +58,10 @@ export type Perms = {
 };
 
 export function permsFor(farm: MyFarm | undefined): Perms {
-  const role = farm?.role;
+  const role = farm?.role as Role | undefined;
   const canWriteUnits = role === 'OWNER' || role === 'MANAGER';
   return {
+    role,
     canWriteUnits,
     canWriteSettings: role === 'OWNER',
     canWriteFinance: canWriteUnits || role === 'ACCOUNTANT',
@@ -92,7 +95,9 @@ export const SECTIONS: Section[] = [
   {
     key: 'overview',
     icon: LayoutDashboard,
-    panels: [{ key: 'dashboard', full: true, render: (f, p) => <Dashboard farmId={f} canWrite={p.canWriteUnits} /> }],
+    panels: [
+      { key: 'dashboard', full: true, render: (f, p) => <Dashboard farmId={f} canWrite={p.canWriteUnits} role={p.role} /> },
+    ],
   },
   {
     key: 'livestock',
@@ -141,7 +146,7 @@ export const SECTIONS: Section[] = [
     icon: ShoppingCart,
     roles: ['OWNER', 'MANAGER', 'ACCOUNTANT', 'LABOUR'],
     panels: [
-      { key: 'orders', render: (f, p) => <OrdersPanel farmId={f} canWrite={p.canWriteFinance} /> },
+      { key: 'orders', render: (f, p) => <OrdersPanel farmId={f} canWrite={p.canWriteFinance} canAddCustomer={p.canBill} /> },
       { key: 'coldstorage', render: (f, p) => <ColdStoragePanel farmId={f} canWrite={p.canWriteUnits} canLog={p.canLogTemp} /> },
       { key: 'processing', render: (f, p) => <ProcessingPanel farmId={f} canWrite={p.canWriteUnits} /> },
       { key: 'dispatch', render: (f, p) => <DispatchPanel farmId={f} canWrite={p.canWriteUnits} /> },

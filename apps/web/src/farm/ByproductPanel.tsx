@@ -1,115 +1,283 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Plus, Recycle } from 'lucide-react';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { formatPaise, rupeesToPaise } from '@ifm/shared';
-import { useAuth } from '../auth/AuthContext';
-import { Button, DataRow, Input, PanelHeading, PanelNote, Select } from '../ui';
+import { z } from 'zod';
+import { useBatches, useUnits } from '../api/hooks';
+import { useByproducts, useCreateByproduct } from '../api/ops.hooks';
+import { fmtDate, fmtInr, rupeesToPaise } from '../lib/format';
+import { rupeeField } from '../lib/moneyField';
 import {
-  createByproductTransfer,
-  listByproducts,
-  listUnits,
-  type ByproductTransfer,
-  type Unit,
-} from './api';
+  Badge,
+  Button,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
+  Field,
+  InrInput,
+  Input,
+  PanelError,
+  PanelHeading,
+  Select,
+  type DataTableColumn,
+} from '../ui';
+import { SpaLink } from './SpaLink';
+import type { ByproductTransfer } from './api';
 
-const BYPRODUCT_TYPES = ['LITTER', 'MANURE', 'COMPOST', 'SLURRY', 'EGGSHELL', 'SLAUGHTER_WASTE', 'CROP_RESIDUE', 'OTHER'] as const;
+const BYPRODUCT_TYPES = [
+  'LITTER',
+  'MANURE',
+  'COMPOST',
+  'SLURRY',
+  'EGGSHELL',
+  'SLAUGHTER_WASTE',
+  'CROP_RESIDUE',
+  'OTHER',
+] as const;
 
-export function ByproductPanel({ farmId, canWrite }: { farmId: string; canWrite: boolean }) {
+/* ---------- record-transfer dialog ---------- */
+
+const transferSchema = z.object({
+  byproductType: z.string(),
+  fromUnitId: z.string(),
+  toUnitId: z.string(),
+  sourceBatchId: z.string(),
+  quantity: z.string().refine((v) => Number(v) > 0, 'byproducts.invalidQty'),
+  unit: z.string().trim().min(1, 'byproducts.unitRequired'),
+  credit: rupeeField('byproducts.invalidCredit', true),
+});
+type TransferValues = z.infer<typeof transferSchema>;
+
+function RecordTransferDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const { t } = useTranslation();
-  const { accessToken } = useAuth();
-  const [transfers, setTransfers] = useState<ByproductTransfer[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [type, setType] = useState<string>('LITTER');
-  const [fromUnitId, setFromUnitId] = useState('');
-  const [toUnitId, setToUnitId] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [credit, setCredit] = useState('');
+  const units = useUnits();
+  const batches = useBatches();
+  const createTransfer = useCreateByproduct();
+  const form = useForm<TransferValues>({
+    resolver: zodResolver(transferSchema),
+    defaultValues: {
+      byproductType: 'LITTER',
+      fromUnitId: '',
+      toUnitId: '',
+      sourceBatchId: '',
+      quantity: '',
+      unit: 'kg',
+      credit: '',
+    },
+  });
+  const err = (m?: string) => (m ? t(m) : undefined);
 
-  const unitName = useCallback((id: string | null) => (id ? units.find((u) => u.id === id)?.name ?? '—' : '—'), [units]);
+  const onSubmit = form.handleSubmit((v) => {
+    createTransfer.mutate(
+      {
+        byproductType: v.byproductType,
+        fromUnitId: v.fromUnitId || undefined,
+        toUnitId: v.toUnitId || undefined,
+        // dormant API field now exposed: tie the transfer back to its source batch
+        sourceBatchId: v.sourceBatchId || undefined,
+        quantity: Number(v.quantity),
+        unit: v.unit.trim(),
+        creditPaise: v.credit.trim() ? rupeesToPaise(v.credit)! : undefined,
+      },
+      {
+        onSuccess: () => {
+          form.reset();
+          onOpenChange(false);
+        },
+      },
+    );
+  });
 
-  const refresh = useCallback(() => {
-    if (!accessToken) return;
-    listByproducts(accessToken, farmId).then((r) => setTransfers(r.transfers)).catch(() => undefined);
-    listUnits(accessToken, farmId).then((r) => setUnits(r.units)).catch(() => undefined);
-  }, [accessToken, farmId]);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t('byproducts.record')}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={(e) => void onSubmit(e)} className="space-y-3" noValidate>
+          <Field label={t('byproducts.typeLabel')}>
+            <Select {...form.register('byproductType')}>
+              {BYPRODUCT_TYPES.map((bt) => (
+                <option key={bt} value={bt}>
+                  {t(`byproducts.type.${bt}`)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={t('byproducts.fromUnit')}>
+              <Select {...form.register('fromUnitId')}>
+                <option value="">{t('byproducts.fromAny')}</option>
+                {(units.data ?? []).map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label={t('byproducts.toUnit')}>
+              <Select {...form.register('toUnitId')}>
+                <option value="">{t('byproducts.toAny')}</option>
+                {(units.data ?? []).map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <Field label={t('byproducts.sourceBatch')}>
+            <Select {...form.register('sourceBatchId')}>
+              <option value="">{t('byproducts.sourceNone')}</option>
+              {(batches.data ?? []).map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.code}
+                  {b.name ? ` · ${b.name}` : ''}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label={t('byproducts.qty')} required error={err(form.formState.errors.quantity?.message)}>
+              <Input type="number" min={0.01} step="0.01" inputMode="decimal" {...form.register('quantity')} />
+            </Field>
+            <Field label={t('byproducts.unit')} required error={err(form.formState.errors.unit?.message)}>
+              <Input {...form.register('unit')} />
+            </Field>
+            <Controller
+              control={form.control}
+              name="credit"
+              render={({ field }) => (
+                <Field label={t('byproducts.credit')} error={err(form.formState.errors.credit?.message)}>
+                  <InrInput value={field.value} onChangePaise={(_p, rupees) => field.onChange(rupees)} />
+                </Field>
+              )}
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" loading={createTransfer.isPending}>
+              {t('byproducts.transfer')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-  useEffect(refresh, [refresh]);
+/* ---------- panel ---------- */
 
-  async function onCreate(e: FormEvent) {
-    e.preventDefault();
-    if (!accessToken) return;
-    await createByproductTransfer(accessToken, farmId, {
-      byproductType: type,
-      fromUnitId: fromUnitId || undefined,
-      toUnitId: toUnitId || undefined,
-      quantity: Number(quantity),
-      creditPaise: credit ? String(rupeesToPaise(Number(credit))) : undefined,
-    })
-      .then(() => {
-        setQuantity('');
-        setCredit('');
-        refresh();
-      })
-      .catch(() => undefined);
-  }
+export function ByproductPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
+  const { t } = useTranslation();
+  const transfers = useByproducts();
+  const units = useUnits();
+  const batches = useBatches();
+  const [recordOpen, setRecordOpen] = useState(false);
+
+  const unitName = (id: string | null) =>
+    id ? (units.data?.find((u) => u.id === id)?.name ?? '—') : '—';
+  const batchCode = (id: string | null) =>
+    id ? (batches.data?.find((b) => b.id === id)?.code ?? '—') : '—';
+
+  const columns: DataTableColumn<ByproductTransfer>[] = [
+    {
+      header: 'byproducts.colDate',
+      accessor: 'transferredAt',
+      cell: (tr) => fmtDate(tr.transferredAt),
+    },
+    {
+      header: 'byproducts.colType',
+      accessor: (tr) => t(`byproducts.type.${tr.byproductType}`),
+      cell: (tr) => <Badge variant="success">{t(`byproducts.type.${tr.byproductType}`)}</Badge>,
+    },
+    {
+      header: 'byproducts.colRoute',
+      accessor: (tr) => `${unitName(tr.fromUnitId)} → ${unitName(tr.toUnitId)}`,
+    },
+    {
+      header: 'byproducts.colBatch',
+      accessor: (tr) => batchCode(tr.sourceBatchId),
+    },
+    {
+      header: 'byproducts.colQty',
+      align: 'right',
+      accessor: (tr) => Number(tr.quantity),
+      cell: (tr) => `${tr.quantity} ${tr.unit}`,
+    },
+    {
+      header: 'byproducts.colCredit',
+      align: 'right',
+      accessor: (tr) => Number(tr.creditPaise),
+      cell: (tr) =>
+        Number(tr.creditPaise) > 0 ? (
+          <span className="text-success">{fmtInr(tr.creditPaise)}</span>
+        ) : (
+          '—'
+        ),
+    },
+  ];
 
   return (
     <section className="space-y-3">
-      <PanelHeading>{t('byproducts.title')}</PanelHeading>
+      <PanelHeading
+        action={
+          canWrite && (
+            <Button type="button" size="sm" onClick={() => setRecordOpen(true)}>
+              <Plus aria-hidden />
+              {t('byproducts.record')}
+            </Button>
+          )
+        }
+      >
+        {t('byproducts.title')}
+      </PanelHeading>
 
-      {transfers.length === 0 ? (
-        <PanelNote>{t('byproducts.empty')}</PanelNote>
-      ) : (
-        <ul className="space-y-1 text-sm">
-          {transfers.slice(0, 8).map((tr) => (
-            <DataRow key={tr.id} className="py-1.5">
-              <span className="truncate text-foreground tabular">
-                {t(`byproducts.type.${tr.byproductType}`)} · {tr.quantity}
-                {tr.unit} · {unitName(tr.fromUnitId)} → {unitName(tr.toUnitId)}
-              </span>
-              {Number(tr.creditPaise) > 0 && <span className="shrink-0 text-success tabular">{formatPaise(Number(tr.creditPaise))}</span>}
-            </DataRow>
-          ))}
-        </ul>
-      )}
-
-      {canWrite && (
-        <form onSubmit={onCreate} className="space-y-2 rounded-xl bg-secondary/60 p-3">
-          <p className="text-xs text-muted-foreground">{t('byproducts.record')}</p>
-          <Select value={type} onChange={(e) => setType(e.target.value)}>
-            {BYPRODUCT_TYPES.map((bt) => (
-              <option key={bt} value={bt}>
-                {t(`byproducts.type.${bt}`)}
-              </option>
-            ))}
-          </Select>
-          <div className="flex gap-2">
-            <Select value={fromUnitId} onChange={(e) => setFromUnitId(e.target.value)} className="flex-1">
-              <option value="">{t('byproducts.fromAny')}</option>
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </Select>
-            <span className="self-center text-muted-foreground">→</span>
-            <Select value={toUnitId} onChange={(e) => setToUnitId(e.target.value)} className="flex-1">
-              <option value="">{t('byproducts.toAny')}</option>
-              {units.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="flex gap-2">
-            <Input type="number" min={0.01} step="0.01" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder={t('byproducts.qtyKg')} required className="flex-1" />
-            <Input type="number" min={0} value={credit} onChange={(e) => setCredit(e.target.value)} placeholder={t('byproducts.credit')} className="flex-1" />
-          </div>
-          <Button type="submit" full>
-            {t('byproducts.transfer')}
+      {transfers.isError ? (
+        <div className="space-y-2">
+          <PanelError>{t('byproducts.error')}</PanelError>
+          <Button type="button" variant="secondary" size="sm" onClick={() => void transfers.refetch()}>
+            {t('byproducts.retry')}
           </Button>
-        </form>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={transfers.data}
+          isLoading={transfers.isPending}
+          searchable
+          pageSize={10}
+          getRowId={(tr) => tr.id}
+          emptyState={
+            <EmptyState
+              icon={Recycle}
+              title={t('byproducts.empty')}
+              description={t('byproducts.emptyDesc')}
+              action={
+                canWrite && (
+                  <Button type="button" onClick={() => setRecordOpen(true)}>
+                    <Plus aria-hidden />
+                    {t('byproducts.record')}
+                  </Button>
+                )
+              }
+            />
+          }
+        />
       )}
+
+      <p className="text-sm">
+        <SpaLink href="/maintenance/circularity">{t('byproducts.seeCircularity')} →</SpaLink>
+      </p>
+
+      <RecordTransferDialog open={recordOpen} onOpenChange={setRecordOpen} />
     </section>
   );
 }

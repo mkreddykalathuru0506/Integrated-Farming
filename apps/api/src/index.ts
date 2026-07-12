@@ -2,6 +2,7 @@ import { createApp } from './app';
 import { env } from './env';
 import { startTaskEngine } from './jobs/task-engine';
 import { startReportEngine } from './jobs/report-engine';
+import { startIntelligenceEngine } from './jobs/intelligence-engine';
 
 const app = createApp();
 
@@ -20,5 +21,10 @@ if (env.NODE_ENV !== 'test') {
     startReportEngine();
   } catch (err) {
     console.error('[report-engine] failed to start', err);
+  }
+  try {
+    startIntelligenceEngine();
+  } catch (err) {
+    console.error('[intelligence-sweep] failed to start', err);
   }
 }

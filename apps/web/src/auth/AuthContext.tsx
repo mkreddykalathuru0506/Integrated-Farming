@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { resetRequestFetch, setRequestFetch } from '../lib/http';
+import { clearQueue } from '../offline/queue';
 import {
   changePasswordRequest,
   loginRequest,
@@ -105,6 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     // Drop cached farm data so nothing leaks into the next signed-in user.
     queryClient.clear();
+    // Also drop any queued offline daily-log writes (no-throw; idb may be absent).
+    void clearQueue().catch(() => undefined);
   }, [queryClient]);
 
   /**

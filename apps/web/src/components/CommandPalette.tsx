@@ -6,7 +6,7 @@ import { Search } from 'lucide-react';
 import { useFarmApi } from '../api/FarmContext';
 import { Dialog, DialogContent, DialogTitle, Kbd, Spinner, cn } from '../ui';
 import { buildCommands, targetFor, type CommandItem, type NavTarget } from './commands';
-import type { Role } from './nav';
+import { visibleSections, type Role } from './nav';
 
 /** GET /api/farm/search response (apps/api/src/search/service.ts). */
 type SearchGroup = {
@@ -94,12 +94,20 @@ export function CommandPalette({ open, onOpenChange, role, onNavigate }: Props) 
   const navItems = filtered.filter((c) => c.group === 'navigate');
   const actionItems = filtered.filter((c) => c.group === 'actions');
 
+  // The search API returns hits for every section to any member; drop hits whose
+  // destination section is hidden for this role so a hit never deep-links to Overview.
+  const visibleKeys = useMemo(() => new Set(visibleSections(role).map((s) => s.key)), [role]);
+  const searchGroups = useMemo(
+    () => (search.data?.groups ?? []).filter((g) => visibleKeys.has(g.route.section)),
+    [search.data, visibleKeys],
+  );
+
   function run(target: NavTarget) {
     onNavigate(target);
     onOpenChange(false);
   }
 
-  const hitCount = searchEnabled ? (search.data?.total ?? 0) : 0;
+  const hitCount = searchEnabled ? searchGroups.reduce((n, g) => n + g.items.length, 0) : 0;
   const showEmpty =
     navItems.length + actionItems.length + hitCount === 0 &&
     !(searchEnabled && (search.isFetching || search.isError));
@@ -173,9 +181,9 @@ export function CommandPalette({ open, onOpenChange, role, onNavigate }: Props) 
                 {t('errors.generic')}
               </p>
             )}
-            {searchEnabled && search.data && search.data.total > 0 && (
+            {searchEnabled && hitCount > 0 && (
               <Command.Group heading={t('palette.groups.results')} className={groupClass}>
-                {search.data.groups.flatMap((g) =>
+                {searchGroups.flatMap((g) =>
                   g.items.map((item) => {
                     const id = String(item.id);
                     return (

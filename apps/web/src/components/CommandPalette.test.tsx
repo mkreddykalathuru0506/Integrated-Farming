@@ -11,6 +11,10 @@ import { useHotkeys } from './useHotkeys';
 import type { NavTarget } from './commands';
 import type { Role } from './nav';
 
+// Dialog-heavy userEvent flows can exceed the 5s default under parallel CI load
+// — allow more headroom for this file (same pattern as the sales sweep files).
+vi.setConfig({ testTimeout: 20_000 });
+
 beforeAll(() => {
   // cmdk scrolls the selected item into view; jsdom has no scrollIntoView.
   Element.prototype.scrollIntoView = vi.fn();
@@ -132,5 +136,32 @@ describe('CommandPalette', () => {
 
     await user.click(hit);
     expect(onNavigate).toHaveBeenCalledWith({ key: 'livestock', panel: 'batches' });
+  });
+
+  it('role-gates search hits: a LABOUR user never sees an invoice hit routing to Finance', async () => {
+    mockFetchRoutes({
+      '/api/farm/search': (_init, url) => {
+        const q = new URL(url).searchParams.get('q') ?? '';
+        return jsonResponse(200, {
+          q,
+          total: 1,
+          groups: [
+            {
+              type: 'invoice',
+              route: { section: 'finance', panel: 'invoices' },
+              items: [{ id: 'i1', invoiceNumber: 'INV-2026-0042' }],
+            },
+          ],
+        });
+      },
+    });
+    // Finance is hidden from LABOUR — the hit must be dropped (would deep-link to Overview).
+    renderPalette('LABOUR');
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+
+    const user = userEvent.setup();
+    await user.type(await screen.findByPlaceholderText('Type a command or search…'), 'INV-2026');
+    await waitFor(() => expect(screen.getByText('No results')).toBeInTheDocument());
+    expect(screen.queryByText('INV-2026-0042')).not.toBeInTheDocument();
   });
 });

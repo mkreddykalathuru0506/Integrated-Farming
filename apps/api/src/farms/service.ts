@@ -9,7 +9,13 @@ import type {
   UpdateUnitInput,
 } from './schemas';
 
-type FarmRow = { id: string; name: string; state: string | null; district: string | null };
+type FarmRow = {
+  id: string;
+  name: string;
+  state: string | null;
+  district: string | null;
+  createdAt: Date;
+};
 type SettingRow = {
   timezone: string;
   currency: string;
@@ -31,7 +37,9 @@ type UnitRow = {
   createdAt: Date;
 };
 
-const FARM_SELECT = { id: true, name: true, state: true, district: true } as const;
+// createdAt is additive (slice 11.8a): the dashboard's "All time" finance
+// period starts at farm creation. Date serializes to ISO via res.json.
+const FARM_SELECT = { id: true, name: true, state: true, district: true, createdAt: true } as const;
 const UNIT_SELECT = {
   id: true,
   name: true,
@@ -182,4 +190,27 @@ export async function updateUnit(
 export async function softDeleteUnit(farmId: string, id: string, userId: string) {
   await findUnitInFarm(farmId, id);
   await prisma.unit.update({ where: { id }, data: { deletedAt: new Date(), updatedBy: userId } });
+}
+
+/**
+ * New-farm onboarding progress (slice 11.7, read-only): cheap `count()`s over the five
+ * setup milestones the dashboard checklist walks a new owner through.
+ */
+export async function onboarding(farmId: string) {
+  const [units, batches, workers, dailyLogs, invoices] = await Promise.all([
+    prisma.unit.count({ where: { farmId, deletedAt: null } }),
+    prisma.batch.count({ where: { farmId, deletedAt: null } }),
+    prisma.worker.count({ where: { farmId, deletedAt: null } }),
+    prisma.dailyLog.count({ where: { farmId } }),
+    prisma.invoice.count({ where: { farmId } }),
+  ]);
+  const steps = {
+    units: { done: units > 0 },
+    batches: { done: batches > 0 },
+    workers: { done: workers > 0 },
+    dailyLogs: { done: dailyLogs > 0 },
+    invoices: { done: invoices > 0 },
+  };
+  const completedCount = Object.values(steps).filter((s) => s.done).length;
+  return { steps, completedCount, total: Object.keys(steps).length };
 }

@@ -2,6 +2,7 @@ import type { EventType, Prisma } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
 import { dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
+import { evaluateMortalitySpike } from '../intelligence/service';
 import { isValidLoss } from './counts';
 import type { RecordMortalityInput, RecordMovementInput } from './schemas';
 
@@ -39,6 +40,17 @@ export async function recordMortality(farmId: string, userId: string, input: Rec
       data: { farmId, batchId: batch.id, type: input.type, count, cause: input.cause, notes: input.notes, occurredAt, createdBy: userId },
     }),
   ]);
+
+  // Mortality-spike rule (slice 11.7) — after the transaction, isolated so a rule/flag
+  // failure can never fail the mortality write itself.
+  if (input.type === 'MORTALITY') {
+    try {
+      await evaluateMortalitySpike(farmId, { id: batch.id, code: batch.code, currentCount: updated.currentCount });
+    } catch (err) {
+      console.error('[mortality-spike] evaluation failed', err);
+    }
+  }
+
   return { event, currentCount: updated.currentCount };
 }
 

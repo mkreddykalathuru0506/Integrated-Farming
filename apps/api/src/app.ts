@@ -3,6 +3,7 @@ import cors, { type CorsOptions } from 'cors';
 import helmet from 'helmet';
 import { authRouter } from './auth/routes';
 import { meRouter, farmRouter } from './rbac/routes';
+import { profileRouter } from './me/routes';
 import { farmsRouter, farmCrudRouter } from './farms/routes';
 import {
   speciesRouter,
@@ -27,7 +28,7 @@ import { processingRouter, lotRouter } from './processing/routes';
 import { dispatchRouter } from './dispatch/routes';
 import { assetRouter } from './assets/routes';
 import { byproductRouter } from './byproducts/routes';
-import { weatherRouter, riskRouter } from './intelligence/routes';
+import { weatherRouter, riskRouter, intelligenceRouter } from './intelligence/routes';
 import { marketRouter } from './market/routes';
 import { alertRouter, dashboardRouter } from './notifications/routes';
 import { reportRouter } from './reports/routes';
@@ -95,6 +96,7 @@ export function createApp(): Express {
   app.use('/api/auth', authLimiter);
   app.use('/api/auth', authRouter);
   app.use('/api/me', meRouter);
+  app.use('/api/me', profileRouter); // profile + sessions (slice 11.3)
   // Audit farm creation (POST /api/farms) and every successful mutation under /api/farm
   // (Brief §7). Mounted before the routers so it observes the whole subtree; it reads req
   // context after auth runs downstream. Note `/api/farm` does not match `/api/farms`.
@@ -133,6 +135,7 @@ export function createApp(): Express {
   app.use('/api/farm/byproducts', byproductRouter);
   app.use('/api/farm/weather', weatherRouter);
   app.use('/api/farm/risk', riskRouter);
+  app.use('/api/farm/intelligence', intelligenceRouter);
   app.use('/api/farm/market', marketRouter);
   app.use('/api/farm/alerts', alertRouter);
   app.use('/api/farm/dashboard', dashboardRouter);

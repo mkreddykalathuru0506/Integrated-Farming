@@ -29,6 +29,17 @@ function toDate(value: string | Date | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+const isoDayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: IST });
+
+/**
+ * Today's calendar date in Asia/Kolkata as `YYYY-MM-DD` — the correct default for
+ * date inputs and "is today" checks. Never use `new Date().toISOString().slice(0,10)`:
+ * that is the UTC day, which is the PREVIOUS day for 00:00–05:30 IST (Brief §6).
+ */
+export function todayIST(now: Date = new Date()): string {
+  return isoDayFmt.format(now);
+}
+
 /** ISO timestamp/Date → `DD-MM-YYYY` in Asia/Kolkata. Invalid/empty input → ''. */
 export function fmtDate(value: string | Date | null | undefined): string {
   const d = toDate(value);

@@ -6,4 +6,9 @@ export default {
     LOW_STOCK: 'कम स्टॉक',
     OTHER: 'चेतावनी',
   },
+  severity: {
+    CRITICAL: 'गंभीर',
+    WARNING: 'चेतावनी',
+    INFO: 'सूचना',
+  },
 };
