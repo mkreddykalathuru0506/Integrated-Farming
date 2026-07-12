@@ -55,6 +55,7 @@ model User {
 
   memberships   Membership[]
   refreshTokens RefreshToken[]
+  otpTokens     OtpToken[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -62,15 +63,42 @@ model User {
 }
 
 model RefreshToken {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash String    @unique
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  // Session metadata (slice 11.3) — lets a user recognize + revoke their devices.
+  ip         String?
+  userAgent  String?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   @@index([userId])
+}
+
+// One-time codes for OTP login, password reset and (future) email verification (slice 11.3).
+enum OtpPurpose {
+  LOGIN
+  RESET_PASSWORD
+  VERIFY_EMAIL
+}
+
+model OtpToken {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose     OtpPurpose
+  channel     String // "email" (SMS/WhatsApp later, behind NotificationService)
+  destination String // where the code was sent, snapshotted
+  codeHash    String // HMAC-SHA256(code, OTP_PEPPER) hex — never the raw code
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  attempts    Int        @default(0)
+  createdAt   DateTime   @default(now())
+
+  @@index([userId, purpose])
 }
 
 model Farm {

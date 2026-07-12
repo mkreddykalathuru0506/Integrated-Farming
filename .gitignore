@@ -42,3 +42,6 @@ pgdata/
 .cache/
 .turbo/
 .vite/
+
+# Claude agent worktrees (local scratch checkouts)
+.claude/worktrees/

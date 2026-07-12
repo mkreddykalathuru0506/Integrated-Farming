@@ -65,6 +65,17 @@ suite('Farm & Unit CRUD (integration)', () => {
     expect(f.role).toBe('OWNER');
   });
 
+  it('GET /api/farm returns createdAt (ISO) for the dashboard all-time period', async () => {
+    const res = await request(app)
+      .get('/api/farm')
+      .set('Authorization', `Bearer ${token1}`)
+      .set('X-Farm-Id', farm1);
+    expect(res.status).toBe(200);
+    expect(res.body.farm.id).toBe(farm1);
+    expect(typeof res.body.farm.createdAt).toBe('string');
+    expect(Number.isNaN(new Date(res.body.farm.createdAt).getTime())).toBe(false);
+  });
+
   it('default settings row was created', async () => {
     const res = await request(app)
       .get('/api/farm/settings')

@@ -78,6 +78,48 @@ export async function getWithdrawalStatus(farmId: string, t: Target) {
   return { underWithdrawal: isUnderWithdrawal(meds, now), until: activeUntil(meds, now) };
 }
 
+export type ActiveWithdrawal = {
+  batchId: string;
+  batchCode: string;
+  batchName: string | null;
+  currentCount: number;
+  drugName: string;
+  until: Date;
+};
+
+/**
+ * Farm-wide active batch withdrawals in ONE query (replaces the web's N-per-batch
+ * fan-out, slice 11.8a). Returns one effective row per batch — the medication with
+ * the latest `withdrawalUntil` binds the sale-block, and its drugName is surfaced.
+ */
+export async function listActiveWithdrawals(farmId: string): Promise<ActiveWithdrawal[]> {
+  const now = new Date();
+  const meds = await prisma.medicationLog.findMany({
+    where: { farmId, batchId: { not: null }, withdrawalUntil: { gt: now } },
+    orderBy: { withdrawalUntil: 'desc' },
+    select: {
+      batchId: true,
+      drugName: true,
+      withdrawalUntil: true,
+      batch: { select: { code: true, name: true, currentCount: true, deletedAt: true } },
+    },
+  });
+  const byBatch = new Map<string, ActiveWithdrawal>();
+  for (const m of meds) {
+    // meds are ordered by withdrawalUntil desc, so the first row per batch is the binding one.
+    if (!m.batchId || !m.batch || m.batch.deletedAt || byBatch.has(m.batchId)) continue;
+    byBatch.set(m.batchId, {
+      batchId: m.batchId,
+      batchCode: m.batch.code,
+      batchName: m.batch.name,
+      currentCount: m.batch.currentCount,
+      drugName: m.drugName,
+      until: m.withdrawalUntil,
+    });
+  }
+  return [...byBatch.values()];
+}
+
 export async function markSaleReady(farmId: string, userId: string, input: SaleReadyInput) {
   await assertTarget(farmId, input);
   const meds = await medsFor(farmId, input);

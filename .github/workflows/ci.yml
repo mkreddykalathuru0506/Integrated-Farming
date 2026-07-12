@@ -61,5 +61,10 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Brief §11 gate: ≥80% lines on the pure domain-logic modules. Re-runs
+      # only the 13 pure unit-test files with v8 instrumentation (~4s).
+      - name: Domain-logic coverage gate (api)
+        run: pnpm --filter @ifm/api test:coverage
+
       - name: Build
         run: pnpm build
