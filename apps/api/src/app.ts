@@ -28,10 +28,13 @@ import { processingRouter, lotRouter } from './processing/routes';
 import { dispatchRouter } from './dispatch/routes';
 import { assetRouter } from './assets/routes';
 import { byproductRouter } from './byproducts/routes';
-import { weatherRouter, riskRouter } from './intelligence/routes';
+import { weatherRouter, riskRouter, intelligenceRouter } from './intelligence/routes';
 import { marketRouter } from './market/routes';
 import { alertRouter, dashboardRouter } from './notifications/routes';
 import { reportRouter } from './reports/routes';
+import { searchRouter } from './search/routes';
+import { auditReadRouter } from './audit/routes';
+import { dueRouter } from './due/routes';
 import { authLimiter } from './security/rate-limit';
 import { auditWrite } from './security/audit';
 import { prisma } from './prisma';
@@ -132,10 +135,14 @@ export function createApp(): Express {
   app.use('/api/farm/byproducts', byproductRouter);
   app.use('/api/farm/weather', weatherRouter);
   app.use('/api/farm/risk', riskRouter);
+  app.use('/api/farm/intelligence', intelligenceRouter);
   app.use('/api/farm/market', marketRouter);
   app.use('/api/farm/alerts', alertRouter);
   app.use('/api/farm/dashboard', dashboardRouter);
   app.use('/api/farm/reports', reportRouter);
+  app.use('/api/farm/search', searchRouter);
+  app.use('/api/farm/audit', auditReadRouter);
+  app.use('/api/farm/due', dueRouter);
 
   // JSON 404 fallback — no dead ends, consistent error shape.
   app.use((_req, res) => {

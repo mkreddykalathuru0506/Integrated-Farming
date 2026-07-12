@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma';
+import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import { priceDropRisk } from '../intelligence/rules';
 import { raiseFlag } from '../intelligence/service';
 import { makeMarketRateProvider, MockMarketRateProvider, type MarketObservation } from './provider';
@@ -100,14 +101,75 @@ export async function refreshRate(farmId: string, userId: string, input: Refresh
   });
 }
 
+const RATE_SELECT = {
+  id: true,
+  commodity: true,
+  market: true,
+  pricePaise: true,
+  unit: true,
+  source: true,
+  observedAt: true,
+  fetchedAt: true,
+} satisfies Prisma.MarketRateSelect;
+
+export type RateListFilter = { q?: string; from?: Date; to?: Date };
+
+function rateWhere(farmId: string, f: RateListFilter): Prisma.MarketRateWhereInput {
+  const where: Prisma.MarketRateWhereInput = { farmId };
+  if (f.q) where.commodity = contains(f.q);
+  const range = dateRange(f.from, f.to);
+  if (range) where.observedAt = range;
+  return where;
+}
+
 /** Latest rate per commodity (newest first). */
-export async function listRates(farmId: string) {
+export async function listRates(farmId: string, filter: RateListFilter = {}) {
   const rows = await prisma.marketRate.findMany({
-    where: { farmId },
+    where: rateWhere(farmId, filter),
     orderBy: { fetchedAt: 'desc' },
-    select: { id: true, commodity: true, market: true, pricePaise: true, unit: true, source: true, observedAt: true, fetchedAt: true },
+    select: RATE_SELECT,
   });
   const latestByCommodity = new Map<string, (typeof rows)[number]>();
   for (const r of rows) if (!latestByCommodity.has(r.commodity)) latestByCommodity.set(r.commodity, r);
   return [...latestByCommodity.values()].map(rateDTO);
+}
+
+/** Paged mode returns raw observations (newest first) — not latest-per-commodity. */
+export async function listRatesPaged(farmId: string, p: ListQuery & RateListFilter) {
+  const where = rateWhere(farmId, p);
+  const [rows, total] = await Promise.all([
+    prisma.marketRate.findMany({ where, orderBy: { observedAt: 'desc' }, ...skipTake(p), select: RATE_SELECT }),
+    prisma.marketRate.count({ where }),
+  ]);
+  return envelope(rows.map(rateDTO), total, p);
+}
+
+/**
+ * Full observation history for one commodity, asc by observedAt (chart-ready).
+ * Default window = last 90 days when from/to absent; capped at 1000 rows.
+ */
+export async function rateHistory(
+  farmId: string,
+  commodity: string,
+  p: { from?: Date; to?: Date; page?: number; pageSize: number },
+) {
+  const from = p.from ?? (p.to ? undefined : new Date(Date.now() - 90 * 86_400_000));
+  const where: Prisma.MarketRateWhereInput = { farmId, commodity };
+  const range = dateRange(from, p.to);
+  if (range) where.observedAt = range;
+
+  if (p.page) {
+    const [rows, total] = await Promise.all([
+      prisma.marketRate.findMany({ where, orderBy: { observedAt: 'asc' }, ...skipTake(p), select: RATE_SELECT }),
+      prisma.marketRate.count({ where }),
+    ]);
+    return envelope(rows.map(rateDTO), total, p);
+  }
+  const rows = await prisma.marketRate.findMany({
+    where,
+    orderBy: { observedAt: 'asc' },
+    take: 1000,
+    select: RATE_SELECT,
+  });
+  return { rates: rows.map(rateDTO) };
 }

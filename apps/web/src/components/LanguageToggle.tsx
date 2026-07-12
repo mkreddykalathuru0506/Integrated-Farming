@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { SUPPORTED_LANGS } from '../i18n';
+import { SUPPORTED_LANGS, changeLanguage } from '../i18n';
 import { cn } from '../ui';
 
 export function LanguageToggle() {
@@ -12,7 +12,7 @@ export function LanguageToggle() {
           <button
             key={l.code}
             type="button"
-            onClick={() => void i18n.changeLanguage(l.code)}
+            onClick={() => void changeLanguage(l.code)}
             aria-pressed={active}
             className={cn(
               'min-h-9 rounded px-2 text-xs font-semibold transition',

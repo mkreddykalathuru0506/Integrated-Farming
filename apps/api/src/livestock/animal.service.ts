@@ -1,6 +1,7 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, type AnimalStatus } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
+import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import { firstStage } from './stage-machine';
 import type { CreateAnimalInput, UpdateAnimalInput } from './schemas';
 
@@ -71,12 +72,33 @@ export async function createAnimal(farmId: string, userId: string, input: Create
   }
 }
 
-export async function listAnimals(farmId: string) {
+export type AnimalListFilter = { q?: string; status?: AnimalStatus; from?: Date; to?: Date };
+
+/** Shared where-builder so the legacy list and the paged list can't drift. */
+function animalWhere(farmId: string, f: AnimalListFilter): Prisma.AnimalWhereInput {
+  const where: Prisma.AnimalWhereInput = { farmId, deletedAt: null };
+  if (f.q) where.OR = [{ tagNumber: contains(f.q) }, { name: contains(f.q) }];
+  if (f.status) where.status = f.status;
+  const range = dateRange(f.from, f.to);
+  if (range) where.createdAt = range;
+  return where;
+}
+
+export async function listAnimals(farmId: string, filter: AnimalListFilter = {}) {
   return prisma.animal.findMany({
-    where: { farmId, deletedAt: null },
+    where: animalWhere(farmId, filter),
     orderBy: { createdAt: 'desc' },
     select: SELECT,
   });
+}
+
+export async function listAnimalsPaged(farmId: string, p: ListQuery & AnimalListFilter) {
+  const where = animalWhere(farmId, p);
+  const [items, total] = await Promise.all([
+    prisma.animal.findMany({ where, orderBy: { createdAt: 'desc' }, ...skipTake(p), select: SELECT }),
+    prisma.animal.count({ where }),
+  ]);
+  return envelope(items, total, p);
 }
 
 async function findAnimalInFarm(farmId: string, id: string) {

@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+import { qs, request, requestBlob } from '../lib/http';
 
 export type Unit = {
   id: string;
@@ -22,21 +22,16 @@ export type FarmSettings = {
   longitude: number | null;
 };
 
-async function authed<T>(
+// Legacy signature kept so all panels compile unchanged; the shared request
+// core adds res.ok checks, typed ApiError and the authed 401-replay delegate.
+// (The panel sweep in slice 11.6 migrates callers to useFarmApi()/hooks.)
+function authed<T>(
   path: string,
   token: string,
   farmId: string | null,
-  init?: RequestInit,
+  init?: Omit<RequestInit, 'headers'>,
 ): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-  };
-  if (farmId) headers['X-Farm-Id'] = farmId;
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((body as { error?: { code?: string } })?.error?.code ?? 'REQUEST_FAILED');
-  return body as T;
+  return request<T>(path, { token, farmId: farmId ?? undefined, ...init });
 }
 
 export const createFarm = (token: string, data: { name: string; state?: string }) =>
@@ -170,7 +165,7 @@ export const createWorker = (
 ) => authed<{ worker: Worker }>('/api/farm/workers', token, farmId, { method: 'POST', body: JSON.stringify(data) });
 
 export const listAttendance = (token: string, farmId: string, date: string) =>
-  authed<{ attendance: AttendanceRow[] }>(`/api/farm/attendance?date=${date}`, token, farmId);
+  authed<{ attendance: AttendanceRow[] }>(`/api/farm/attendance${qs({ date })}`, token, farmId);
 
 export const markAttendance = (
   token: string,
@@ -190,10 +185,10 @@ export type Task = {
 export type Schedule = { id: string; name: string; taskType: string; frequency: string; isActive: boolean };
 
 export const listTasks = (token: string, farmId: string, date: string) =>
-  authed<{ tasks: Task[] }>(`/api/farm/tasks?date=${date}`, token, farmId);
+  authed<{ tasks: Task[] }>(`/api/farm/tasks${qs({ date })}`, token, farmId);
 
 export const generateTasks = (token: string, farmId: string, date: string) =>
-  authed<{ generated: number; missed: number }>(`/api/farm/tasks/generate?date=${date}`, token, farmId, { method: 'POST' });
+  authed<{ generated: number; missed: number }>(`/api/farm/tasks/generate${qs({ date })}`, token, farmId, { method: 'POST' });
 
 export const completeTask = (token: string, farmId: string, id: string) =>
   authed<{ task: Task }>(`/api/farm/tasks/${id}/complete`, token, farmId, { method: 'POST', body: JSON.stringify({}) });
@@ -218,7 +213,7 @@ export type DailyLog = {
 };
 
 export const listLogs = (token: string, farmId: string, type?: string) =>
-  authed<{ logs: DailyLog[] }>(`/api/farm/logs${type ? `?type=${type}` : ''}`, token, farmId);
+  authed<{ logs: DailyLog[] }>(`/api/farm/logs${qs({ type: type || undefined })}`, token, farmId);
 
 export const createLog = (
   token: string,
@@ -229,7 +224,7 @@ export const createLog = (
 export type WithdrawalStatus = { underWithdrawal: boolean; until: string | null };
 
 export const getWithdrawal = (token: string, farmId: string, batchId: string) =>
-  authed<WithdrawalStatus>(`/api/farm/health/withdrawal?batchId=${batchId}`, token, farmId);
+  authed<WithdrawalStatus>(`/api/farm/health/withdrawal${qs({ batchId })}`, token, farmId);
 
 export const recordMedication = (
   token: string,
@@ -247,7 +242,7 @@ export type VaxItem = { id: string; vaccineName: string; type: string; ageDays: 
 export type Vaccinations = { ageDays: number; due: VaxItem[]; upcoming: VaxItem[]; done: VaxItem[] };
 
 export const getVaccinations = (token: string, farmId: string, batchId: string) =>
-  authed<Vaccinations>(`/api/farm/health/vaccinations?batchId=${batchId}`, token, farmId);
+  authed<Vaccinations>(`/api/farm/health/vaccinations${qs({ batchId })}`, token, farmId);
 
 export const recordVaccination = (token: string, farmId: string, data: { batchId: string; vaccineName: string }) =>
   authed('/api/farm/health/vaccinations', token, farmId, { method: 'POST', body: JSON.stringify(data) });
@@ -344,7 +339,7 @@ export const consumeFeed = (
 export type Fcr = { feedConsumedKg: number; weightGainKg: number; feedCostPaise: string; fcr: number | null };
 
 export const getFcr = (token: string, farmId: string, batchId: string) =>
-  authed<Fcr>(`/api/farm/feed/fcr?batchId=${batchId}`, token, farmId);
+  authed<Fcr>(`/api/farm/feed/fcr${qs({ batchId })}`, token, farmId);
 
 export type Expense = {
   id: string;
@@ -357,7 +352,7 @@ export type Expense = {
 export type BatchCost = { totalPaise: string; costPerBirdPaise: string; currentCount: number; byCategory: Record<string, string> };
 
 export const listExpenses = (token: string, farmId: string, batchId?: string) =>
-  authed<{ expenses: Expense[] }>(`/api/farm/expenses${batchId ? `?batchId=${batchId}` : ''}`, token, farmId);
+  authed<{ expenses: Expense[] }>(`/api/farm/expenses${qs({ batchId: batchId || undefined })}`, token, farmId);
 
 export const createExpense = (
   token: string,
@@ -366,7 +361,7 @@ export const createExpense = (
 ) => authed<{ expense: Expense }>('/api/farm/expenses', token, farmId, { method: 'POST', body: JSON.stringify(data) });
 
 export const getBatchCost = (token: string, farmId: string, batchId: string) =>
-  authed<BatchCost>(`/api/farm/expenses/batch-cost?batchId=${batchId}`, token, farmId);
+  authed<BatchCost>(`/api/farm/expenses/batch-cost${qs({ batchId })}`, token, farmId);
 
 export type Loan = {
   id: string;
@@ -407,8 +402,6 @@ export const createInsurance = (
 export const financeReminders = (token: string, farmId: string) =>
   authed<FinanceReminders>('/api/farm/finance/reminders', token, farmId);
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
-
 export type Customer = { id: string; name: string; gstin: string | null; state: string | null };
 export type Invoice = {
   id: string;
@@ -440,12 +433,12 @@ export const createInvoice = (
 export const farmPnl = (token: string, farmId: string) =>
   authed<Pnl>('/api/farm/invoices/pnl/farm', token, farmId);
 
-/** Fetch the invoice PDF (auth + farm header) and open it in a new tab. */
+/**
+ * Fetch the invoice PDF (auth + farm header) and open it in a new tab.
+ * Throws ApiError on failure instead of opening a JSON error body as a PDF.
+ */
 export async function openInvoicePdf(token: string, farmId: string, id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/farm/invoices/${id}/pdf`, {
-    headers: { Authorization: `Bearer ${token}`, 'X-Farm-Id': farmId },
-  });
-  const blob = await res.blob();
+  const blob = await requestBlob(`/api/farm/invoices/${id}/pdf`, { token, farmId });
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank');
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
@@ -701,10 +694,10 @@ export type RiskFlag = {
 };
 
 export const getWeather = (token: string, farmId: string, refresh = false) =>
-  authed<Weather>(`/api/farm/weather${refresh ? '?refresh=1' : ''}`, token, farmId);
+  authed<Weather>(`/api/farm/weather${qs({ refresh: refresh ? 1 : undefined })}`, token, farmId);
 
 export const listRisks = (token: string, farmId: string, status?: string) =>
-  authed<{ risks: RiskFlag[] }>(`/api/farm/risk${status ? `?status=${status}` : ''}`, token, farmId);
+  authed<{ risks: RiskFlag[] }>(`/api/farm/risk${qs({ status: status || undefined })}`, token, farmId);
 
 export const acknowledgeRisk = (token: string, farmId: string, id: string) =>
   authed<{ risk: RiskFlag }>(`/api/farm/risk/${id}/ack`, token, farmId, { method: 'POST', body: JSON.stringify({}) });
@@ -761,12 +754,12 @@ export const dispatchAlerts = (token: string, farmId: string) =>
   authed<{ dispatched: number }>('/api/farm/alerts/dispatch', token, farmId, { method: 'POST', body: JSON.stringify({}) });
 
 // ---------- Reports (Phase 8) ----------
-/** Fetch a report (auth + farm header) and trigger a download in the browser. */
+/**
+ * Fetch a report (auth + farm header) and trigger a download in the browser.
+ * Throws ApiError on failure instead of downloading a JSON error body.
+ */
 export async function downloadReport(token: string, farmId: string, format: 'pdf' | 'xlsx'): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/farm/reports/summary.${format}`, {
-    headers: { Authorization: `Bearer ${token}`, 'X-Farm-Id': farmId },
-  });
-  const blob = await res.blob();
+  const blob = await requestBlob(`/api/farm/reports/summary.${format}`, { token, farmId });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

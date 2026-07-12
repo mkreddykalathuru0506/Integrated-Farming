@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
+import { ListQuerySchema } from '../http/list-query';
 import { CreateColdStorageSchema, RecordTempSchema } from './schemas';
 import * as cold from './service';
 
@@ -30,7 +31,11 @@ coldStorageRouter.post(
 
 coldStorageRouter.get(
   '/:id/temps',
-  asyncHandler(async (req, res) => res.json({ temps: await cold.listTemps(farmScope(req).farmId, req.params.id!) })),
+  asyncHandler(async (req, res) => {
+    const p = ListQuerySchema.parse(req.query);
+    if (p.page) res.json(await cold.listTempsPaged(farmScope(req).farmId, req.params.id!, p));
+    else res.json({ temps: await cold.listTemps(farmScope(req).farmId, req.params.id!, p) });
+  }),
 );
 
 // Labour records temperatures on the floor.

@@ -1,14 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { loginAsOwner } from './helpers';
 
 // Critical journey: a field worker logs offline and it syncs on reconnect.
 test('daily log offline → reconnect → syncs (no duplicate)', async ({ page, context }) => {
-  await page.goto('/');
+  await loginAsOwner(page);
 
-  // Log in as the seeded owner.
-  await page.locator('input[type=email]').fill('owner@demo.farm');
-  await page.locator('input[type=password]').fill('Passw0rd!');
-  await page.getByRole('button', { name: /sign in/i }).click();
-
+  // Daily logging lives at /daily/logs since the per-panel routes (Phase 11).
+  await page.goto('/daily/logs');
   const dailyLog = page.getByTestId('daily-log');
   await expect(dailyLog).toBeVisible();
   // Wait for the log form (batches loaded) before cutting the network.

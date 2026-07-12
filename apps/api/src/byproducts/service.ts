@@ -1,6 +1,7 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, type ByproductType } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
+import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import { rollup } from './circularity';
 import type { CreateTransferInput } from './schemas';
 
@@ -64,9 +65,33 @@ export async function createTransfer(farmId: string, userId: string, input: Crea
   return transferDTO(transfer);
 }
 
-export async function listTransfers(farmId: string) {
-  const rows = await prisma.byproductTransfer.findMany({ where: { farmId }, orderBy: { transferredAt: 'desc' }, select: TRANSFER_SELECT });
+export type TransferListFilter = { q?: string; type?: ByproductType; from?: Date; to?: Date };
+
+function transferWhere(farmId: string, f: TransferListFilter): Prisma.ByproductTransferWhereInput {
+  const where: Prisma.ByproductTransferWhereInput = { farmId };
+  if (f.q) where.notes = contains(f.q);
+  if (f.type) where.byproductType = f.type;
+  const range = dateRange(f.from, f.to);
+  if (range) where.transferredAt = range;
+  return where;
+}
+
+export async function listTransfers(farmId: string, filter: TransferListFilter = {}) {
+  const rows = await prisma.byproductTransfer.findMany({
+    where: transferWhere(farmId, filter),
+    orderBy: { transferredAt: 'desc' },
+    select: TRANSFER_SELECT,
+  });
   return rows.map(transferDTO);
+}
+
+export async function listTransfersPaged(farmId: string, p: ListQuery & TransferListFilter) {
+  const where = transferWhere(farmId, p);
+  const [rows, total] = await Promise.all([
+    prisma.byproductTransfer.findMany({ where, orderBy: { transferredAt: 'desc' }, ...skipTake(p), select: TRANSFER_SELECT }),
+    prisma.byproductTransfer.count({ where }),
+  ]);
+  return envelope(rows.map(transferDTO), total, p);
 }
 
 /** Circularity savings rollup: total + by type + by destination unit (with names). */

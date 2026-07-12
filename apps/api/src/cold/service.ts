@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
+import { dateRange, envelope, skipTake } from '../http/list-query';
 import { defaultBand, isOutOfRange } from './calc';
 import type { CreateColdStorageInput, RecordTempInput } from './schemas';
 
@@ -78,14 +79,51 @@ export async function recordTemp(farmId: string, coldStorageId: string, userId: 
   });
 }
 
-export async function listTemps(farmId: string, coldStorageId: string) {
+const TEMP_SELECT = {
+  id: true,
+  temperatureC: true,
+  isOutOfRange: true,
+  recordedAt: true,
+  source: true,
+  notes: true,
+} satisfies Prisma.TemperatureLogSelect;
+
+export type TempListFilter = { from?: Date; to?: Date };
+
+function tempWhere(farmId: string, coldStorageId: string, f: TempListFilter): Prisma.TemperatureLogWhereInput {
+  const where: Prisma.TemperatureLogWhereInput = { farmId, coldStorageId };
+  const range = dateRange(f.from, f.to);
+  if (range) where.recordedAt = range;
+  return where;
+}
+
+/**
+ * Temperature history. No params → legacy behaviour (last 50, newest first).
+ * With from/to → bounded window (asc when `from` is given — chart-ready), cap 1000.
+ */
+export async function listTemps(farmId: string, coldStorageId: string, filter: TempListFilter = {}) {
   await findStore(farmId, coldStorageId);
+  const windowed = Boolean(filter.from || filter.to);
   return prisma.temperatureLog.findMany({
-    where: { farmId, coldStorageId },
-    orderBy: { recordedAt: 'desc' },
-    take: 50,
-    select: { id: true, temperatureC: true, isOutOfRange: true, recordedAt: true, source: true, notes: true },
+    where: tempWhere(farmId, coldStorageId, filter),
+    orderBy: { recordedAt: filter.from ? 'asc' : 'desc' },
+    take: windowed ? 1000 : 50,
+    select: TEMP_SELECT,
   });
+}
+
+export async function listTempsPaged(
+  farmId: string,
+  coldStorageId: string,
+  p: { from?: Date; to?: Date; page?: number; pageSize: number },
+) {
+  await findStore(farmId, coldStorageId);
+  const where = tempWhere(farmId, coldStorageId, p);
+  const [items, total] = await Promise.all([
+    prisma.temperatureLog.findMany({ where, orderBy: { recordedAt: 'desc' }, ...skipTake(p), select: TEMP_SELECT }),
+    prisma.temperatureLog.count({ where }),
+  ]);
+  return envelope(items, total, p);
 }
 
 /** Out-of-range readings across the farm — the alert surface. */

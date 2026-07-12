@@ -1,11 +1,22 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MyFarm } from '../auth/api';
-import { Card, cn, Sheet, SheetContent, SheetTitle } from '../ui';
+import { Card, CardSkeleton, cn, Sheet, SheetContent, SheetTitle, StatSkeleton, TableSkeleton } from '../ui';
+import { ErrorBoundary } from './ErrorBoundary';
+import { MobileTabBar } from './MobileTabBar';
+import { SectionTabs } from './SectionTabs';
+import { ShortcutHelp } from './ShortcutHelp';
 import { SidebarContent } from './Sidebar';
 import { Topbar } from './Topbar';
-import { SECTIONS, permsFor } from './nav';
-import { useRoute } from './router';
+import { useOpenRisks } from './bellData';
+import type { NavTarget } from './commands';
+import { permsFor, visibleSections, type Role } from './nav';
+import { panelFromPath, resolveRoute, useRoute } from './router';
+import { useHotkeys } from './useHotkeys';
+
+// The command palette (cmdk) loads on first Ctrl+K / '/' — the hotkey listener stays
+// eager, but its ~code + cmdk leaves the entry chunk (slice 11.8a bundle trim).
+const CommandPalette = lazy(() => import('./CommandPalette').then((m) => ({ default: m.CommandPalette })));
 
 type Props = {
   farms: MyFarm[];
@@ -18,10 +29,36 @@ type Props = {
 
 const COLLAPSE_KEY = 'ifm.sidebar.collapsed';
 
+/** Skeleton composition shown while a lazy section chunk loads. */
+function SectionFallback({ full }: { full: boolean }) {
+  return full ? (
+    <div className="mx-auto w-full max-w-7xl space-y-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatSkeleton />
+        <StatSkeleton />
+        <StatSkeleton />
+        <StatSkeleton />
+      </div>
+      <CardSkeleton />
+    </div>
+  ) : (
+    <div className="space-y-5">
+      <Card>
+        <TableSkeleton rows={4} cols={3} />
+      </Card>
+      <CardSkeleton />
+    </div>
+  );
+}
+
 export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail, onLogout }: Props) {
-  const { t } = useTranslation();
-  const { key: routeKey, navigate } = useRoute();
+  const { t, i18n } = useTranslation();
+  const { pathname, navigate } = useRoute();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  // Mount the lazy palette only after it's first requested (keeps it out of first paint).
+  const [paletteLoaded, setPaletteLoaded] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(COLLAPSE_KEY) === '1';
@@ -38,16 +75,69 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
     }
   }, [collapsed]);
 
-  const section = SECTIONS.find((s) => s.key === routeKey) ?? SECTIONS[0]!;
-  const activeKey = section.key;
   const selected = farms.find((f) => f.farmId === selectedId);
+  const role = selected?.role as Role | undefined;
   const perms = permsFor(selected);
-  const isOverview = section.key === 'overview';
+  const sections = useMemo(() => visibleSections(role), [role]);
 
-  // Canonicalise an unknown/typo'd URL (e.g. /nope) to the section it fell back to.
+  const { sectionKey, panelKey, canonicalPath } = resolveRoute(pathname, sections);
+  const section = sections.find((s) => s.key === sectionKey) ?? sections[0]!;
+  const activePanel = section.panels.find((p) => p.key === panelKey) ?? section.panels[0]!;
+  const multiPanel = section.panels.length > 1;
+
+  // Canonicalise unknown/hidden/first-panel-spelled-out URLs (replace, no history spam).
   useEffect(() => {
-    if (routeKey !== section.key) navigate(section.key, { replace: true });
-  }, [routeKey, section.key, navigate]);
+    if (canonicalPath !== window.location.pathname) {
+      navigate(sectionKey, { panel: panelFromPath(canonicalPath), replace: true });
+    }
+  }, [canonicalPath, sectionKey, navigate]);
+
+  // Per-route document title, re-derived on language switch.
+  useEffect(() => {
+    document.title = multiPanel
+      ? `${t(`nav.panels.${panelKey}`)} · ${t(`nav.${sectionKey}`)} · ${t('nav.brand')}`
+      : `${t(`nav.${sectionKey}`)} · ${t('nav.brand')}`;
+  }, [sectionKey, panelKey, multiPanel, t, i18n.resolvedLanguage]);
+
+  // A11y: on route change (section OR panel), scroll to top and move focus to the
+  // main heading so keyboard/screen-reader users land on the new content.
+  const mainHeadingRef = useRef<HTMLHeadingElement>(null);
+  const prevPath = useRef(canonicalPath);
+  useEffect(() => {
+    if (prevPath.current === canonicalPath) return;
+    prevPath.current = canonicalPath;
+    window.scrollTo({ top: 0 });
+    mainHeadingRef.current?.focus();
+  }, [canonicalPath]);
+
+  // Global shortcuts: Ctrl/Cmd+K toggle, `/` open, `?` help, g+letter section jumps.
+  useHotkeys({
+    onTogglePalette: () => {
+      setPaletteLoaded(true);
+      setPaletteOpen((o) => !o);
+    },
+    onOpenPalette: () => {
+      setPaletteLoaded(true);
+      setPaletteOpen(true);
+    },
+    onOpenHelp: () => setHelpOpen(true),
+    onGoto: (key) => {
+      if (sections.some((s) => s.key === key)) navigate(key); // hidden section = no-op
+    },
+  });
+
+  const navigateTarget = useCallback(
+    (target: NavTarget) =>
+      navigate(target.key, target.panel === undefined ? undefined : { panel: target.panel }),
+    [navigate],
+  );
+
+  // Sidebar attention dot: reuses the bell's risk query (deduped by key).
+  const risksQ = useOpenRisks();
+  const dotKeys = useMemo(
+    () => ((risksQ.data?.length ?? 0) > 0 ? (['intelligence'] as const) : []),
+    [risksQ.data],
+  );
 
   function selectFromDrawer(key: string) {
     navigate(key);
@@ -64,10 +154,12 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
         )}
       >
         <SidebarContent
-          activeKey={activeKey}
+          sections={sections}
+          activeKey={sectionKey}
           onSelect={navigate}
           collapsed={collapsed}
           onToggleCollapse={() => setCollapsed((c) => !c)}
+          dotKeys={dotKeys}
         />
       </aside>
 
@@ -75,7 +167,13 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="border-r border-sidebar-border">
           <SheetTitle className="sr-only">{t('nav.sections')}</SheetTitle>
-          <SidebarContent activeKey={activeKey} onSelect={selectFromDrawer} collapsed={false} />
+          <SidebarContent
+            sections={sections}
+            activeKey={sectionKey}
+            onSelect={selectFromDrawer}
+            collapsed={false}
+            dotKeys={dotKeys}
+          />
         </SheetContent>
       </Sheet>
 
@@ -90,26 +188,47 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
           userEmail={userEmail}
           onLogout={onLogout}
           onOpenNav={() => setMobileOpen(true)}
+          role={role}
+          onNavigate={navigateTarget}
         />
 
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <Suspense fallback={<p className="text-sm text-muted-foreground">{t('farms.loading')}</p>}>
-            {isOverview ? (
-              <div className="mx-auto w-full max-w-7xl">
-                {section.panels.map((p) => (
-                  <div key={p.key + selectedId}>{p.render(selectedId, perms)}</div>
-                ))}
-              </div>
-            ) : (
-              <div className="mx-auto w-full max-w-5xl space-y-5">
-                {section.panels.map((p) => (
-                  <Card key={p.key + selectedId}>{p.render(selectedId, perms)}</Card>
-                ))}
-              </div>
-            )}
-          </Suspense>
+        <main className="flex-1 px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-6">
+          {/* Focus target on route change; the visible title lives in the Topbar. */}
+          <h1 ref={mainHeadingRef} tabIndex={-1} className="sr-only">
+            {multiPanel
+              ? `${t(`nav.panels.${panelKey}`)} · ${t(`nav.${section.key}`)}`
+              : t(`nav.${section.key}`)}
+          </h1>
+          <div className={cn('mx-auto w-full', activePanel.full ? 'max-w-7xl' : 'max-w-5xl')}>
+            <SectionTabs section={section} activePanelKey={panelKey} navigate={navigate} />
+            <ErrorBoundary resetKey={canonicalPath + selectedId}>
+              <Suspense fallback={<SectionFallback full={activePanel.full ?? false} />}>
+                {activePanel.full ? (
+                  <div key={activePanel.key + selectedId}>{activePanel.render(selectedId, perms)}</div>
+                ) : (
+                  <Card key={activePanel.key + selectedId}>{activePanel.render(selectedId, perms)}</Card>
+                )}
+              </Suspense>
+            </ErrorBoundary>
+          </div>
         </main>
       </div>
+
+      {/* Mobile bottom tab bar */}
+      <MobileTabBar role={role} activeKey={sectionKey} navigate={navigate} onMore={() => setMobileOpen(true)} />
+
+      {/* Command palette (lazy — mounts on first open) + shortcut cheat-sheet */}
+      {paletteLoaded && (
+        <Suspense fallback={null}>
+          <CommandPalette
+            open={paletteOpen}
+            onOpenChange={setPaletteOpen}
+            role={role}
+            onNavigate={navigateTarget}
+          />
+        </Suspense>
+      )}
+      <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
   );
 }
