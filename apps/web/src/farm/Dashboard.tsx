@@ -1,22 +1,18 @@
-import { Fragment, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import {
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
-  BadgeCheck,
-  BellRing,
   Bird,
   Check,
   ClipboardList,
   ListChecks,
   RefreshCw,
   Send,
-  Snowflake,
   Sprout,
   Thermometer,
-  TrendingUp,
   Wheat,
   X,
   type LucideIcon,
@@ -44,17 +40,30 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { visibleSections, type Role } from '../components/nav';
 import { pathForSection } from '../components/router';
-import { fmtDate, fmtInrCompact } from '../lib/format';
-import { Badge, Button, EmptyState, Skeleton, StatSkeleton, cn } from '../ui';
+import { useCountUp } from '../lib/motion';
+import { fmtDate, fmtInr, fmtInrCompact } from '../lib/format';
+import {
+  Badge,
+  BAR_CURSOR,
+  Button,
+  Card,
+  CHART_SERIES,
+  ChartEmpty,
+  ChartTooltip,
+  chartAnim,
+  EmptyState,
+  severityColor,
+  severityTextClass,
+  Skeleton,
+  StatSkeleton,
+  cn,
+} from '../ui';
 import type { ColdStorage } from './api';
 
-/* Data-viz palette (explicit hex appropriate for chart series; mirrors the theme tokens). */
-const SEV_HEX: Record<string, string> = { CRITICAL: '#C0392F', WARNING: '#C15A2B', INFO: '#1C6B43', DEFAULT: '#8A8270' };
-const REVENUE_HEX = '#1C6B43';
-const COST_HEX = '#C15A2B';
 const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 
 type Tone = 'primary' | 'danger' | 'warning' | 'success' | 'gold' | 'neutral';
+/** Icon chips only (3:1 graphical) — small TEXT uses the -ink tokens instead. */
 const BADGE: Record<Tone, string> = {
   primary: 'bg-primary/10 text-primary',
   danger: 'bg-destructive/10 text-destructive',
@@ -63,6 +72,21 @@ const BADGE: Record<Tone, string> = {
   gold: 'bg-accent/12 text-accent',
   neutral: 'bg-muted text-muted-foreground',
 };
+
+/** Alert delivery status → timeline dot color (status map — audit P3-23). */
+const ALERT_DOT: Record<string, string> = {
+  FAILED: 'hsl(var(--destructive))',
+  PENDING: 'hsl(var(--warning))',
+};
+
+/** Shared focus treatment for link-cards and inline links (audit P1-6). */
+const FOCUS_RING =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+
+/** Stat-tile stagger (motion-standard §3.2) — above-the-fold hero rows only. */
+const STAGGER =
+  'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-300 motion-safe:fill-mode-backwards';
+const staggerDelay = (i: number) => ({ animationDelay: `${Math.min(i, 5) * 40}ms` });
 
 const DISMISS_PREFIX = 'ifm.onboarding.dismissed.';
 
@@ -80,30 +104,20 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section
-      className={cn(
-        'relative rounded-lg border border-border bg-card p-5 shadow-card',
-        "before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-accent/40 before:to-transparent before:content-['']",
-        span,
-      )}
-    >
+    <Card lined className={span}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="font-display text-base font-semibold text-foreground">{title}</h3>
-        {sub != null && (
-          <span className="rounded-md bg-background px-2 py-1 text-xs font-semibold text-muted-foreground">{sub}</span>
-        )}
+        {sub != null &&
+          (typeof sub === 'string' || typeof sub === 'number' ? (
+            <span className="rounded-md bg-secondary/60 px-2 py-1 text-xs font-semibold text-muted-foreground">
+              {sub}
+            </span>
+          ) : (
+            sub
+          ))}
       </div>
       {children}
-    </section>
-  );
-}
-
-function QuietEmpty({ icon: Icon, text }: { icon: ComponentType<{ className?: string }>; text: string }) {
-  return (
-    <div className="grid place-items-center gap-2 py-10 text-center">
-      <Icon className="h-6 w-6 text-success" />
-      <p className="text-sm text-muted-foreground">{text}</p>
-    </div>
+    </Card>
   );
 }
 
@@ -121,33 +135,14 @@ function LoadError({ onRetry, compact }: { onRetry: () => void; compact?: boolea
   );
 }
 
-/** Themed Recharts tooltip — card tokens, wrapped once for every chart on the page. */
-function ChartTip({
-  active,
-  payload,
-  label,
-  format,
-}: {
-  active?: boolean;
-  payload?: { name?: string; value?: number | string; color?: string }[];
-  label?: string;
-  format?: (v: number) => string;
-}) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-md border border-border bg-card px-2.5 py-1.5 text-xs shadow-elevated">
-      {label != null && label !== '' && <p className="mb-0.5 font-semibold text-foreground">{label}</p>}
-      {payload.map((p, i) => (
-        <p key={i} className="flex items-center gap-1.5 text-muted-foreground">
-          {p.color && <span className="h-2 w-2 rounded-sm" style={{ background: p.color }} />}
-          <span>{p.name}</span>
-          <span className="tabular font-semibold text-foreground">
-            {format ? format(Number(p.value ?? 0)) : String(p.value ?? '')}
-          </span>
-        </p>
-      ))}
-    </div>
-  );
+/** Count-up numeral (motion-standard §5). Display-only — never feeds calculations. */
+function CountUpInt({ value }: { value: number }) {
+  return <>{inr.format(Math.round(useCountUp(value)))}</>;
+}
+
+/** Compact ₹ count-up from integer paise; re-formats a display-only number. */
+function CountUpInr({ paise }: { paise: bigint }) {
+  return <>{fmtInrCompact(BigInt(Math.round(useCountUp(Number(paise)))))}</>;
 }
 
 function Kpi({
@@ -157,6 +152,7 @@ function Kpi({
   icon: Icon,
   tone = 'neutral',
   href,
+  index = 0,
 }: {
   label: string;
   value: ReactNode;
@@ -164,12 +160,14 @@ function Kpi({
   icon: LucideIcon;
   tone?: Tone;
   href?: string;
+  /** Position in the KPI row (stagger delay). */
+  index?: number;
 }) {
   const inner = (
     <>
       <div className="flex items-start justify-between gap-2">
         <span className="text-xs font-semibold text-muted-foreground">{label}</span>
-        <span className={cn('grid h-9 w-9 place-items-center rounded-xl', BADGE[tone])}>
+        <span className={cn('grid h-9 w-9 place-items-center rounded-md', BADGE[tone])}>
           <Icon className="h-[18px] w-[18px]" aria-hidden />
         </span>
       </div>
@@ -179,13 +177,26 @@ function Kpi({
       {sub != null && <div className="mt-2 text-xs font-medium text-muted-foreground">{sub}</div>}
     </>
   );
-  const frame = 'relative col-span-6 rounded-lg border border-border bg-card p-4 shadow-card sm:col-span-3 xl:col-span-2';
+  const frame = cn(
+    'relative col-span-6 rounded-lg border border-border bg-card p-4 shadow-card sm:col-span-3 xl:col-span-2',
+    STAGGER,
+  );
   return href ? (
-    <a href={href} className={cn(frame, 'block transition-shadow hover:shadow-elevated')}>
+    <a
+      href={href}
+      style={staggerDelay(index)}
+      className={cn(
+        frame,
+        'block transition duration-150 hover:shadow-elevated motion-safe:hover:-translate-y-0.5',
+        FOCUS_RING,
+      )}
+    >
       {inner}
     </a>
   ) : (
-    <div className={frame}>{inner}</div>
+    <div style={staggerDelay(index)} className={frame}>
+      {inner}
+    </div>
   );
 }
 
@@ -195,7 +206,7 @@ function TrendChip({ up, children }: { up: boolean; children: ReactNode }) {
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold',
-        up ? 'bg-success/14 text-success' : 'bg-destructive/12 text-destructive',
+        up ? 'bg-success/14 text-success-ink' : 'bg-destructive/12 text-destructive',
       )}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden />
@@ -226,12 +237,15 @@ function OnboardingCard({ data, onDismiss }: { data: Onboarding; onDismiss: () =
         type="button"
         aria-label={t('dashboard.onboardingDismiss')}
         onClick={onDismiss}
-        className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+        className={cn(
+          'absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-md text-muted-foreground transition duration-150 after:absolute after:-inset-1.5 active:scale-95 hover:bg-muted hover:text-foreground',
+          FOCUS_RING,
+        )}
       >
         <X className="h-4 w-4" aria-hidden />
       </button>
       <div className="flex items-center gap-2.5">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-accent/12 text-accent">
+        <span className="grid h-9 w-9 place-items-center rounded-md bg-accent/12 text-accent">
           <Sprout className="h-[18px] w-[18px]" aria-hidden />
         </span>
         <div>
@@ -241,7 +255,8 @@ function OnboardingCard({ data, onDismiss }: { data: Onboarding; onDismiss: () =
       </div>
       <div className="mt-4 flex items-center gap-3">
         <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-          <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent" style={{ width: `${Math.max(4, pct)}%` }} />
+          {/* Meters carry ONE hue — a gradient suggests a value scale that isn't there. */}
+          <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(4, pct)}%` }} />
         </div>
         <span className="tabular text-xs font-semibold text-muted-foreground">
           {t('dashboard.onboardingProgress', { done: data.completedCount, total: data.total })}
@@ -254,7 +269,7 @@ function OnboardingCard({ data, onDismiss }: { data: Onboarding; onDismiss: () =
             <li
               key={step.key}
               className={cn(
-                'flex items-center gap-2.5 rounded-xl border px-3 py-2.5',
+                'flex items-center gap-2.5 rounded-md border px-3 py-2.5',
                 done ? 'border-success/30 bg-success/10' : 'border-border bg-card',
               )}
             >
@@ -270,7 +285,13 @@ function OnboardingCard({ data, onDismiss }: { data: Onboarding; onDismiss: () =
                 {t(step.labelKey)}
               </span>
               {!done && (
-                <a href={step.href} className="whitespace-nowrap text-xs font-semibold text-primary underline-offset-4 hover:underline">
+                <a
+                  href={step.href}
+                  className={cn(
+                    'whitespace-nowrap rounded text-xs font-semibold text-primary underline-offset-4 hover:underline',
+                    FOCUS_RING,
+                  )}
+                >
                   {t('dashboard.stepGo')}
                 </a>
               )}
@@ -370,7 +391,8 @@ function TodayPanel({ due, visibleKeys }: { due: DueRollup; visibleKeys: Set<str
   if (groups.length === 0) {
     return (
       <EmptyState
-        icon={BadgeCheck}
+        icon={Check}
+        illustration="allClear"
         title={t('dashboard.todayAllClear')}
         description={t('dashboard.todayAllClearDesc')}
         size="compact"
@@ -380,11 +402,14 @@ function TodayPanel({ due, visibleKeys }: { due: DueRollup; visibleKeys: Set<str
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {groups.map((group) => (
-        <div key={group.key} className="rounded-xl border border-border bg-background/60 p-3">
+        <div key={group.key} className="rounded-md border border-border bg-secondary/60 p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
             <a
               href={group.href}
-              className="text-xs font-bold uppercase tracking-wide text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              className={cn(
+                'rounded text-xs font-bold uppercase tracking-wide text-muted-foreground underline-offset-4 hover:text-foreground hover:underline',
+                FOCUS_RING,
+              )}
             >
               {t(group.titleKey)}
             </a>
@@ -400,7 +425,13 @@ function TodayPanel({ due, visibleKeys }: { due: DueRollup; visibleKeys: Set<str
             ))}
           </ul>
           {group.rows.length > TODAY_ROW_LIMIT && (
-            <a href={group.href} className="mt-2 inline-block text-xs font-semibold text-primary underline-offset-4 hover:underline">
+            <a
+              href={group.href}
+              className={cn(
+                'mt-2 inline-block rounded text-xs font-semibold text-primary underline-offset-4 hover:underline',
+                FOCUS_RING,
+              )}
+            >
               {t('dashboard.moreCount', { count: group.rows.length - TODAY_ROW_LIMIT })}
             </a>
           )}
@@ -450,7 +481,8 @@ function FinanceTrend({ farmCreatedAt, canBill }: { farmCreatedAt: string | unde
     <Panel
       title={t('dashboard.financeTitle')}
       sub={
-        <span className="flex items-center gap-1" role="group" aria-label={t('dashboard.financeTitle')}>
+        /* Segmented control (audit P3-21 + P1-5): container affordance + ≥36px targets. */
+        <span className="flex rounded-full bg-secondary/60 p-0.5" role="group" aria-label={t('dashboard.financeTitle')}>
           {periods.map((p) => (
             <button
               key={p.key}
@@ -458,7 +490,8 @@ function FinanceTrend({ farmCreatedAt, canBill }: { farmCreatedAt: string | unde
               aria-pressed={period === p.key}
               onClick={() => setPeriod(p.key)}
               className={cn(
-                'rounded-md px-2 py-1 text-xs font-semibold',
+                'relative min-h-9 rounded-full px-3 text-xs font-semibold transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1.5',
+                FOCUS_RING,
                 period === p.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted',
               )}
             >
@@ -472,15 +505,13 @@ function FinanceTrend({ farmCreatedAt, canBill }: { farmCreatedAt: string | unde
       {summaryQ.isError ? (
         <LoadError onRetry={() => void summaryQ.refetch()} />
       ) : summaryQ.isPending ? (
-        <div className="py-4">
-          <Skeleton className="h-40" />
-        </div>
+        <Skeleton className="h-48" />
       ) : (
         <div className="grid gap-5 lg:grid-cols-[240px_1fr]">
           <div>
             <span className="text-xs font-semibold text-muted-foreground">{t('dashboard.profit')}</span>
             <p className="mt-2 font-display text-[36px] font-medium leading-none tracking-tight tabular text-foreground">
-              {fmtInrCompact(profitPaise)}
+              <CountUpInr paise={profitPaise} />
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <TrendChip up={profitPaise >= 0n}>
@@ -493,10 +524,16 @@ function FinanceTrend({ farmCreatedAt, canBill }: { farmCreatedAt: string | unde
             </div>
             {canBill && (
               <div className="mt-4 flex gap-3 text-sm font-medium">
-                <a href={pathForSection('finance', 'invoices')} className="text-primary underline-offset-4 hover:underline">
+                <a
+                  href={pathForSection('finance', 'invoices')}
+                  className={cn('rounded text-primary underline-offset-4 hover:underline', FOCUS_RING)}
+                >
                   {t('dashboard.linkInvoices')}
                 </a>
-                <a href={pathForSection('finance', 'expenses')} className="text-primary underline-offset-4 hover:underline">
+                <a
+                  href={pathForSection('finance', 'expenses')}
+                  className={cn('rounded text-primary underline-offset-4 hover:underline', FOCUS_RING)}
+                >
                   {t('dashboard.linkExpenses')}
                 </a>
               </div>
@@ -505,7 +542,7 @@ function FinanceTrend({ farmCreatedAt, canBill }: { farmCreatedAt: string | unde
           {hasActivity ? (
             <div className="h-48 min-w-0">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+                <BarChart data={chartData} barGap={4} barCategoryGap="25%" margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
                   <XAxis
                     dataKey="month"
                     axisLine={false}
@@ -513,16 +550,17 @@ function FinanceTrend({ farmCreatedAt, canBill }: { farmCreatedAt: string | unde
                     tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <Tooltip
-                    cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
-                    content={<ChartTip format={(v) => fmtInrCompact(Math.round(v))} />}
+                    cursor={BAR_CURSOR}
+                    content={<ChartTooltip format={(v) => fmtInr(Math.round(v))} />}
                   />
-                  <Bar dataKey={t('dashboard.financeRevenue')} fill={REVENUE_HEX} radius={[4, 4, 0, 0]} maxBarSize={28} />
-                  <Bar dataKey={t('dashboard.financeCost')} fill={COST_HEX} radius={[4, 4, 0, 0]} maxBarSize={28} />
+                  {/* Fixed pairings: revenue = chart-1, cost = chart-2 (chart-spec §1). */}
+                  <Bar dataKey={t('dashboard.financeRevenue')} fill={CHART_SERIES[0]} radius={[4, 4, 0, 0]} maxBarSize={24} {...chartAnim()} />
+                  <Bar dataKey={t('dashboard.financeCost')} fill={CHART_SERIES[1]} radius={[4, 4, 0, 0]} maxBarSize={24} {...chartAnim()} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <QuietEmpty icon={Wheat} text={t('dashboard.noFinance')} />
+            <ChartEmpty art="finance" text={t('dashboard.noFinance')} className="h-48" />
           )}
         </div>
       )}
@@ -644,38 +682,53 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
       ) : (
         <>
           <Kpi
+            index={0}
             label={t('dashboard.openRisks')}
-            value={dashQ.data.risks.open}
+            value={<CountUpInt value={dashQ.data.risks.open} />}
             sub={t('dashboard.criticalCount', { count: dashQ.data.risks.bySeverity.CRITICAL ?? 0 })}
             icon={AlertTriangle}
             tone={dashQ.data.risks.open > 0 ? 'danger' : 'success'}
             href={showIntel ? pathForSection('intelligence', 'weather') : undefined}
           />
           <Kpi
+            index={1}
             label={t('dashboard.batches')}
-            value={batchesQ.isPending ? '—' : activeBatches.length}
+            value={batchesQ.isPending ? '—' : <CountUpInt value={activeBatches.length} />}
             sub={t('dashboard.birds', { count: birds })}
             icon={Bird}
             tone="primary"
             href={pathForSection('livestock', 'batches')}
           />
           <Kpi
+            index={2}
             label={t('dashboard.feedLow')}
-            value={feedQ.isPending ? '—' : lowFeed}
+            value={feedQ.isPending ? '—' : <CountUpInt value={lowFeed} />}
             sub={lowFeed > 0 ? t('dashboard.belowReorder', { count: lowFeed }) : t('dashboard.allStocked')}
             icon={Wheat}
             tone={lowFeed > 0 ? 'warning' : 'gold'}
             href={showFinance ? pathForSection('finance') : undefined}
           />
-          <div className="relative col-span-6 rounded-lg border border-border bg-card p-4 shadow-card sm:col-span-3 xl:col-span-2">
+          <div
+            style={staggerDelay(3)}
+            className={cn(
+              'relative col-span-6 rounded-lg border border-border bg-card p-4 shadow-card sm:col-span-3 xl:col-span-2',
+              STAGGER,
+            )}
+          >
             <div className="flex items-start justify-between gap-2">
               <span className="text-xs font-semibold text-muted-foreground">{t('dashboard.temp')}</span>
-              <span className={cn('grid h-9 w-9 place-items-center rounded-xl', BADGE.primary)}>
+              <span className={cn('grid h-9 w-9 place-items-center rounded-md', BADGE.primary)}>
                 <Thermometer className="h-[18px] w-[18px]" aria-hidden />
               </span>
             </div>
             <p className="mt-3 font-display text-[28px] font-medium leading-none tracking-tight tabular text-foreground">
-              {weather ? `${Math.round(weather.tempC)}°` : '—'}
+              {weather ? (
+                <>
+                  <CountUpInt value={weather.tempC} />°
+                </>
+              ) : (
+                '—'
+              )}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs font-medium text-muted-foreground">
               {weather ? (
@@ -691,7 +744,7 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
               {showIntel && (
                 <a
                   href={pathForSection('intelligence', 'weather')}
-                  className="text-xs font-semibold text-primary underline-offset-4 hover:underline"
+                  className={cn('rounded text-xs font-semibold text-primary underline-offset-4 hover:underline', FOCUS_RING)}
                 >
                   {t('dashboard.viewWeather')}
                 </a>
@@ -702,7 +755,10 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
                   aria-label={t('dashboard.refresh')}
                   disabled={sweepMutation.isPending}
                   onClick={() => sweepMutation.mutate()}
-                  className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                  className={cn(
+                    'relative grid h-9 w-9 place-items-center rounded-md text-muted-foreground transition duration-150 after:absolute after:-inset-1 active:scale-95 hover:bg-muted hover:text-foreground disabled:opacity-50',
+                    FOCUS_RING,
+                  )}
                 >
                   <RefreshCw className={cn('h-3.5 w-3.5', sweepMutation.isPending && 'motion-safe:animate-spin')} aria-hidden />
                 </button>
@@ -741,20 +797,31 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
         {dashQ.isError ? (
           <LoadError compact onRetry={() => void dashQ.refetch()} />
         ) : dashQ.isPending ? (
-          <Skeleton className="h-36" />
+          <Skeleton className="h-[150px]" />
         ) : severityData.length === 0 ? (
-          <QuietEmpty icon={BadgeCheck} text={t('dashboard.noRisks')} />
+          <ChartEmpty art="allClear" text={t('dashboard.noRisks')} className="h-[150px]" />
         ) : (
           <div className="flex items-center gap-4">
             <div className="relative h-[150px] w-[150px] shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={severityData} dataKey="value" nameKey="label" innerRadius={48} outerRadius={70} paddingAngle={3} stroke="none">
+                  {/* Thin editorial ring (72% inner), rounded segment ends (chart-spec §5). */}
+                  <Pie
+                    data={severityData}
+                    dataKey="value"
+                    nameKey="label"
+                    innerRadius="72%"
+                    outerRadius="100%"
+                    paddingAngle={3}
+                    cornerRadius={4}
+                    stroke="none"
+                    {...chartAnim()}
+                  >
                     {severityData.map((d) => (
-                      <Cell key={d.name} fill={SEV_HEX[d.name] ?? SEV_HEX.DEFAULT} />
+                      <Cell key={d.name} fill={severityColor(d.name)} />
                     ))}
                   </Pie>
-                  <Tooltip content={<ChartTip />} />
+                  <Tooltip content={<ChartTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 grid place-content-center text-center">
@@ -765,9 +832,9 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
             <ul className="flex-1 space-y-2">
               {severityData.map((d) => (
                 <li key={d.name} className="flex items-center gap-2 text-sm">
-                  <span className="h-2.5 w-2.5 rounded-sm" style={{ background: SEV_HEX[d.name] ?? SEV_HEX.DEFAULT }} />
+                  <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: severityColor(d.name) }} />
                   <span className="flex-1 text-foreground">{d.label}</span>
-                  <span className="mono font-semibold text-muted-foreground">{d.value}</span>
+                  <span className="tabular font-semibold text-muted-foreground">{d.value}</span>
                 </li>
               ))}
             </ul>
@@ -784,11 +851,11 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
         {coldQ.isError ? (
           <LoadError compact onRetry={() => void coldQ.refetch()} />
         ) : coldQ.isPending ? (
-          <Skeleton className="h-24" />
+          <Skeleton className="h-[88px]" />
         ) : cold?.latest ? (
           <ColdGauge store={cold} />
         ) : (
-          <QuietEmpty icon={Snowflake} text={t('dashboard.noCold')} />
+          <ChartEmpty art="coldChain" text={t('dashboard.noCold')} className="h-[88px] py-0 [&_svg]:h-16 [&_svg]:w-16" />
         )}
       </Panel>
 
@@ -797,7 +864,10 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
         title={t('dashboard.marketTitle')}
         sub={
           showIntel ? (
-            <a href={pathForSection('intelligence', 'market')} className="text-primary underline-offset-4 hover:underline">
+            <a
+              href={pathForSection('intelligence', 'market')}
+              className={cn('rounded text-xs font-semibold text-primary underline-offset-4 hover:underline', FOCUS_RING)}
+            >
               {t('dashboard.viewMarket')}
             </a>
           ) : undefined
@@ -807,9 +877,9 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
         {dashQ.isError ? (
           <LoadError compact onRetry={() => void dashQ.refetch()} />
         ) : dashQ.isPending ? (
-          <Skeleton className="h-24" />
+          <Skeleton className="h-[88px]" />
         ) : dashQ.data.market.length === 0 ? (
-          <QuietEmpty icon={TrendingUp} text={t('dashboard.noMarket')} />
+          <ChartEmpty art="generic" text={t('dashboard.noMarket')} className="h-[88px] py-0 [&_svg]:h-16 [&_svg]:w-16" />
         ) : (
           <MarketBars rows={dashQ.data.market.map((m) => ({ name: m.commodity, unit: m.unit, value: Number(m.pricePaise) / 100 }))} />
         )}
@@ -820,14 +890,18 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
         {alertsQ.isError ? (
           <LoadError compact onRetry={() => void alertsQ.refetch()} />
         ) : alertsQ.isPending ? (
-          <Skeleton className="h-20" />
+          <Skeleton className="h-44" />
         ) : alerts.length === 0 ? (
-          <QuietEmpty icon={BellRing} text={t('dashboard.noAlerts')} />
+          <ChartEmpty art="allClear" text={t('dashboard.noAlerts')} className="h-44" />
         ) : (
           <ul className="relative space-y-1 pl-4 before:absolute before:bottom-1.5 before:left-[5px] before:top-1.5 before:w-0.5 before:bg-border before:content-['']">
             {alerts.slice(0, 4).map((a) => (
               <li key={a.id} className="relative py-1.5">
-                <span className="absolute -left-[13px] top-3 h-2.5 w-2.5 rounded-full bg-primary shadow-[0_0_0_4px_hsl(var(--card))]" />
+                {/* Dot carries the delivery status (status map — audit P3-23). */}
+                <span
+                  className="absolute -left-[13px] top-3 h-2.5 w-2.5 rounded-full shadow-[0_0_0_4px_hsl(var(--card))]"
+                  style={{ background: ALERT_DOT[a.status.toUpperCase()] ?? 'hsl(var(--primary))' }}
+                />
                 <p className="line-clamp-2 text-sm font-medium text-foreground">{a.body}</p>
                 <p className="mono text-xs text-muted-foreground">
                   {a.channel} · {a.status.toLowerCase()}
@@ -852,12 +926,14 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
         <Panel title={t('dashboard.openRisksTitle')} span="col-span-12">
           <ul className="grid gap-2 sm:grid-cols-2">
             {risks.slice(0, 6).map((r) => {
-              const hex = SEV_HEX[r.severity] ?? SEV_HEX.DEFAULT;
               const row = (
                 <>
-                  <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: hex }} />
+                  <span
+                    className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ background: severityColor(r.severity) }}
+                  />
                   <div className="min-w-0 flex-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: hex }}>
+                    <span className={cn('text-[11px] font-bold uppercase tracking-wide', severityTextClass(r.severity))}>
                       {t(`dashboard.${r.severity.toLowerCase()}`, r.severity)}
                     </span>
                     <p className="text-sm text-muted-foreground">{r.reason}</p>
@@ -865,9 +941,12 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
                 </>
               );
               return (
-                <li key={r.id} className="flex items-start gap-3 rounded-xl border border-border bg-card px-3 py-2.5">
+                <li key={r.id} className="flex items-start gap-3 rounded-md border border-border bg-card px-3 py-2.5">
                   {showIntel ? (
-                    <a href={pathForSection('intelligence', 'weather')} className="flex min-w-0 flex-1 items-start gap-3">
+                    <a
+                      href={pathForSection('intelligence', 'weather')}
+                      className={cn('flex min-w-0 flex-1 items-start gap-3 rounded', FOCUS_RING)}
+                    >
                       {row}
                     </a>
                   ) : (
@@ -908,18 +987,28 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
     <div data-block="quick" className="grid grid-cols-12 gap-4">
       <a
         href={pathForSection('daily', 'logs')}
-        className="col-span-12 flex items-center gap-3 rounded-lg border border-border bg-card p-5 shadow-card transition-shadow hover:shadow-elevated sm:col-span-6"
+        style={staggerDelay(0)}
+        className={cn(
+          'col-span-12 flex items-center gap-3 rounded-lg border border-border bg-card p-5 shadow-card transition duration-150 hover:shadow-elevated motion-safe:hover:-translate-y-0.5 sm:col-span-6',
+          STAGGER,
+          FOCUS_RING,
+        )}
       >
-        <span className={cn('grid h-11 w-11 place-items-center rounded-xl', BADGE.primary)}>
+        <span className={cn('grid h-11 w-11 place-items-center rounded-md', BADGE.primary)}>
           <ClipboardList className="h-5 w-5" aria-hidden />
         </span>
         <span className="font-display text-base font-semibold text-foreground">{t('dashboard.quickLogs')}</span>
       </a>
       <a
         href={pathForSection('daily', 'tasks')}
-        className="col-span-12 flex items-center gap-3 rounded-lg border border-border bg-card p-5 shadow-card transition-shadow hover:shadow-elevated sm:col-span-6"
+        style={staggerDelay(1)}
+        className={cn(
+          'col-span-12 flex items-center gap-3 rounded-lg border border-border bg-card p-5 shadow-card transition duration-150 hover:shadow-elevated motion-safe:hover:-translate-y-0.5 sm:col-span-6',
+          STAGGER,
+          FOCUS_RING,
+        )}
       >
-        <span className={cn('grid h-11 w-11 place-items-center rounded-xl', BADGE.gold)}>
+        <span className={cn('grid h-11 w-11 place-items-center rounded-md', BADGE.gold)}>
           <ListChecks className="h-5 w-5" aria-hidden />
         </span>
         <span className="font-display text-base font-semibold text-foreground">{t('dashboard.quickTasks')}</span>
@@ -1016,7 +1105,7 @@ function ColdGauge({ store }: { store: ColdStorage }) {
         <p className="mt-1.5 text-xs font-medium text-muted-foreground">
           {store.name} · {store.mode === 'FROZEN' ? '≤ −18°C' : `${lo}–${hi}°C`}
         </p>
-        <span className={cn('mt-1 inline-block text-xs font-bold', ok ? 'text-success' : 'text-destructive')}>
+        <span className={cn('mt-1 inline-block text-xs font-bold', ok ? 'text-success-ink' : 'text-destructive')}>
           {ok ? t('dashboard.inRange') : t('dashboard.outOfRange')}
         </span>
       </div>
@@ -1033,7 +1122,13 @@ function MarketBars({ rows }: { rows: { name: string; unit: string; value: numbe
         <div key={r.name} className="flex items-center gap-3">
           <span className="w-20 shrink-0 truncate text-sm font-medium text-foreground">{r.name}</span>
           <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-gradient-to-r from-success to-accent" style={{ width: `${Math.max(8, (r.value / max) * 100)}%` }} />
+            {/* Single measure ⇒ solid chart-1; bar length already encodes the value
+                (chart-spec §1 — retires the success→accent gradient). The 8% floor is
+                a deliberate visibility minimum; the exact value label sits right. */}
+            <div
+              className="h-full rounded-full"
+              style={{ background: 'hsl(var(--chart-1))', width: `${Math.max(8, (r.value / max) * 100)}%` }}
+            />
           </div>
           <span className="mono w-16 shrink-0 text-right text-sm font-semibold text-foreground">₹{inr.format(r.value)}</span>
         </div>
