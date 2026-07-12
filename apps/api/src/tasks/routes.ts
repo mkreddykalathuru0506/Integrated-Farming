@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
-import { CompleteTaskSchema, CreateScheduleSchema, CreateTaskSchema } from './schemas';
+import { AssignTaskSchema, CompleteTaskSchema, CreateScheduleSchema, CreateTaskSchema } from './schemas';
 import * as tasks from './service';
 
 const q = (v: unknown) => (typeof v === 'string' ? v : undefined);
@@ -35,7 +35,11 @@ taskRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     res.json({
-      tasks: await tasks.listTasks(farmScope(req).farmId, { date: q(req.query.date), status: q(req.query.status) }),
+      tasks: await tasks.listTasks(farmScope(req).farmId, {
+        date: q(req.query.date),
+        status: q(req.query.status),
+        assigneeId: q(req.query.assigneeId),
+      }),
     });
   }),
 );
@@ -62,5 +66,14 @@ taskRouter.post(
   asyncHandler(async (req, res) => {
     const { notes } = CompleteTaskSchema.parse(req.body ?? {});
     res.json({ task: await tasks.completeTask(farmScope(req).farmId, req.params.id!, req.userId!, notes) });
+  }),
+);
+
+taskRouter.patch(
+  '/:id/assign',
+  requireRole('OWNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const { workerId } = AssignTaskSchema.parse(req.body);
+    res.json({ task: await tasks.assignTask(farmScope(req).farmId, req.params.id!, req.userId!, workerId) });
   }),
 );

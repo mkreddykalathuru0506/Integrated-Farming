@@ -31,6 +31,13 @@ riskRouter.post(
     res.json({ risk: await intel.acknowledgeRisk(farmScope(req).farmId, req.params.id!, req.userId!) });
   }),
 );
+riskRouter.post(
+  '/:id/resolve',
+  requireRole('OWNER', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    res.json({ risk: await intel.resolveRisk(farmScope(req).farmId, req.params.id!, req.userId!) });
+  }),
+);
 
 /**
  * /api/farm/intelligence — proactive sweep, on demand (slice 11.7). The same sweep body

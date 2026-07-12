@@ -20,5 +20,8 @@ export const CreateTaskSchema = z.object({
 
 export const CompleteTaskSchema = z.object({ notes: z.string().max(500).optional() });
 
+/** Assign body — `workerId: null` unassigns. Strict: unknown keys → 400. */
+export const AssignTaskSchema = z.object({ workerId: z.string().min(1).nullable() }).strict();
+
 export type CreateScheduleInput = z.infer<typeof CreateScheduleSchema>;
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;

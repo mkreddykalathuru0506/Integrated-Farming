@@ -3,7 +3,7 @@ import { prisma } from '../prisma';
 import { AppError } from '../errors';
 import { dueWithin } from '../finance/calc';
 import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
-import type { CreateAssetInput, CreateScheduleInput, RecordMaintenanceInput } from './schemas';
+import type { CreateAssetInput, CreateScheduleInput, RecordMaintenanceInput, UpdateAssetInput } from './schemas';
 
 const ASSET_SELECT = {
   id: true,
@@ -50,6 +50,31 @@ export async function createAsset(farmId: string, userId: string, input: CreateA
       purchaseDate: input.purchaseDate ? new Date(input.purchaseDate) : undefined,
       purchaseCostPaise: input.purchaseCostPaise !== undefined ? BigInt(input.purchaseCostPaise) : undefined,
       createdBy: userId,
+    },
+    select: ASSET_SELECT,
+  });
+  return assetDTO(asset);
+}
+
+/** Edit an asset (name/type/code/unit/status/purchase info/notes). `null` clears a nullable field. */
+export async function updateAsset(farmId: string, userId: string, id: string, input: UpdateAssetInput) {
+  await findAsset(farmId, id);
+  if (input.unitId) {
+    const unit = await prisma.unit.findFirst({ where: { id: input.unitId, farmId, deletedAt: null } });
+    if (!unit) throw new AppError(422, 'INVALID_UNIT', 'Unit does not belong to this farm');
+  }
+  const asset = await prisma.asset.update({
+    where: { id },
+    data: {
+      name: input.name,
+      type: input.type,
+      code: input.code,
+      unitId: input.unitId,
+      status: input.status,
+      purchaseDate: input.purchaseDate === null ? null : input.purchaseDate ? new Date(input.purchaseDate) : undefined,
+      purchaseCostPaise: input.purchaseCostPaise === null ? null : input.purchaseCostPaise !== undefined ? BigInt(input.purchaseCostPaise) : undefined,
+      notes: input.notes,
+      updatedBy: userId,
     },
     select: ASSET_SELECT,
   });

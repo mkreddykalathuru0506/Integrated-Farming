@@ -5,7 +5,7 @@ import { asyncHandler } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
 import { ListQuerySchema } from '../http/list-query';
-import { CreateAssetSchema, CreateScheduleSchema, RecordMaintenanceSchema } from './schemas';
+import { CreateAssetSchema, CreateScheduleSchema, RecordMaintenanceSchema, UpdateAssetSchema } from './schemas';
 import * as assets from './service';
 
 const write = requireRole('OWNER', 'MANAGER');
@@ -33,6 +33,15 @@ assetRouter.post(
   asyncHandler(async (req, res) => {
     const input = CreateAssetSchema.parse(req.body);
     res.status(201).json({ asset: await assets.createAsset(farmScope(req).farmId, req.userId!, input) });
+  }),
+);
+
+assetRouter.patch(
+  '/:id',
+  write,
+  asyncHandler(async (req, res) => {
+    const input = UpdateAssetSchema.parse(req.body);
+    res.json({ asset: await assets.updateAsset(farmScope(req).farmId, req.userId!, req.params.id!, input) });
   }),
 );
 

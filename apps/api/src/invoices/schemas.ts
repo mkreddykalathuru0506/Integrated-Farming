@@ -34,6 +34,29 @@ export const CreateInvoiceSchema = z.object({
     .min(1),
 });
 
+/** PATCH bodies — every field optional (at least one), nullable clears. Strict: unknown keys → 400. */
+export const UpdateCustomerSchema = z
+  .object({
+    name: z.string().trim().min(1).max(160).optional(),
+    gstin: z.string().trim().max(20).nullable().optional(),
+    phone: z.string().trim().max(20).nullable().optional(),
+    state: z.string().trim().max(60).nullable().optional(),
+    address: z.string().trim().max(300).nullable().optional(),
+  })
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, { message: 'EMPTY_UPDATE' });
+
+export const UpdateVendorSchema = z
+  .object({
+    name: z.string().trim().min(1).max(160).optional(),
+    gstin: z.string().trim().max(20).nullable().optional(),
+    phone: z.string().trim().max(20).nullable().optional(),
+  })
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, { message: 'EMPTY_UPDATE' });
+
 export type CreateCustomerInput = z.infer<typeof CreateCustomerSchema>;
 export type CreateVendorInput = z.infer<typeof CreateVendorSchema>;
 export type CreateInvoiceInput = z.infer<typeof CreateInvoiceSchema>;
+export type UpdateCustomerInput = z.infer<typeof UpdateCustomerSchema>;
+export type UpdateVendorInput = z.infer<typeof UpdateVendorSchema>;

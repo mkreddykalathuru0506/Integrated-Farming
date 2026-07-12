@@ -213,3 +213,38 @@ export async function acknowledgeRisk(farmId: string, id: string, userId: string
     select: { id: true, status: true, acknowledgedAt: true },
   });
 }
+
+const RISK_SELECT = {
+  id: true,
+  type: true,
+  severity: true,
+  reason: true,
+  status: true,
+  source: true,
+  createdAt: true,
+  acknowledgedAt: true,
+} satisfies Prisma.RiskFlagSelect;
+
+/**
+ * Resolve a risk flag (implies acknowledge — sets ack fields if not already set; no new
+ * columns). Idempotent: an already-RESOLVED flag is returned unchanged. Note: if the
+ * condition persists, `raiseFlag`'s upsert on (farmId, dedupeKey) will re-open the same
+ * row — correct behaviour, the risk is genuinely back.
+ */
+export async function resolveRisk(farmId: string, id: string, userId: string) {
+  const flag = await prisma.riskFlag.findFirst({
+    where: { id, farmId },
+    select: { ...RISK_SELECT, acknowledgedAt: true },
+  });
+  if (!flag) throw new AppError(404, 'NOT_FOUND', 'Risk flag not found');
+  if (flag.status === 'RESOLVED') return flag;
+  return prisma.riskFlag.update({
+    where: { id: flag.id },
+    data: {
+      status: 'RESOLVED',
+      acknowledgedAt: flag.acknowledgedAt ?? new Date(),
+      acknowledgedBy: flag.acknowledgedAt ? undefined : userId,
+    },
+    select: RISK_SELECT,
+  });
+}

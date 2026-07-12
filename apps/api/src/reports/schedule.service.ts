@@ -47,6 +47,38 @@ export async function listReportSchedules(farmId: string) {
   return prisma.reportSchedule.findMany({ where: { farmId, deletedAt: null }, orderBy: { nextRunAt: 'asc' }, select: SELECT });
 }
 
+export type UpdateScheduleInput = Partial<CreateScheduleInput> & { isActive?: boolean };
+
+/** Edit / pause / resume a schedule. `isActive: false` stops runDueReports picking it up. */
+export async function updateReportSchedule(farmId: string, userId: string, id: string, input: UpdateScheduleInput) {
+  const existing = await prisma.reportSchedule.findFirst({ where: { id, farmId, deletedAt: null }, select: { id: true } });
+  if (!existing) throw new AppError(404, 'NOT_FOUND', 'Report schedule not found');
+  return prisma.reportSchedule.update({
+    where: { id: existing.id },
+    data: {
+      name: input.name,
+      frequency: input.frequency,
+      format: input.format,
+      channel: input.channel,
+      recipient: input.recipient,
+      isActive: input.isActive,
+      nextRunAt: input.nextRunAt ? new Date(input.nextRunAt) : undefined,
+      updatedBy: userId,
+    },
+    select: SELECT,
+  });
+}
+
+/** Soft-delete a schedule — hidden from the list and skipped by the runDueReports sweep. */
+export async function deleteReportSchedule(farmId: string, userId: string, id: string) {
+  const { count } = await prisma.reportSchedule.updateMany({
+    where: { id, farmId, deletedAt: null },
+    data: { deletedAt: new Date(), updatedBy: userId },
+  });
+  if (count === 0) throw new AppError(404, 'NOT_FOUND', 'Report schedule not found');
+  return { ok: true as const, id };
+}
+
 /**
  * Generate the report and "deliver" it via the NotificationService (mock by default → no
  * spend, recorded in NotificationLog), then advance the schedule's next run. The report bytes

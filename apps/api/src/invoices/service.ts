@@ -5,7 +5,13 @@ import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http
 import { buildTotals } from './gst';
 import { PdfKitInvoicePdf, type InvoiceForPdf } from './pdf';
 import { batchCost } from '../finance/service';
-import type { CreateCustomerInput, CreateInvoiceInput, CreateVendorInput } from './schemas';
+import type {
+  CreateCustomerInput,
+  CreateInvoiceInput,
+  CreateVendorInput,
+  UpdateCustomerInput,
+  UpdateVendorInput,
+} from './schemas';
 
 export async function createCustomer(farmId: string, userId: string, input: CreateCustomerInput) {
   try {
@@ -50,10 +56,48 @@ export async function listCustomersPaged(farmId: string, p: ListQuery & Customer
   return envelope(items, total, p);
 }
 
+/**
+ * Edit a customer. Invoices snapshot GST math + place of supply at creation, so editing
+ * `state`/`gstin` never retro-affects issued invoices.
+ */
+export async function updateCustomer(farmId: string, userId: string, id: string, input: UpdateCustomerInput) {
+  const existing = await prisma.customer.findFirst({ where: { id, farmId, deletedAt: null }, select: { id: true } });
+  if (!existing) throw new AppError(404, 'NOT_FOUND', 'Customer not found');
+  try {
+    return await prisma.customer.update({
+      where: { id: existing.id },
+      data: { ...input, updatedBy: userId },
+      select: CUSTOMER_SELECT,
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      throw new AppError(409, 'CUSTOMER_NAME_TAKEN', 'A customer with this name already exists');
+    }
+    throw err;
+  }
+}
+
 export async function createVendor(farmId: string, userId: string, input: CreateVendorInput) {
   try {
     return await prisma.vendor.create({
       data: { farmId, ...input, createdBy: userId },
+      select: { id: true, name: true, gstin: true },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      throw new AppError(409, 'VENDOR_NAME_TAKEN', 'A vendor with this name already exists');
+    }
+    throw err;
+  }
+}
+
+export async function updateVendor(farmId: string, userId: string, id: string, input: UpdateVendorInput) {
+  const existing = await prisma.vendor.findFirst({ where: { id, farmId, deletedAt: null }, select: { id: true } });
+  if (!existing) throw new AppError(404, 'NOT_FOUND', 'Vendor not found');
+  try {
+    return await prisma.vendor.update({
+      where: { id: existing.id },
+      data: { ...input, updatedBy: userId },
       select: { id: true, name: true, gstin: true },
     });
   } catch (err) {
@@ -253,6 +297,62 @@ export async function getInvoice(farmId: string, id: string) {
   };
 }
 
+/** Re-read an invoice after a status transition (row is known to exist). */
+async function invoiceById(id: string) {
+  const inv = await prisma.invoice.findUniqueOrThrow({ where: { id }, select: INVOICE_SELECT });
+  return toInvoiceDTO(inv);
+}
+
+/**
+ * Explain why a status transition matched no row: absent/foreign-farm → 404 (never leak
+ * existence), otherwise a 422 with the status-specific code supplied by the caller.
+ */
+async function transitionError(farmId: string, id: string, codeByStatus: Partial<Record<InvoiceStatus, [string, string]>>): Promise<never> {
+  const inv = await prisma.invoice.findFirst({ where: { id, farmId }, select: { status: true } });
+  if (!inv) throw new AppError(404, 'NOT_FOUND', 'Invoice not found');
+  const mapped = codeByStatus[inv.status];
+  if (mapped) throw new AppError(422, mapped[0], mapped[1]);
+  throw new AppError(422, 'INVALID_STATUS', `Invoice is ${inv.status}`);
+}
+
+/**
+ * Mark an invoice paid. Only ISSUED → PAID; the guarded updateMany makes the transition
+ * race-safe (two concurrent calls: exactly one wins, the other sees ALREADY_PAID).
+ */
+export async function markInvoicePaid(farmId: string, userId: string, id: string) {
+  const { count } = await prisma.invoice.updateMany({
+    where: { id, farmId, status: 'ISSUED' },
+    data: { status: 'PAID', updatedBy: userId },
+  });
+  if (count === 0) {
+    await transitionError(farmId, id, {
+      PAID: ['ALREADY_PAID', 'Invoice is already paid'],
+      CANCELLED: ['INVALID_STATUS', 'Cannot mark a cancelled invoice paid'],
+      DRAFT: ['INVALID_STATUS', 'Cannot mark a draft invoice paid'],
+    });
+  }
+  return invoiceById(id);
+}
+
+/**
+ * Void (cancel) an invoice. ISSUED|DRAFT → CANCELLED; paid invoices cannot be voided.
+ * The invoice number is retained — numbering counts all statuses, so the sequence stays
+ * gap-free and numbers are never reused. P&L self-corrects via its `status != CANCELLED` filters.
+ */
+export async function voidInvoice(farmId: string, userId: string, id: string) {
+  const { count } = await prisma.invoice.updateMany({
+    where: { id, farmId, status: { in: ['ISSUED', 'DRAFT'] } },
+    data: { status: 'CANCELLED', updatedBy: userId },
+  });
+  if (count === 0) {
+    await transitionError(farmId, id, {
+      PAID: ['INVOICE_PAID', 'Cannot void a paid invoice'],
+      CANCELLED: ['ALREADY_CANCELLED', 'Invoice is already cancelled'],
+    });
+  }
+  return invoiceById(id);
+}
+
 export async function renderInvoicePdf(farmId: string, id: string): Promise<Buffer> {
   const inv = await prisma.invoice.findFirst({
     where: { id, farmId },
@@ -306,7 +406,7 @@ export async function batchPnl(farmId: string, batchId: string) {
 export async function farmPnl(farmId: string) {
   const [invoices, expenses, feed] = await Promise.all([
     prisma.invoice.findMany({ where: { farmId, status: { not: 'CANCELLED' } }, select: { totalPaise: true } }),
-    prisma.expense.findMany({ where: { farmId }, select: { amountPaise: true } }),
+    prisma.expense.findMany({ where: { farmId, deletedAt: null }, select: { amountPaise: true } }),
     prisma.feedTransaction.findMany({ where: { farmId, type: 'CONSUMPTION' }, select: { totalPaise: true } }),
   ]);
   const revenuePaise = invoices.reduce((s, i) => s + i.totalPaise, 0n);

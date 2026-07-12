@@ -44,4 +44,19 @@ export const CreateExpenseSchema = z.object({
   vendorId: z.string().min(1).optional(),
 });
 
+/** PATCH body — every field optional (at least one), nullable clears the field. Strict: unknown keys → 400. */
+export const UpdateExpenseSchema = z
+  .object({
+    category: z.nativeEnum(ExpenseCategory).optional(),
+    amountPaise: paise.optional(),
+    occurredAt: z.string().datetime().optional(),
+    description: z.string().max(300).nullable().optional(),
+    batchId: z.string().min(1).nullable().optional(), // null clears batch attribution
+    unitId: z.string().min(1).nullable().optional(),
+    vendorId: z.string().min(1).nullable().optional(),
+  })
+  .strict()
+  .refine((o) => Object.keys(o).length > 0, { message: 'EMPTY_UPDATE' });
+
 export type CreateExpenseInput = z.infer<typeof CreateExpenseSchema>;
+export type UpdateExpenseInput = z.infer<typeof UpdateExpenseSchema>;
