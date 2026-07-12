@@ -24,7 +24,14 @@ export function uniq(prefix: string): string {
 /** UI login as the seeded owner; resolves once the authenticated shell renders. */
 export async function loginAsOwner(page: Page): Promise<void> {
   await page.goto('/');
-  await page.locator('input[type=email]').fill(OWNER.email);
+  // Landing front door (slice 11.11): unauthenticated `/` shows the marketing
+  // page; click through to the sign-in card. Guarded on visibility so the helper
+  // also works on branches without the landing (pre-merge).
+  const emailInput = page.locator('input[type=email]');
+  const landingSignIn = page.getByTestId('landing-signin');
+  await expect(emailInput.or(landingSignIn).first()).toBeVisible();
+  if (await landingSignIn.isVisible()) await landingSignIn.click();
+  await emailInput.fill(OWNER.email);
   await page.locator('input[type=password]').fill(OWNER.password);
   // Exact-name match: the login view also has an OTP toggle ("Sign in with a
   // code instead") that a bare /sign in/i would ambiguously match (strict mode).
