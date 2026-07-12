@@ -43,8 +43,13 @@ const ReportsPanel = lazy(() => import('../farm/ReportsPanel').then((m) => ({ de
 const UnitsPanel = lazy(() => import('../farm/UnitsPanel').then((m) => ({ default: m.UnitsPanel })));
 const SettingsPanel = lazy(() => import('../farm/SettingsPanel').then((m) => ({ default: m.SettingsPanel })));
 
+/** Farm membership roles (mirrors the API's FarmRole enum). */
+export type Role = 'OWNER' | 'MANAGER' | 'VETERINARIAN' | 'ACCOUNTANT' | 'LABOUR' | 'BUYER';
+
 /** Role-derived write permissions, computed once from the selected farm membership. */
 export type Perms = {
+  /** The membership role itself — for role-aware layouts (e.g. dashboard ordering). */
+  role?: Role;
   canWriteUnits: boolean;
   canWriteSettings: boolean;
   canWriteFinance: boolean;
@@ -53,9 +58,10 @@ export type Perms = {
 };
 
 export function permsFor(farm: MyFarm | undefined): Perms {
-  const role = farm?.role;
+  const role = farm?.role as Role | undefined;
   const canWriteUnits = role === 'OWNER' || role === 'MANAGER';
   return {
+    role,
     canWriteUnits,
     canWriteSettings: role === 'OWNER',
     canWriteFinance: canWriteUnits || role === 'ACCOUNTANT',
@@ -69,19 +75,34 @@ type PanelEntry = { key: string; full?: boolean; render: (farmId: string, p: Per
 export type Section = {
   key: string; // also the i18n key under `nav.*`
   icon: LucideIcon;
+  /** Roles that see this section in nav/palette/routes. Omit = every role. UX only — server RBAC is the real guard. */
+  roles?: Role[];
   panels: PanelEntry[];
 };
+
+/**
+ * Sections visible to a role (sidebar, drawer, palette, tab bar and route resolution
+ * all consume this). Nav-level UX filter only — the server enforces real RBAC.
+ * Pre-selection edge (no role yet): show all; the server guards every request.
+ */
+export function visibleSections(role: Role | undefined): Section[] {
+  if (!role) return SECTIONS;
+  return SECTIONS.filter((s) => !s.roles || s.roles.includes(role));
+}
 
 /** Section → feature-panel map. The first section (overview) is the dashboard landing. */
 export const SECTIONS: Section[] = [
   {
     key: 'overview',
     icon: LayoutDashboard,
-    panels: [{ key: 'dashboard', full: true, render: (f, p) => <Dashboard farmId={f} canWrite={p.canWriteUnits} /> }],
+    panels: [
+      { key: 'dashboard', full: true, render: (f, p) => <Dashboard farmId={f} canWrite={p.canWriteUnits} role={p.role} /> },
+    ],
   },
   {
     key: 'livestock',
     icon: Bird,
+    roles: ['OWNER', 'MANAGER', 'VETERINARIAN', 'ACCOUNTANT', 'LABOUR'],
     panels: [
       { key: 'species', render: (f) => <SpeciesPanel farmId={f} /> },
       { key: 'batches', render: (f, p) => <BatchesPanel farmId={f} canWrite={p.canWriteUnits} /> },
@@ -91,6 +112,7 @@ export const SECTIONS: Section[] = [
   {
     key: 'daily',
     icon: ClipboardList,
+    roles: ['OWNER', 'MANAGER', 'VETERINARIAN', 'LABOUR'],
     panels: [
       { key: 'workers', render: (f, p) => <WorkersPanel farmId={f} canWrite={p.canWriteUnits} /> },
       { key: 'tasks', render: (f, p) => <TasksPanel farmId={f} canWrite={p.canWriteUnits} /> },
@@ -100,6 +122,7 @@ export const SECTIONS: Section[] = [
   {
     key: 'health',
     icon: HeartPulse,
+    roles: ['OWNER', 'MANAGER', 'VETERINARIAN', 'LABOUR'],
     panels: [
       { key: 'health', render: (f, p) => <HealthPanel farmId={f} canWrite={p.canWriteUnits} /> },
       { key: 'vaccination', render: (f, p) => <VaccinationPanel farmId={f} canWrite={p.canWriteUnits} /> },
@@ -110,6 +133,7 @@ export const SECTIONS: Section[] = [
   {
     key: 'finance',
     icon: Wallet,
+    roles: ['OWNER', 'MANAGER', 'ACCOUNTANT'],
     panels: [
       { key: 'feed', render: (f, p) => <FeedPanel farmId={f} canWrite={p.canWriteFinance} /> },
       { key: 'expenses', render: (f, p) => <ExpensesPanel farmId={f} canWrite={p.canWriteFinance} /> },
@@ -120,8 +144,9 @@ export const SECTIONS: Section[] = [
   {
     key: 'sales',
     icon: ShoppingCart,
+    roles: ['OWNER', 'MANAGER', 'ACCOUNTANT', 'LABOUR'],
     panels: [
-      { key: 'orders', render: (f, p) => <OrdersPanel farmId={f} canWrite={p.canWriteFinance} /> },
+      { key: 'orders', render: (f, p) => <OrdersPanel farmId={f} canWrite={p.canWriteFinance} canAddCustomer={p.canBill} /> },
       { key: 'coldstorage', render: (f, p) => <ColdStoragePanel farmId={f} canWrite={p.canWriteUnits} canLog={p.canLogTemp} /> },
       { key: 'processing', render: (f, p) => <ProcessingPanel farmId={f} canWrite={p.canWriteUnits} /> },
       { key: 'dispatch', render: (f, p) => <DispatchPanel farmId={f} canWrite={p.canWriteUnits} /> },
@@ -130,6 +155,7 @@ export const SECTIONS: Section[] = [
   {
     key: 'maintenance',
     icon: Wrench,
+    roles: ['OWNER', 'MANAGER', 'LABOUR'],
     panels: [
       { key: 'assets', render: (f, p) => <AssetsPanel farmId={f} canWrite={p.canWriteUnits} /> },
       { key: 'byproducts', render: (f, p) => <ByproductPanel farmId={f} canWrite={p.canWriteUnits} /> },
@@ -139,6 +165,7 @@ export const SECTIONS: Section[] = [
   {
     key: 'intelligence',
     icon: Sparkles,
+    roles: ['OWNER', 'MANAGER', 'VETERINARIAN', 'ACCOUNTANT'],
     panels: [
       { key: 'weather', render: (f, p) => <WeatherPanel farmId={f} canWrite={p.canWriteUnits} /> },
       { key: 'market', render: (f, p) => <MarketPanel farmId={f} canWrite={p.canWriteFinance} /> },
@@ -147,11 +174,13 @@ export const SECTIONS: Section[] = [
   {
     key: 'reports',
     icon: FileText,
+    roles: ['OWNER', 'MANAGER', 'VETERINARIAN', 'ACCOUNTANT'],
     panels: [{ key: 'reports', render: (f, p) => <ReportsPanel farmId={f} canWrite={p.canWriteUnits} /> }],
   },
   {
     key: 'settings',
     icon: SettingsIcon,
+    roles: ['OWNER', 'MANAGER'],
     panels: [
       { key: 'units', render: (f, p) => <UnitsPanel farmId={f} canWrite={p.canWriteUnits} /> },
       { key: 'settings', render: (f, p) => <SettingsPanel farmId={f} canWrite={p.canWriteSettings} /> },

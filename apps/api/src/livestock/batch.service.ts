@@ -1,6 +1,7 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, type BatchStatus } from '@prisma/client';
 import { prisma } from '../prisma';
 import { AppError } from '../errors';
+import { contains, dateRange, envelope, skipTake, type ListQuery } from '../http/list-query';
 import { firstStage, nextStage } from './stage-machine';
 import type { CreateBatchInput, UpdateBatchInput } from './schemas';
 
@@ -77,12 +78,33 @@ export async function createBatch(farmId: string, userId: string, input: CreateB
   }
 }
 
-export async function listBatches(farmId: string) {
+export type BatchListFilter = { q?: string; status?: BatchStatus; from?: Date; to?: Date };
+
+/** Shared where-builder so the legacy list and the paged list can't drift. */
+function batchWhere(farmId: string, f: BatchListFilter): Prisma.BatchWhereInput {
+  const where: Prisma.BatchWhereInput = { farmId, deletedAt: null };
+  if (f.q) where.OR = [{ code: contains(f.q) }, { name: contains(f.q) }];
+  if (f.status) where.status = f.status;
+  const range = dateRange(f.from, f.to);
+  if (range) where.createdAt = range;
+  return where;
+}
+
+export async function listBatches(farmId: string, filter: BatchListFilter = {}) {
   return prisma.batch.findMany({
-    where: { farmId, deletedAt: null },
+    where: batchWhere(farmId, filter),
     orderBy: { createdAt: 'desc' },
     select: LIST_SELECT,
   });
+}
+
+export async function listBatchesPaged(farmId: string, p: ListQuery & BatchListFilter) {
+  const where = batchWhere(farmId, p);
+  const [items, total] = await Promise.all([
+    prisma.batch.findMany({ where, orderBy: { createdAt: 'desc' }, ...skipTake(p), select: LIST_SELECT }),
+    prisma.batch.count({ where }),
+  ]);
+  return envelope(items, total, p);
 }
 
 async function findBatchInFarm(farmId: string, id: string) {

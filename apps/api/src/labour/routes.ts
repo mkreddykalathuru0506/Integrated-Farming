@@ -1,9 +1,18 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { asyncHandler, AppError } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
+import { ListQuerySchema } from '../http/list-query';
 import { CreateWorkerSchema, MarkAttendanceSchema, UpdateWorkerSchema } from './schemas';
 import * as labour from './service';
+
+const WorkerListSchema = ListQuerySchema.extend({
+  active: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === 'true')),
+});
 
 /** /api/farm/workers — worker profiles (member reads; OWNER/MANAGER writes). */
 export const workerRouter = Router();
@@ -12,7 +21,9 @@ workerRouter.use(requireAuth, requireFarmAccess);
 workerRouter.get(
   '/',
   asyncHandler(async (req, res) => {
-    res.json({ workers: await labour.listWorkers(farmScope(req).farmId) });
+    const p = WorkerListSchema.parse(req.query);
+    if (p.page) res.json(await labour.listWorkersPaged(farmScope(req).farmId, p));
+    else res.json({ workers: await labour.listWorkers(farmScope(req).farmId, p) });
   }),
 );
 

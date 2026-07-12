@@ -1,16 +1,28 @@
 import { Router } from 'express';
+import { z } from 'zod';
+import { InvoiceStatus } from '@prisma/client';
 import { asyncHandler, AppError } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
+import { ListQuerySchema } from '../http/list-query';
 import { CreateCustomerSchema, CreateInvoiceSchema, CreateVendorSchema } from './schemas';
 import * as inv from './service';
 
 const q = (v: unknown) => (typeof v === 'string' ? v : undefined);
 
+const InvoiceListSchema = ListQuerySchema.extend({ status: z.nativeEnum(InvoiceStatus).optional() });
+
 /** /api/farm/customers */
 export const customerRouter = Router();
 customerRouter.use(requireAuth, requireFarmAccess);
-customerRouter.get('/', asyncHandler(async (req, res) => res.json({ customers: await inv.listCustomers(farmScope(req).farmId) })));
+customerRouter.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const p = ListQuerySchema.parse(req.query);
+    if (p.page) res.json(await inv.listCustomersPaged(farmScope(req).farmId, p));
+    else res.json({ customers: await inv.listCustomers(farmScope(req).farmId, p) });
+  }),
+);
 customerRouter.post(
   '/',
   requireRole('OWNER', 'MANAGER', 'ACCOUNTANT'),
@@ -37,7 +49,14 @@ vendorRouter.post(
 export const invoiceRouter = Router();
 invoiceRouter.use(requireAuth, requireFarmAccess);
 
-invoiceRouter.get('/', asyncHandler(async (req, res) => res.json({ invoices: await inv.listInvoices(farmScope(req).farmId) })));
+invoiceRouter.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const p = InvoiceListSchema.parse(req.query);
+    if (p.page) res.json(await inv.listInvoicesPaged(farmScope(req).farmId, p));
+    else res.json({ invoices: await inv.listInvoices(farmScope(req).farmId, p) });
+  }),
+);
 
 invoiceRouter.get('/pnl/farm', asyncHandler(async (req, res) => res.json(await inv.farmPnl(farmScope(req).farmId))));
 
@@ -66,5 +85,13 @@ invoiceRouter.get(
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="invoice-${req.params.id}.pdf"`);
     res.send(pdf);
+  }),
+);
+
+// Invoice detail JSON. Registered after /pnl/* and POST so those static paths win.
+invoiceRouter.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    res.json({ invoice: await inv.getInvoice(farmScope(req).farmId, req.params.id!) });
   }),
 );

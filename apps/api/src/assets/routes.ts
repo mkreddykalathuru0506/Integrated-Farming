@@ -1,17 +1,29 @@
 import { Router } from 'express';
+import { z } from 'zod';
+import { AssetStatus } from '@prisma/client';
 import { asyncHandler } from '../errors';
 import { requireAuth, requireFarmAccess, requireRole } from '../auth/middleware';
 import { farmScope } from '../auth/scope';
+import { ListQuerySchema } from '../http/list-query';
 import { CreateAssetSchema, CreateScheduleSchema, RecordMaintenanceSchema } from './schemas';
 import * as assets from './service';
 
 const write = requireRole('OWNER', 'MANAGER');
 
+const AssetListSchema = ListQuerySchema.extend({ status: z.nativeEnum(AssetStatus).optional() });
+
 /** /api/farm/assets — asset register + maintenance schedules/records + reminders. */
 export const assetRouter = Router();
 assetRouter.use(requireAuth, requireFarmAccess);
 
-assetRouter.get('/', asyncHandler(async (req, res) => res.json({ assets: await assets.listAssets(farmScope(req).farmId) })));
+assetRouter.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const p = AssetListSchema.parse(req.query);
+    if (p.page) res.json(await assets.listAssetsPaged(farmScope(req).farmId, p));
+    else res.json({ assets: await assets.listAssets(farmScope(req).farmId, p) });
+  }),
+);
 
 assetRouter.get('/reminders', asyncHandler(async (req, res) => res.json(await assets.reminders(farmScope(req).farmId))));
 

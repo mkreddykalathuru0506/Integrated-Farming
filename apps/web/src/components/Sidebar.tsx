@@ -1,21 +1,25 @@
 import { useTranslation } from 'react-i18next';
 import { PanelLeftClose, PanelLeftOpen, Leaf } from 'lucide-react';
-import { cn } from '../ui';
-import { SECTIONS } from './nav';
+import { cn, Tooltip, TooltipContent, TooltipTrigger } from '../ui';
+import type { Section } from './nav';
 import { pathForSection } from './router';
 
 type Props = {
+  /** Role-filtered section list (visibleSections(role)). */
+  sections: Section[];
   activeKey: string;
   onSelect: (key: string) => void;
   collapsed: boolean;
   onToggleCollapse?: () => void;
+  /** Section keys that get an attention dot (e.g. open risk flags). */
+  dotKeys?: readonly string[];
 };
 
 /**
  * Sidebar contents (brand + grouped section nav). Rendered twice: as the fixed desktop rail
  * and inside the mobile drawer (Sheet). Deep-green gradient surface with a gold active accent.
  */
-export function SidebarContent({ activeKey, onSelect, collapsed, onToggleCollapse }: Props) {
+export function SidebarContent({ sections, activeKey, onSelect, collapsed, onToggleCollapse, dotKeys }: Props) {
   const { t } = useTranslation();
   return (
     <div
@@ -50,10 +54,46 @@ export function SidebarContent({ activeKey, onSelect, collapsed, onToggleCollaps
           </p>
         )}
         <ul className="space-y-0.5">
-          {SECTIONS.map((s) => {
+          {sections.map((s) => {
             const Icon = s.icon;
             const active = s.key === activeKey;
             const label = t(`nav.${s.key}`);
+            const dot = dotKeys?.includes(s.key) ?? false;
+            const link = (
+              <a
+                href={pathForSection(s.key)}
+                onClick={(e) => {
+                  // Let modified / non-primary clicks fall through to the browser
+                  // (open-in-new-tab, etc.); handle plain clicks as in-app navigation.
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                  e.preventDefault();
+                  onSelect(s.key);
+                }}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium no-underline transition-colors',
+                  collapsed && 'justify-center px-0',
+                  active
+                    ? 'bg-gradient-to-r from-success/20 to-success/[0.04] text-white'
+                    : 'text-sidebar-muted hover:bg-white/[0.06] hover:text-sidebar-foreground',
+                )}
+              >
+                <span className="relative shrink-0">
+                  <Icon
+                    className={cn('h-[19px] w-[19px]', active ? 'text-success' : '')}
+                    strokeWidth={1.9}
+                    aria-hidden
+                  />
+                  {dot && (
+                    <span
+                      aria-hidden
+                      className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-accent shadow-[0_0_6px_hsl(var(--accent)/0.8)]"
+                    />
+                  )}
+                </span>
+                {!collapsed && <span className="truncate">{label}</span>}
+              </a>
+            );
             return (
               <li key={s.key} className="relative">
                 {active && (
@@ -62,32 +102,14 @@ export function SidebarContent({ activeKey, onSelect, collapsed, onToggleCollaps
                     className="absolute -left-3 top-2 bottom-2 w-[3px] rounded-r bg-accent shadow-[0_0_12px_hsl(var(--accent)/0.7)]"
                   />
                 )}
-                <a
-                  href={pathForSection(s.key)}
-                  onClick={(e) => {
-                    // Let modified / non-primary clicks fall through to the browser
-                    // (open-in-new-tab, etc.); handle plain clicks as in-app navigation.
-                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-                    e.preventDefault();
-                    onSelect(s.key);
-                  }}
-                  aria-current={active ? 'page' : undefined}
-                  title={collapsed ? label : undefined}
-                  className={cn(
-                    'group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium no-underline transition-colors',
-                    collapsed && 'justify-center px-0',
-                    active
-                      ? 'bg-gradient-to-r from-success/20 to-success/[0.04] text-white'
-                      : 'text-sidebar-muted hover:bg-white/[0.06] hover:text-sidebar-foreground',
-                  )}
-                >
-                  <Icon
-                    className={cn('h-[19px] w-[19px] shrink-0', active ? 'text-success' : '')}
-                    strokeWidth={1.9}
-                    aria-hidden
-                  />
-                  {!collapsed && <span className="truncate">{label}</span>}
-                </a>
+                {collapsed ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>{link}</TooltipTrigger>
+                    <TooltipContent side="right">{label}</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  link
+                )}
               </li>
             );
           })}

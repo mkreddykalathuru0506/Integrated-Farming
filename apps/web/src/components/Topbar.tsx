@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Menu, ChevronDown, Building2, LogOut, Check } from 'lucide-react';
+import { Menu, ChevronDown, Building2, LogOut, Check, UserRound } from 'lucide-react';
 import type { MyFarm } from '../auth/api';
+import { AccountDialog } from '../account/AccountDialog';
 import {
   cn,
   DropdownMenu,
@@ -11,7 +13,10 @@ import {
   DropdownMenuSeparator,
 } from '../ui';
 import { LanguageToggle } from './LanguageToggle';
+import { NotificationBell } from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
+import type { NavTarget } from './commands';
+import type { Role } from './nav';
 
 type Props = {
   title: string;
@@ -22,6 +27,8 @@ type Props = {
   userEmail: string;
   onLogout: () => void;
   onOpenNav: () => void;
+  role: Role | undefined;
+  onNavigate: (target: NavTarget) => void;
 };
 
 function initials(name: string): string {
@@ -37,9 +44,12 @@ export function Topbar({
   userEmail,
   onLogout,
   onOpenNav,
+  role,
+  onNavigate,
 }: Props) {
   const { t } = useTranslation();
   const selected = farms.find((f) => f.farmId === selectedId);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-card/85 px-3 backdrop-blur sm:px-5">
@@ -58,7 +68,8 @@ export function Topbar({
           {t('nav.workspace')}
         </span>
         <span className="hidden shrink-0 text-muted-foreground/60 sm:inline">/</span>
-        <h1 className="truncate font-display text-xl font-semibold text-foreground">{title}</h1>
+        {/* Visual title only — the page's <h1> is the focus target inside <main> (AppLayout). */}
+        <p className="truncate font-display text-xl font-semibold text-foreground">{title}</p>
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
@@ -84,6 +95,8 @@ export function Topbar({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+
+        <NotificationBell role={role} onNavigate={onNavigate} />
 
         <ThemeToggle />
 
@@ -114,6 +127,11 @@ export function Topbar({
               <LanguageToggle />
             </div>
             <DropdownMenuSeparator className="sm:hidden" />
+            <DropdownMenuItem onSelect={() => setAccountOpen(true)}>
+              <UserRound className="h-4 w-4" aria-hidden />
+              {t('account.menu')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={onLogout}
               className={cn('text-destructive focus:bg-destructive/10 focus:text-destructive', '[&_svg]:text-destructive')}
@@ -123,6 +141,8 @@ export function Topbar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <AccountDialog open={accountOpen} onOpenChange={setAccountOpen} />
       </div>
     </header>
   );

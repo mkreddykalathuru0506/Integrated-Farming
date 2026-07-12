@@ -1,125 +1,430 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatPaise, rupeesToPaise } from '@ifm/shared';
-import { useAuth } from '../auth/AuthContext';
-import { Button, DataRow, Input, PanelError, PanelHeading, PanelNote, Select } from '../ui';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Controller, useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Plus, Users } from 'lucide-react';
+import { useAttendance, useCreateWorker, useMarkAttendance, useWorkers } from '../api/daily.hooks';
+import { fmtInr, rupeesToPaise, todayIST } from '../lib/format';
+import { rupeeField } from '../lib/moneyField';
+import type { Worker } from './api';
 import {
-  createWorker,
-  listAttendance,
-  listWorkers,
-  markAttendance,
-  type AttendanceRow,
-  type Worker,
-} from './api';
+  Badge,
+  Button,
+  DataRow,
+  DataTable,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
+  Field,
+  Input,
+  InrInput,
+  PanelHeading,
+  PanelNote,
+  Select,
+  Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  type DataTableColumn,
+} from '../ui';
+import { LoadErrorNote } from './LoadErrorNote';
 
-type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; workers: Worker[] };
 const WAGE_TYPES = ['DAILY', 'PIECE_RATE', 'MONTHLY'] as const;
-const today = () => new Date().toISOString().slice(0, 10);
+const ATT_STATUSES = ['PRESENT', 'HALF_DAY', 'ABSENT'] as const;
 
-export function WorkersPanel({ farmId, canWrite }: { farmId: string; canWrite: boolean }) {
+const today = () => todayIST();
+
+const createSchema = z.object({
+  name: z.string().min(1, 'workers.form.nameRequired').max(120, 'workers.form.nameTooLong'),
+  phone: z.string().max(20, 'workers.form.phoneTooLong'),
+  designation: z.string().max(80, 'workers.form.designationTooLong'),
+  wageType: z.string(),
+  wage: rupeeField('workers.form.wageInvalid', true),
+});
+type CreateForm = z.infer<typeof createSchema>;
+
+/**
+ * Workers & attendance panel (slice 11.6a rewrite): a workers DataTable with an
+ * RHF create dialog (dormant phone field, wage via InrInput → integer paise),
+ * and an attendance tab — date picker, present/half-day/absent summary chips,
+ * per-worker quick toggles with an optimistic update (no full-list flash).
+ */
+export function WorkersPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
   const { t } = useTranslation();
-  const { accessToken } = useAuth();
-  const [load, setLoad] = useState<Load>({ status: 'loading' });
-  const [att, setAtt] = useState<Record<string, string>>({});
-  const [name, setName] = useState('');
-  const [designation, setDesignation] = useState('');
-  const [wageType, setWageType] = useState<string>('DAILY');
-  const [wage, setWage] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
+  const workers = useWorkers();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [date, setDate] = useState(today());
 
-  const refresh = useCallback(() => {
-    if (!accessToken) return;
-    setLoad({ status: 'loading' });
-    Promise.all([listWorkers(accessToken, farmId), listAttendance(accessToken, farmId, today())])
-      .then(([w, a]) => {
-        setLoad({ status: 'ready', workers: w.workers });
-        setAtt(Object.fromEntries(a.attendance.map((r: AttendanceRow) => [r.workerId, r.status])));
-      })
-      .catch(() => setLoad({ status: 'error' }));
-  }, [accessToken, farmId]);
-
-  useEffect(refresh, [refresh]);
-
-  async function mark(workerId: string, status: string) {
-    if (!accessToken) return;
-    await markAttendance(accessToken, farmId, { workerId, date: today(), status })
-      .then(refresh)
-      .catch(() => undefined);
-  }
-
-  async function onAdd(e: FormEvent) {
-    e.preventDefault();
-    if (!accessToken) return;
-    setFormError(null);
-    try {
-      await createWorker(accessToken, farmId, {
-        name,
-        designation: designation || undefined,
-        wageType,
-        dailyWageRatePaise: wage ? String(rupeesToPaise(Number(wage))) : undefined,
-      });
-      setName('');
-      setDesignation('');
-      setWage('');
-      refresh();
-    } catch {
-      setFormError(t('workers.addError'));
-    }
-  }
+  const columns: DataTableColumn<Worker>[] = [
+    {
+      header: 'workers.cols.name',
+      accessor: 'name',
+      cell: (w) => <span className="font-medium text-foreground">{w.name}</span>,
+    },
+    { header: 'workers.cols.phone', accessor: (w) => w.phone ?? '—' },
+    { header: 'workers.cols.designation', accessor: (w) => w.designation ?? '—' },
+    {
+      header: 'workers.cols.wage',
+      accessor: (w) => (w.dailyWageRatePaise ? Number(w.dailyWageRatePaise) : 0),
+      align: 'right',
+      cell: (w) =>
+        w.dailyWageRatePaise ? (
+          <span>
+            {fmtInr(w.dailyWageRatePaise)}
+            <span className="text-xs text-muted-foreground">
+              {' '}
+              · {t(`workers.wageType.${w.wageType}`)}
+            </span>
+          </span>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      header: 'workers.cols.status',
+      accessor: 'isActive',
+      cell: (w) => (
+        <Badge variant={w.isActive ? 'success' : 'muted'}>
+          {t(w.isActive ? 'workers.active' : 'workers.inactive')}
+        </Badge>
+      ),
+    },
+  ];
 
   return (
     <section className="space-y-3">
-      <PanelHeading>{t('workers.title')}</PanelHeading>
+      <PanelHeading
+        action={
+          canWrite ? (
+            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus aria-hidden />
+              {t('workers.add')}
+            </Button>
+          ) : undefined
+        }
+      >
+        {t('workers.title')}
+      </PanelHeading>
 
-      {load.status === 'loading' && <PanelNote>{t('workers.loading')}</PanelNote>}
-      {load.status === 'error' && <PanelError>{t('workers.error')}</PanelError>}
-      {load.status === 'ready' && load.workers.length === 0 && <PanelNote>{t('workers.empty')}</PanelNote>}
-      {load.status === 'ready' && load.workers.length > 0 && (
-        <ul className="space-y-2">
-          {load.workers.map((w) => (
-            <DataRow key={w.id}>
-              <div className="min-w-0">
-                <p className="truncate font-medium text-foreground">{w.name}</p>
-                <p className="truncate text-xs text-muted-foreground tabular">
-                  {w.designation ?? '—'}
-                  {w.dailyWageRatePaise ? ` · ${formatPaise(Number(w.dailyWageRatePaise))}/day` : ''}
-                </p>
-              </div>
-              {canWrite && (
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button size="sm" variant={att[w.id] === 'PRESENT' ? 'primary' : 'secondary'} onClick={() => void mark(w.id, 'PRESENT')}>
-                    {t('workers.present')}
-                  </Button>
-                  <Button size="sm" variant={att[w.id] === 'ABSENT' ? 'danger' : 'secondary'} onClick={() => void mark(w.id, 'ABSENT')}>
-                    {t('workers.absent')}
-                  </Button>
-                </div>
-              )}
-            </DataRow>
+      <Tabs defaultValue="workers">
+        <TabsList>
+          <TabsTrigger value="workers">{t('workers.tabWorkers')}</TabsTrigger>
+          <TabsTrigger value="attendance">{t('workers.tabAttendance')}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="workers">
+          {workers.isError && !workers.data ? (
+            <LoadErrorNote
+              text={t('workers.error')}
+              retryLabel={t('workers.retry')}
+              onRetry={() => void workers.refetch()}
+            />
+          ) : (
+            <DataTable
+              columns={columns}
+              data={workers.data}
+              isLoading={workers.isPending}
+              searchable
+              pageSize={10}
+              getRowId={(w) => w.id}
+              emptyState={
+                <EmptyState
+                  icon={Users}
+                  title={t('workers.empty')}
+                  description={t('workers.emptyHint')}
+                  action={
+                    canWrite ? (
+                      <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                        <Plus aria-hidden />
+                        {t('workers.add')}
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              }
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="attendance">
+          <AttendanceView
+            workers={workers.data ?? []}
+            workersReady={!workers.isPending}
+            canWrite={canWrite}
+            date={date}
+            onDateChange={setDate}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {canWrite && <CreateWorkerDialog open={createOpen} onOpenChange={setCreateOpen} />}
+    </section>
+  );
+}
+
+// ---------- attendance ----------
+
+function AttendanceView({
+  workers,
+  workersReady,
+  canWrite,
+  date,
+  onDateChange,
+}: {
+  workers: Worker[];
+  workersReady: boolean;
+  canWrite: boolean;
+  date: string;
+  onDateChange: (date: string) => void;
+}) {
+  const { t } = useTranslation();
+  const attendance = useAttendance(date);
+  const mark = useMarkAttendance(date);
+  const activeWorkers = useMemo(() => workers.filter((w) => w.isActive), [workers]);
+
+  const statusByWorker = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const row of attendance.data ?? []) map[row.workerId] = row.status;
+    return map;
+  }, [attendance.data]);
+
+  const counts = useMemo(() => {
+    // LEAVE is an API-valid status (written by integrations) — count it in its own
+    // bucket, not as 'unmarked' (finding 11.8a).
+    const c = { PRESENT: 0, HALF_DAY: 0, ABSENT: 0, LEAVE: 0, unmarked: 0 };
+    for (const w of activeWorkers) {
+      const s = statusByWorker[w.id];
+      if (s === 'PRESENT') c.PRESENT += 1;
+      else if (s === 'HALF_DAY') c.HALF_DAY += 1;
+      else if (s === 'ABSENT') c.ABSENT += 1;
+      else if (s === 'LEAVE') c.LEAVE += 1;
+      else c.unmarked += 1;
+    }
+    return c;
+  }, [activeWorkers, statusByWorker]);
+
+  const variantFor = (status: (typeof ATT_STATUSES)[number], active: boolean) => {
+    if (!active) return 'secondary' as const;
+    if (status === 'PRESENT') return 'primary' as const;
+    if (status === 'ABSENT') return 'destructive' as const;
+    return 'accent' as const;
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Field label={t('workers.attDate')} className="w-40">
+          <Input type="date" value={date} onChange={(e) => onDateChange(e.target.value)} />
+        </Field>
+        {date !== today() && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="mt-6"
+            onClick={() => onDateChange(today())}
+          >
+            {t('workers.attToday')}
+          </Button>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        <Badge variant="success">{t('workers.chipPresent', { count: counts.PRESENT })}</Badge>
+        <Badge variant="accent">{t('workers.chipHalfDay', { count: counts.HALF_DAY })}</Badge>
+        <Badge variant="destructive">{t('workers.chipAbsent', { count: counts.ABSENT })}</Badge>
+        {counts.LEAVE > 0 && (
+          <Badge variant="default">{t('workers.chipLeave', { count: counts.LEAVE })}</Badge>
+        )}
+        <Badge variant="muted">{t('workers.chipUnmarked', { count: counts.unmarked })}</Badge>
+      </div>
+
+      {attendance.isError && !attendance.data && (
+        <LoadErrorNote
+          text={t('workers.attError')}
+          retryLabel={t('workers.retry')}
+          onRetry={() => void attendance.refetch()}
+        />
+      )}
+
+      {(!workersReady || (attendance.isPending && !attendance.data)) && (
+        <div className="space-y-2" aria-hidden>
+          {Array.from({ length: 3 }, (_, i) => (
+            <Skeleton key={i} className="h-12" />
           ))}
+        </div>
+      )}
+
+      {workersReady && !attendance.isPending && activeWorkers.length === 0 && (
+        <EmptyState icon={Users} title={t('workers.empty')} description={t('workers.emptyHint')} size="compact" />
+      )}
+
+      {workersReady && attendance.data && activeWorkers.length > 0 && (
+        <ul className="space-y-2">
+          {activeWorkers.map((w) => {
+            const current = statusByWorker[w.id];
+            return (
+              <DataRow key={w.id} className="flex-wrap">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-foreground">{w.name}</p>
+                  {w.designation && (
+                    <p className="truncate text-xs text-muted-foreground">{w.designation}</p>
+                  )}
+                </div>
+                {canWrite ? (
+                  <div className="flex shrink-0 items-center gap-1">
+                    {ATT_STATUSES.map((s) => (
+                      <Button
+                        key={s}
+                        type="button"
+                        size="sm"
+                        variant={variantFor(s, current === s)}
+                        aria-pressed={current === s}
+                        onClick={() => mark.mutate({ workerId: w.id, status: s })}
+                      >
+                        {t(`workers.att.${s}`)}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <Badge
+                    variant={
+                      current === 'PRESENT'
+                        ? 'success'
+                        : current === 'ABSENT'
+                          ? 'destructive'
+                          : current === 'HALF_DAY'
+                            ? 'accent'
+                            : 'muted'
+                    }
+                  >
+                    {current ? t(`workers.att.${current}`) : t('workers.attUnmarked')}
+                  </Badge>
+                )}
+              </DataRow>
+            );
+          })}
         </ul>
       )}
 
-      {canWrite && (
-        <form onSubmit={onAdd} className="space-y-2 rounded-xl bg-secondary/60 p-3">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('workers.name')} required />
-          <Input value={designation} onChange={(e) => setDesignation(e.target.value)} placeholder={t('workers.designation')} />
-          <div className="flex gap-2">
-            <Select value={wageType} onChange={(e) => setWageType(e.target.value)} className="flex-1">
-              {WAGE_TYPES.map((wt) => (
-                <option key={wt} value={wt}>
-                  {t(`workers.wageType.${wt}`)}
-                </option>
-              ))}
-            </Select>
-            <Input value={wage} onChange={(e) => setWage(e.target.value)} type="number" min={0} placeholder={t('workers.wage')} className="flex-1" />
-          </div>
-          {formError && <PanelError>{formError}</PanelError>}
-          <Button type="submit" full>
-            {t('workers.add')}
-          </Button>
-        </form>
+      {workersReady && attendance.data && activeWorkers.length > 0 && (
+        <PanelNote>{t('workers.attHint')}</PanelNote>
       )}
-    </section>
+    </div>
+  );
+}
+
+// ---------- create dialog ----------
+
+function CreateWorkerDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const createWorker = useCreateWorker();
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors },
+  } = useForm<CreateForm>({
+    resolver: zodResolver(createSchema),
+    defaultValues: { name: '', phone: '', designation: '', wageType: 'DAILY', wage: '' },
+  });
+
+  const err = (key: keyof CreateForm) => {
+    const message = errors[key]?.message;
+    return message ? t(message) : undefined;
+  };
+
+  const onSubmit = handleSubmit((v) => {
+    const wagePaise = v.wage.trim() ? rupeesToPaise(v.wage) : null;
+    createWorker.mutate(
+      {
+        name: v.name.trim(),
+        phone: v.phone.trim() || undefined,
+        designation: v.designation.trim() || undefined,
+        wageType: v.wageType,
+        dailyWageRatePaise: wagePaise ?? undefined,
+      },
+      {
+        onSuccess: () => {
+          reset();
+          onOpenChange(false);
+        },
+      },
+    );
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="md" aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t('workers.add')}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={(e) => void onSubmit(e)} className="space-y-3" noValidate>
+          <Field label={t('workers.form.name')} required error={err('name')}>
+            <Input {...register('name')} />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={t('workers.form.phone')} error={err('phone')} hint={t('workers.form.optional')}>
+              <Input {...register('phone')} type="tel" inputMode="tel" />
+            </Field>
+            <Field
+              label={t('workers.form.designation')}
+              error={err('designation')}
+              hint={t('workers.form.optional')}
+            >
+              <Input {...register('designation')} />
+            </Field>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={t('workers.form.wageType')}>
+              <Select {...register('wageType')}>
+                {WAGE_TYPES.map((wt) => (
+                  <option key={wt} value={wt}>
+                    {t(`workers.wageType.${wt}`)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Controller
+              name="wage"
+              control={control}
+              render={({ field }) => (
+                <Field
+                  label={t('workers.form.wage')}
+                  error={err('wage')}
+                  hint={t('workers.form.optional')}
+                >
+                  <InrInput
+                    value={field.value}
+                    onChangePaise={(_paise, rupees) => field.onChange(rupees)}
+                    onBlur={field.onBlur}
+                  />
+                </Field>
+              )}
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" loading={createWorker.isPending}>
+              {t('workers.add')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

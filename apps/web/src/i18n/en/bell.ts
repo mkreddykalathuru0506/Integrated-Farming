@@ -1,0 +1,29 @@
+export default {
+  title: 'Notifications',
+  empty: "You're all caught up",
+  unread: '{{n}} unread notifications',
+  error: 'Could not load notifications',
+  retry: 'Retry',
+  markSeen: 'Mark all seen',
+  ack: 'Acknowledge',
+  acked: 'Alert acknowledged',
+  more: '+{{n}} more',
+  groups: {
+    today: 'Today',
+    earlier: 'Earlier',
+    upcoming: 'Upcoming',
+  },
+  severity: {
+    INFO: 'Info',
+    WARNING: 'Warning',
+    CRITICAL: 'Critical',
+  },
+  kinds: {
+    risk: '{{reason}}',
+    vaccination: '{{n}} vaccination(s) due — batch {{batch}}',
+    maintenance: '{{name}} due — {{asset}}',
+    emi: 'EMI due — {{lender}}',
+    insurance: 'Policy expiring — {{provider}}',
+    tasks: '{{n}} task(s) pending today',
+  },
+};
