@@ -239,7 +239,7 @@ function AttendanceView({
         <Badge variant="accent">{t('workers.chipHalfDay', { count: counts.HALF_DAY })}</Badge>
         <Badge variant="destructive">{t('workers.chipAbsent', { count: counts.ABSENT })}</Badge>
         {counts.LEAVE > 0 && (
-          <Badge variant="secondary">{t('workers.chipLeave', { count: counts.LEAVE })}</Badge>
+          <Badge variant="default">{t('workers.chipLeave', { count: counts.LEAVE })}</Badge>
         )}
         <Badge variant="muted">{t('workers.chipUnmarked', { count: counts.unmarked })}</Badge>
       </div>
