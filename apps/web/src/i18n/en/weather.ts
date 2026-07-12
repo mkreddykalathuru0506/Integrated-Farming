@@ -19,4 +19,7 @@ export default {
   colRaised: 'Raised',
   ack: 'Acknowledge',
   acked: 'Alert acknowledged',
+  colActions: 'Actions',
+  resolve: 'Resolve',
+  resolved: 'Alert resolved',
 };

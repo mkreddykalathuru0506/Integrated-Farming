@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Package, Plus, Wrench } from 'lucide-react';
+import { Package, Pencil, Plus, Wrench } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
@@ -10,6 +10,7 @@ import {
   useCreateMaintSchedule,
   useMaintenanceReminders,
   useRecordMaintenance,
+  useUpdateAsset,
 } from '../api/ops.hooks';
 import { fmtDate, fmtInr, rupeesToPaise } from '../lib/format';
 import { rupeeField } from '../lib/moneyField';
@@ -336,6 +337,82 @@ function AssetDetailDialog({
   );
 }
 
+/* ---------- edit-asset dialog (PATCH name/type/status, slice 11.9) ---------- */
+
+const editAssetSchema = z.object({
+  name: z.string().trim().min(1, 'assets.nameRequired'),
+  type: z.string(),
+  status: z.string(),
+});
+type EditAssetValues = z.infer<typeof editAssetSchema>;
+
+const ASSET_STATUSES = ['ACTIVE', 'UNDER_REPAIR', 'RETIRED'] as const;
+
+function EditAssetDialog({ asset, onClose }: { asset: Asset | null; onClose: () => void }) {
+  const { t } = useTranslation();
+  const updateAsset = useUpdateAsset();
+  const form = useForm<EditAssetValues>({
+    resolver: zodResolver(editAssetSchema),
+    values: {
+      name: asset?.name ?? '',
+      type: asset?.type ?? 'EQUIPMENT',
+      status: asset?.status ?? 'ACTIVE',
+    },
+  });
+  const err = (m?: string) => (m ? t(m) : undefined);
+
+  const onSubmit = form.handleSubmit((v) => {
+    if (!asset) return;
+    updateAsset.mutate(
+      { id: asset.id, data: { name: v.name.trim(), type: v.type, status: v.status } },
+      { onSuccess: onClose },
+    );
+  });
+
+  return (
+    <Dialog open={asset !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>{t('assets.editTitle', { name: asset?.name ?? '' })}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={(e) => void onSubmit(e)} className="space-y-3" noValidate>
+          <Field label={t('assets.name')} required error={err(form.formState.errors.name?.message)}>
+            <Input {...form.register('name')} />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={t('assets.typeLabel')}>
+              <Select {...form.register('type')}>
+                {ASSET_TYPES.map((tp) => (
+                  <option key={tp} value={tp}>
+                    {t(`assets.type.${tp}`)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label={t('assets.statusLabel')}>
+              <Select {...form.register('status')}>
+                {ASSET_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {t(`assets.status.${s}`)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" loading={updateAsset.isPending}>
+              {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ---------- panel ---------- */
 
 export function AssetsPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
@@ -344,10 +421,12 @@ export function AssetsPanel({ canWrite }: { farmId: string; canWrite: boolean })
   const reminders = useMaintenanceReminders();
   const [createOpen, setCreateOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [serviceTarget, setServiceTarget] = useState<{ assetId: string; schedule: MaintSchedule } | null>(null);
 
   // Derive the detail record from the live query so mutations refresh it in place.
   const detailAsset = assets.data?.find((a) => a.id === detailId) ?? null;
+  const editAsset = assets.data?.find((a) => a.id === editId) ?? null;
   const due = reminders.data ?? [];
 
   const columns: DataTableColumn<Asset>[] = [
@@ -379,6 +458,29 @@ export function AssetsPanel({ canWrite }: { farmId: string; canWrite: boolean })
       accessor: (a) => (a.purchaseCostPaise ? Number(a.purchaseCostPaise) : 0),
       cell: (a) => (a.purchaseCostPaise ? fmtInr(a.purchaseCostPaise) : '—'),
     },
+    ...(canWrite
+      ? [
+          {
+            id: 'actions',
+            header: 'assets.colActions',
+            cell: (a: Asset) => (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={t('assets.editAria', { name: a.name })}
+                onClick={(e) => {
+                  // Rows open the detail dialog — don't let the pencil trigger both.
+                  e.stopPropagation();
+                  setEditId(a.id);
+                }}
+              >
+                <Pencil aria-hidden />
+              </Button>
+            ),
+          } satisfies DataTableColumn<Asset>,
+        ]
+      : []),
   ];
 
   return (
@@ -444,6 +546,7 @@ export function AssetsPanel({ canWrite }: { farmId: string; canWrite: boolean })
       )}
 
       <CreateAssetDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <EditAssetDialog asset={editAsset} onClose={() => setEditId(null)} />
       <AssetDetailDialog
         asset={detailAsset}
         canWrite={canWrite}

@@ -180,3 +180,65 @@ describe('FeedPanel (11.6c conversion)', () => {
     expect(screen.getByText('2')).toBeInTheDocument();
   });
 });
+
+describe('FeedPanel entity edit (slice 11.9)', () => {
+  it('edits a feed item through the prefilled pencil dialog (PATCH name/reorderThreshold)', async () => {
+    const patches: unknown[] = [];
+    mockFetchRoutes({
+      '/api/farm/feed': () => jsonResponse(200, { items: [item('fi1', 'Starter', '100', '150')] }),
+      '/api/farm/batches': () => jsonResponse(200, { batches: [batch('b1', 'B-001')] }),
+      '/api/farm/feed/fi1': (init) => {
+        patches.push({ method: init?.method, body: JSON.parse(String(init?.body)) });
+        return jsonResponse(200, { item: item('fi1', 'Starter Mash', '100', '200') });
+      },
+    });
+    renderPanel();
+    expect((await screen.findAllByText('Starter')).length).toBeGreaterThan(0);
+
+    const user = userEvent.setup();
+    // DataTable renders desktop + mobile variants — pick the first instance.
+    await user.click(screen.getAllByRole('button', { name: 'Edit Starter' })[0]!);
+    const dialog = await screen.findByRole('dialog');
+
+    // prefilled with the current name + threshold
+    const name = within(dialog).getByLabelText(/Name/);
+    expect(name).toHaveValue('Starter');
+    const threshold = within(dialog).getByLabelText(/Reorder threshold/);
+    expect(threshold).toHaveValue(150);
+
+    await user.clear(name);
+    await user.type(name, 'Starter Mash');
+    await user.clear(threshold);
+    await user.type(threshold, '200');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0]).toEqual({
+      method: 'PATCH',
+      body: { name: 'Starter Mash', reorderThreshold: 200 },
+    });
+    expect(await screen.findByText('Feed item updated')).toBeInTheDocument();
+  });
+
+  it('clearing the threshold sends null (removes the low-stock warning)', async () => {
+    const patches: unknown[] = [];
+    mockFetchRoutes({
+      '/api/farm/feed': () => jsonResponse(200, { items: [item('fi1', 'Starter', '100', '150')] }),
+      '/api/farm/batches': () => jsonResponse(200, { batches: [batch('b1', 'B-001')] }),
+      '/api/farm/feed/fi1': (init) => {
+        patches.push(JSON.parse(String(init?.body)));
+        return jsonResponse(200, { item: item('fi1', 'Starter', '100', null) });
+      },
+    });
+    renderPanel();
+    expect((await screen.findAllByText('Starter')).length).toBeGreaterThan(0);
+
+    const user = userEvent.setup();
+    await user.click(screen.getAllByRole('button', { name: 'Edit Starter' })[0]!);
+    const dialog = await screen.findByRole('dialog');
+    await user.clear(within(dialog).getByLabelText(/Reorder threshold/));
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(patches).toEqual([{ name: 'Starter', reorderThreshold: null }]));
+  });
+});

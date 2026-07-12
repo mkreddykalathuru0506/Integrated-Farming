@@ -7,6 +7,8 @@ export default {
   markSeen: 'Mark all seen',
   ack: 'Acknowledge',
   acked: 'Alert acknowledged',
+  resolve: 'Resolve',
+  resolved: 'Alert resolved',
   more: '+{{n}} more',
   groups: {
     today: 'Today',

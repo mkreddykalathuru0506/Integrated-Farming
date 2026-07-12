@@ -22,6 +22,8 @@ export default {
   noMarket: 'अभी तक कोई बाज़ार भाव दर्ज नहीं।',
   noAlerts: 'अभी तक कोई चेतावनी नहीं भेजी गई।',
   ack: 'स्वीकार करें',
+  resolve: 'सुलझाएँ',
+  resolved: 'जोखिम सुलझाया गया',
   asOf: '{{ts}} तक',
   greetMorning: 'सुप्रभात, {{name}}',
   greetAfternoon: 'नमस्कार, {{name}}',

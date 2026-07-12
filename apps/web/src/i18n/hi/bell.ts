@@ -7,6 +7,8 @@ export default {
   markSeen: 'सभी देखी गईं',
   ack: 'स्वीकार करें',
   acked: 'चेतावनी स्वीकार की गई',
+  resolve: 'सुलझाएँ',
+  resolved: 'चेतावनी सुलझाई गई',
   more: '+{{n}} और',
   groups: {
     today: 'आज',

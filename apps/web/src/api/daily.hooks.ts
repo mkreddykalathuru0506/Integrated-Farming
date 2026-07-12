@@ -87,19 +87,46 @@ export function useMarkAttendance(date: string) {
 
 // ---------- tasks & schedules ----------
 
-export function useTasks(date: string) {
+/**
+ * Tasks for a day, optionally filtered by assignee. `assigneeId` is passed to the
+ * server verbatim — a worker id, or the API's `'none'` sentinel for unassigned.
+ */
+export function useTasks(date: string, assigneeId?: string) {
   const { farmId, fetchJson } = useFarmApi();
   return useQuery({
-    queryKey: farmKeys.list(farmId, 'tasks', { date }),
-    queryFn: async () => (await fetchJson<{ tasks: TaskRow[] }>(`/api/farm/tasks${qs({ date })}`)).tasks,
+    queryKey: farmKeys.list(farmId, 'tasks', { date, assigneeId: assigneeId ?? '' }),
+    queryFn: async () =>
+      (await fetchJson<{ tasks: TaskRow[] }>(`/api/farm/tasks${qs({ date, assigneeId })}`)).tasks,
   });
 }
 
-/** Complete a task with an optimistic status flip on the day's list. */
-export function useCompleteTask(date: string) {
+/**
+ * Assign/unassign a task (PATCH /api/farm/tasks/:id/assign, slice 11.5b).
+ * `workerId: null` unassigns. Invalidates the param-less tasks prefix so every
+ * date/assignee variant of the list reconciles.
+ */
+export function useAssignTask() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<{ task: TaskRow }, { id: string; workerId: string | null }>({
+    mutationFn: ({ id, workerId }) =>
+      fetchJson(`/api/farm/tasks/${encodeURIComponent(id)}/assign`, {
+        method: 'PATCH',
+        body: JSON.stringify({ workerId }),
+      }),
+    successKey: 'tasks.assigned',
+    invalidate: [farmKeys.list(farmId, 'tasks')],
+  });
+}
+
+/**
+ * Complete a task with an optimistic status flip on the day's list. Pass the
+ * same `assigneeId` as the active useTasks() so the optimistic write hits the
+ * live cache entry (keys must match exactly).
+ */
+export function useCompleteTask(date: string, assigneeId?: string) {
   const { farmId, fetchJson } = useFarmApi();
   const queryClient = useQueryClient();
-  const key = farmKeys.list(farmId, 'tasks', { date });
+  const key = farmKeys.list(farmId, 'tasks', { date, assigneeId: assigneeId ?? '' });
   return useApiMutation<{ task: TaskRow }, string>({
     mutationFn: (id) =>
       fetchJson(`/api/farm/tasks/${encodeURIComponent(id)}/complete`, {
@@ -121,7 +148,8 @@ export function useCompleteTask(date: string) {
       const ctx = onMutateResult as { previous?: TaskRow[] } | undefined;
       if (ctx) queryClient.setQueryData(key, ctx.previous);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
+    // Param-less prefix: every date/assignee variant of the list reconciles.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: farmKeys.list(farmId, 'tasks') }),
   });
 }
 

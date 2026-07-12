@@ -3,7 +3,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { Package, ShoppingCart, Soup } from 'lucide-react';
+import { Package, Pencil, ShoppingCart, Soup, Users } from 'lucide-react';
 import { useBatches } from '../api/hooks';
 import {
   useConsumeFeed,
@@ -12,7 +12,10 @@ import {
   useFcr,
   useFeedItems,
   usePurchaseFeed,
+  useUpdateFeedItem,
+  useUpdateVendor,
   useVendors,
+  type Vendor,
 } from '../api/finance.hooks';
 import { fmtInr, rupeesToPaise } from '../lib/format';
 import {
@@ -108,6 +111,7 @@ export function FeedPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
     [batches.data],
   );
   const [dialog, setDialog] = useState<null | 'add' | 'buy' | 'consume'>(null);
+  const [editingItem, setEditingItem] = useState<FeedItem | null>(null);
 
   const columns: DataTableColumn<FeedItem>[] = [
     {
@@ -138,6 +142,25 @@ export function FeedPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
       id: 'status',
       cell: (i) => (isLow(i) ? <Badge variant="warning">{t('feed.low')}</Badge> : null),
     },
+    ...(canWrite
+      ? [
+          {
+            id: 'actions',
+            header: 'feed.colActions',
+            cell: (i: FeedItem) => (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={t('feed.editItemAria', { name: i.name })}
+                onClick={() => setEditingItem(i)}
+              >
+                <Pencil aria-hidden />
+              </Button>
+            ),
+          } satisfies DataTableColumn<FeedItem>,
+        ]
+      : []),
   ];
 
   return (
@@ -175,6 +198,7 @@ export function FeedPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
         <TabsList>
           <TabsTrigger value="inventory">{t('feed.tabInventory')}</TabsTrigger>
           <TabsTrigger value="fcr">{t('feed.tabFcr')}</TabsTrigger>
+          <TabsTrigger value="vendors">{t('feed.tabVendors')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="inventory">
@@ -215,9 +239,21 @@ export function FeedPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
         <TabsContent value="fcr">
           <FcrCard batches={activeBatches} />
         </TabsContent>
+
+        <TabsContent value="vendors">
+          <VendorsList canWrite={canWrite} />
+        </TabsContent>
       </Tabs>
 
       <AddItemDialog open={dialog === 'add'} onOpenChange={(o) => setDialog(o ? 'add' : null)} />
+      <Dialog open={editingItem !== null} onOpenChange={(o) => !o && setEditingItem(null)}>
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>{t('feed.editItemTitle', { name: editingItem?.name ?? '' })}</DialogTitle>
+          </DialogHeader>
+          {editingItem && <EditItemForm item={editingItem} onDone={() => setEditingItem(null)} />}
+        </DialogContent>
+      </Dialog>
       {/* Purchase and consumption are fully separate forms — each owns its own
           feed-item selection (fixes the legacy shared-buyId state bug). */}
       <PurchaseDialog
@@ -288,6 +324,198 @@ function StatTile({ label, value }: { label: string; value: string }) {
       <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className="mt-2 font-display text-2xl font-semibold tabular text-foreground">{value}</p>
     </Card>
+  );
+}
+
+const editItemSchema = z.object({
+  name: z.string().trim().min(1, 'feed.errName'),
+  threshold: z
+    .string()
+    .refine((s) => s === '' || (Number.isFinite(Number(s)) && Number(s) >= 0), 'feed.errThreshold'),
+});
+type EditItemValues = z.infer<typeof editItemSchema>;
+
+/** Prefilled feed-item PATCH — rename / retune the reorder threshold (blank clears it). */
+function EditItemForm({ item, onDone }: { item: FeedItem; onDone: () => void }) {
+  const { t } = useTranslation();
+  const updateItem = useUpdateFeedItem();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<EditItemValues>({
+    resolver: zodResolver(editItemSchema),
+    defaultValues: { name: item.name, threshold: item.reorderThreshold ?? '' },
+  });
+  const err = (m?: string) => (m ? t(m) : undefined);
+
+  const onSubmit = handleSubmit((v) => {
+    updateItem.mutate(
+      {
+        id: item.id,
+        data: {
+          name: v.name.trim(),
+          reorderThreshold: v.threshold === '' ? null : Number(v.threshold),
+        },
+      },
+      { onSuccess: onDone },
+    );
+  });
+
+  return (
+    <form onSubmit={(e) => void onSubmit(e)} className="space-y-3">
+      <Field label={t('feed.name')} required error={err(errors.name?.message)}>
+        <Input {...register('name')} />
+      </Field>
+      <Field label={t('feed.reorder')} hint={t('feed.reorderClearHint')} error={err(errors.threshold?.message)}>
+        <Input type="number" min={0} step="0.01" inputMode="decimal" {...register('threshold')} />
+      </Field>
+      <DialogFooter>
+        <Button type="button" variant="secondary" onClick={onDone}>
+          {t('common.cancel')}
+        </Button>
+        <Button type="submit" loading={updateItem.isPending}>
+          {t('common.save')}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+/** Vendor roster (name + GSTIN) with a prefilled PATCH dialog per row. */
+function VendorsList({ canWrite }: { canWrite: boolean }) {
+  const { t } = useTranslation();
+  const vendors = useVendors();
+  const [editing, setEditing] = useState<Vendor | null>(null);
+
+  const columns: DataTableColumn<Vendor>[] = [
+    {
+      header: 'feed.colVendor',
+      accessor: 'name',
+      cell: (v) => <span className="font-medium text-foreground">{v.name}</span>,
+    },
+    {
+      header: 'feed.colGstin',
+      accessor: (v) => v.gstin ?? '',
+      cell: (v) => v.gstin ?? '—',
+    },
+    ...(canWrite
+      ? [
+          {
+            id: 'actions',
+            header: 'feed.colActions',
+            cell: (v: Vendor) => (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={t('feed.editVendorAria', { name: v.name })}
+                onClick={() => setEditing(v)}
+              >
+                <Pencil aria-hidden />
+              </Button>
+            ),
+          } satisfies DataTableColumn<Vendor>,
+        ]
+      : []),
+  ];
+
+  return (
+    <div className="space-y-3">
+      {vendors.isError ? (
+        <div className="space-y-2">
+          <PanelError>{t('feed.vendorsError')}</PanelError>
+          <Button size="sm" variant="secondary" onClick={() => void vendors.refetch()}>
+            {t('feed.retry')}
+          </Button>
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={vendors.data}
+          isLoading={vendors.isPending}
+          pageSize={10}
+          getRowId={(v) => v.id}
+          emptyState={
+            <EmptyState
+              icon={Users}
+              title={t('feed.vendorsEmpty')}
+              description={t('feed.vendorsEmptyDesc')}
+              size="compact"
+            />
+          }
+        />
+      )}
+
+      <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>{t('feed.editVendorTitle', { name: editing?.name ?? '' })}</DialogTitle>
+          </DialogHeader>
+          {editing && <EditVendorForm vendor={editing} onDone={() => setEditing(null)} />}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+const editVendorSchema = z.object({
+  name: z.string().trim().min(1, 'feed.errVendorName'),
+  gstin: z.string(),
+  phone: z.string(),
+});
+type EditVendorValues = z.infer<typeof editVendorSchema>;
+
+/** Vendor PATCH. `phone` is write-only on the API (list DTO omits it) — blank keeps it. */
+function EditVendorForm({ vendor, onDone }: { vendor: Vendor; onDone: () => void }) {
+  const { t } = useTranslation();
+  const updateVendor = useUpdateVendor();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<EditVendorValues>({
+    resolver: zodResolver(editVendorSchema),
+    defaultValues: { name: vendor.name, gstin: vendor.gstin ?? '', phone: '' },
+  });
+  const err = (m?: string) => (m ? t(m) : undefined);
+
+  const onSubmit = handleSubmit((v) => {
+    updateVendor.mutate(
+      {
+        id: vendor.id,
+        data: {
+          name: v.name.trim(),
+          gstin: v.gstin.trim() || null,
+          ...(v.phone.trim() ? { phone: v.phone.trim() } : {}),
+        },
+      },
+      { onSuccess: onDone },
+    );
+  });
+
+  return (
+    <form onSubmit={(e) => void onSubmit(e)} className="space-y-3">
+      <Field label={t('feed.vendorName')} required error={err(errors.name?.message)}>
+        <Input {...register('name')} />
+      </Field>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label={t('feed.vendorGstin')}>
+          <Input {...register('gstin')} />
+        </Field>
+        <Field label={t('feed.vendorPhone')} hint={t('feed.blankKeeps')}>
+          <Input {...register('phone')} />
+        </Field>
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="secondary" onClick={onDone}>
+          {t('common.cancel')}
+        </Button>
+        <Button type="submit" loading={updateVendor.isPending}>
+          {t('common.save')}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
 

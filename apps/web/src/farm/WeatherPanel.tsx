@@ -1,6 +1,6 @@
 import { CloudSun, MapPin, RefreshCw, ThermometerSun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useAckRisk, useOpenRiskFlags, useRefreshWeather, useWeather } from '../api/ops.hooks';
+import { useAckRisk, useOpenRiskFlags, useRefreshWeather, useResolveRisk, useWeather } from '../api/ops.hooks';
 import { fmtDate, fmtDateTime } from '../lib/format';
 import { isApiError } from '../lib/http';
 import {
@@ -29,6 +29,7 @@ export function WeatherPanel({ canWrite }: { farmId: string; canWrite: boolean }
   const refresh = useRefreshWeather();
   const risks = useOpenRiskFlags();
   const ackRisk = useAckRisk();
+  const resolveRisk = useResolveRisk();
 
   const locationRequired = isApiError(weather.error) && weather.error.code === 'LOCATION_REQUIRED';
   const current = weather.data?.weather;
@@ -56,17 +57,29 @@ export function WeatherPanel({ canWrite }: { farmId: string; canWrite: boolean }
     ...(canWrite
       ? [
           {
-            header: 'weather.ack',
+            id: 'actions',
+            header: 'weather.colActions',
             cell: (r: RiskFlag) => (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                loading={ackRisk.isPending && ackRisk.variables === r.id}
-                onClick={() => ackRisk.mutate(r.id)}
-              >
-                {t('weather.ack')}
-              </Button>
+              <span className="inline-flex flex-wrap gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  loading={ackRisk.isPending && ackRisk.variables === r.id}
+                  onClick={() => ackRisk.mutate(r.id)}
+                >
+                  {t('weather.ack')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  loading={resolveRisk.isPending && resolveRisk.variables === r.id}
+                  onClick={() => resolveRisk.mutate(r.id)}
+                >
+                  {t('weather.resolve')}
+                </Button>
+              </span>
             ),
           } satisfies DataTableColumn<RiskFlag>,
         ]

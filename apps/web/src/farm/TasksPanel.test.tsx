@@ -124,3 +124,77 @@ describe('TasksPanel (11.6a rewrite)', () => {
     expect(await screen.findByText('Schedule added')).toBeInTheDocument();
   });
 });
+
+describe('TasksPanel assignee (slice 11.9)', () => {
+  const worker = {
+    id: 'w1',
+    name: 'Ravi',
+    phone: null,
+    designation: null,
+    wageType: 'DAILY',
+    dailyWageRatePaise: null,
+    isActive: true,
+    userId: null,
+  };
+
+  it('assigns a task to a worker via the row picker (PATCH { workerId })', async () => {
+    const patches: unknown[] = [];
+    routes({
+      '/api/farm/workers': () => jsonResponse(200, { workers: [worker] }),
+      '/api/farm/tasks/t1/assign': (init) => {
+        patches.push({ method: init?.method, body: JSON.parse(String(init?.body)) });
+        return jsonResponse(200, { task: { ...task, assignedWorkerId: 'w1' } });
+      },
+    });
+    renderPanel();
+    expect((await screen.findAllByText('Morning feeding')).length).toBeGreaterThan(0);
+
+    const user = userEvent.setup();
+    await user.selectOptions(
+      screen.getAllByLabelText('Assign "Morning feeding" to a worker')[0]!,
+      'w1',
+    );
+
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0]).toEqual({ method: 'PATCH', body: { workerId: 'w1' } });
+    expect(await screen.findByText('Task assignment updated')).toBeInTheDocument();
+  });
+
+  it('unassigns with workerId null and filters by ?assigneeId= including the none sentinel', async () => {
+    const urls: string[] = [];
+    const patches: unknown[] = [];
+    routes({
+      '/api/farm/tasks': (_init, url) => {
+        urls.push(url);
+        return jsonResponse(200, { tasks: [{ ...task, assignedWorkerId: 'w1' }] });
+      },
+      '/api/farm/workers': () => jsonResponse(200, { workers: [worker] }),
+      '/api/farm/tasks/t1/assign': (init) => {
+        patches.push(JSON.parse(String(init?.body)));
+        return jsonResponse(200, { task: { ...task, assignedWorkerId: null } });
+      },
+    });
+    renderPanel();
+    expect((await screen.findAllByText('Morning feeding')).length).toBeGreaterThan(0);
+
+    const user = userEvent.setup();
+    // picking the blank option unassigns → { workerId: null }
+    await user.selectOptions(
+      screen.getAllByLabelText('Assign "Morning feeding" to a worker')[0]!,
+      '',
+    );
+    await waitFor(() => expect(patches).toEqual([{ workerId: null }]));
+
+    // the unassigned view uses the API's literal 'none' sentinel
+    await user.selectOptions(screen.getByLabelText('Filter by assignee'), 'none');
+    await waitFor(() =>
+      expect(urls.some((u) => new URL(u).searchParams.get('assigneeId') === 'none')).toBe(true),
+    );
+
+    // and a worker filter passes the id through verbatim
+    await user.selectOptions(screen.getByLabelText('Filter by assignee'), 'w1');
+    await waitFor(() =>
+      expect(urls.some((u) => new URL(u).searchParams.get('assigneeId') === 'w1')).toBe(true),
+    );
+  });
+});

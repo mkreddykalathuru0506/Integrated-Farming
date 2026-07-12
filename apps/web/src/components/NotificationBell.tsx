@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bell, BellOff, Check } from 'lucide-react';
+import { Bell, BellOff, Check, CheckCheck } from 'lucide-react';
 import { useFarmApi } from '../api/FarmContext';
-import { useAckRisk } from '../api/intelligence.hooks';
+import { useAckRisk, useResolveRisk } from '../api/intelligence.hooks';
 import {
   Badge,
   DropdownMenu,
@@ -88,9 +88,10 @@ export function NotificationBell({ role, onNavigate }: Props) {
   const groups = groupBell(shown, now);
 
   const canAck = role === 'OWNER' || role === 'MANAGER';
-  // Canonical ack — invalidates the shared risk/due/dashboard/alerts caches, so
-  // acking here reconciles the dashboard + Weather panel too.
+  // Canonical ack/resolve — invalidate the shared risk/due/dashboard/alerts caches,
+  // so acting here reconciles the dashboard + Weather panel too.
   const ack = useAckRisk('bell.acked');
+  const resolve = useResolveRisk('bell.resolved');
 
   function markSeen() {
     const iso = new Date().toISOString();
@@ -129,21 +130,38 @@ export function NotificationBell({ role, onNavigate }: Props) {
               </span>
             </span>
             {item.kind === 'risk' && canAck && (
-              <button
-                type="button"
-                aria-label={t('bell.ack')}
-                disabled={ack.isPending}
-                onPointerDown={(e) => e.stopPropagation()}
-                onPointerUp={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  ack.mutate(item.id.replace(/^risk:/, ''));
-                }}
-                className="shrink-0 rounded-md border border-border px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <Check className="h-3.5 w-3.5" aria-hidden />
-              </button>
+              <span className="inline-flex shrink-0 gap-1">
+                <button
+                  type="button"
+                  aria-label={t('bell.ack')}
+                  disabled={ack.isPending}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerUp={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    ack.mutate(item.id.replace(/^risk:/, ''));
+                  }}
+                  className="rounded-md border border-border px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <Check className="h-3.5 w-3.5" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t('bell.resolve')}
+                  disabled={resolve.isPending}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerUp={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    resolve.mutate(item.id.replace(/^risk:/, ''));
+                  }}
+                  className="rounded-md border border-border px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <CheckCheck className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </span>
             )}
           </DropdownMenuItem>
         ))}

@@ -159,3 +159,113 @@ describe('InvoicePanel (11.6c conversion)', () => {
     expect(await screen.findByText('Invoice raised')).toBeInTheDocument();
   });
 });
+
+describe('InvoicePanel lifecycle (slice 11.9)', () => {
+  it('marks an ISSUED invoice paid and reflects the PAID badge after refetch', async () => {
+    let paid = false;
+    const calls: string[] = [];
+    mockFetchRoutes({
+      ...routes([]),
+      '/api/farm/invoices/i1': () =>
+        jsonResponse(200, { invoice: { ...detailInvoice, status: paid ? 'PAID' : 'ISSUED' } }),
+      '/api/farm/invoices/i1/mark-paid': (init?: RequestInit) => {
+        calls.push(String(init?.method));
+        paid = true;
+        return jsonResponse(200, { invoice: { ...listInvoice, status: 'PAID' } });
+      },
+    });
+    renderPanel();
+
+    const user = userEvent.setup();
+    await user.click((await screen.findAllByText('INV-2026-27-0001'))[0]!);
+    const dialog = await screen.findByRole('dialog');
+    await user.click(await within(dialog).findByRole('button', { name: /Mark paid/ }));
+
+    await waitFor(() => expect(calls).toEqual(['POST']));
+    expect(await screen.findByText('Invoice marked paid')).toBeInTheDocument();
+    // detail refetch (invalidation) now serves PAID → badge + no more lifecycle buttons
+    expect(await within(dialog).findByText('Paid')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(dialog).queryByRole('button', { name: /Mark paid/ })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('voids an invoice behind a danger confirm and maps the INVOICE_PAID guard', async () => {
+    const calls: string[] = [];
+    mockFetchRoutes({
+      ...routes([]),
+      '/api/farm/invoices/i1/void': (init?: RequestInit) => {
+        calls.push(String(init?.method));
+        return calls.length === 1
+          ? jsonResponse(200, { invoice: { ...listInvoice, status: 'CANCELLED' } })
+          : jsonResponse(422, { error: { code: 'INVOICE_PAID', message: 'Cannot void a paid invoice' } });
+      },
+    });
+    renderPanel();
+
+    const user = userEvent.setup();
+    await user.click((await screen.findAllByText('INV-2026-27-0001'))[0]!);
+    const dialog = await screen.findByRole('dialog');
+    await user.click(await within(dialog).findByRole('button', { name: /Void/ }));
+
+    // danger confirm dialog → confirm actually fires the POST
+    expect(await screen.findByText('Void invoice INV-2026-27-0001?')).toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+    const confirm = screen
+      .getAllByRole('dialog')
+      .find((d) => within(d).queryByText('Void invoice INV-2026-27-0001?'))!;
+    await user.click(within(confirm).getByRole('button', { name: 'Void' }));
+
+    await waitFor(() => expect(calls).toEqual(['POST']));
+    expect(await screen.findByText('Invoice voided')).toBeInTheDocument();
+  });
+
+  it('mark-paid/void guard errors surface as mapped toasts (ALREADY_PAID)', async () => {
+    mockFetchRoutes({
+      ...routes([]),
+      '/api/farm/invoices/i1/mark-paid': () =>
+        jsonResponse(422, { error: { code: 'ALREADY_PAID', message: 'Invoice is already paid' } }),
+    });
+    renderPanel();
+
+    const user = userEvent.setup();
+    await user.click((await screen.findAllByText('INV-2026-27-0001'))[0]!);
+    const dialog = await screen.findByRole('dialog');
+    await user.click(await within(dialog).findByRole('button', { name: /Mark paid/ }));
+    expect(await screen.findByText('This invoice is already marked paid')).toBeInTheDocument();
+  });
+
+  it('edits a customer through the roster pencil (PATCH body, blank keeps write-only fields)', async () => {
+    const patches: unknown[] = [];
+    mockFetchRoutes({
+      ...routes([]),
+      '/api/farm/customers/c1': (init?: RequestInit) => {
+        patches.push({ method: init?.method, body: JSON.parse(String(init?.body)) });
+        return jsonResponse(200, {
+          customer: { id: 'c1', name: 'Acme Traders Pvt Ltd', gstin: null, state: 'Karnataka' },
+        });
+      },
+    });
+    renderPanel();
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Edit customer Acme Traders' }));
+    const dialog = await screen.findByRole('dialog');
+
+    const name = within(dialog).getByLabelText(/Name/);
+    await user.clear(name);
+    await user.type(name, 'Acme Traders Pvt Ltd');
+    const state = within(dialog).getByLabelText(/State/);
+    await user.clear(state);
+    await user.type(state, 'Karnataka');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0]).toEqual({
+      method: 'PATCH',
+      // phone/address left blank → omitted so the stored values are kept
+      body: { name: 'Acme Traders Pvt Ltd', gstin: null, state: 'Karnataka' },
+    });
+    expect(await screen.findByText('Customer updated')).toBeInTheDocument();
+  });
+});

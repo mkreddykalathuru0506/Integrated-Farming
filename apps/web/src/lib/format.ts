@@ -90,6 +90,31 @@ export function fmtInrCompact(paise: string | number | bigint): string {
 }
 
 /**
+ * Integer-paise string → plain rupee text for form prefills ("123450" → "1234.50",
+ * "500" → "5"). BigInt arithmetic — never floats. Unparseable input → ''.
+ */
+export function paiseToRupees(paise: string | number | bigint): string {
+  let p: bigint;
+  try {
+    p = BigInt(paise);
+  } catch {
+    return '';
+  }
+  const neg = p < 0n;
+  const abs = neg ? -p : p;
+  const rupees = abs / 100n;
+  const rem = abs % 100n;
+  const frac = rem === 0n ? '' : `.${rem.toString().padStart(2, '0')}`;
+  return `${neg ? '-' : ''}${rupees.toString()}${frac}`;
+}
+
+/** ISO timestamp/Date → `YYYY-MM-DD` in Asia/Kolkata (for date-input prefills). */
+export function isoDayIST(value: string | Date | null | undefined): string {
+  const d = toDate(value);
+  return d ? isoDayFmt.format(d) : '';
+}
+
+/**
  * User-typed rupee string → integer-paise string, or null when invalid.
  * Accepts optional sign, Indian comma grouping and at most 2 decimals
  * ("1,234.5" → "123450"); rejects >2 decimals and any non-numeric input.

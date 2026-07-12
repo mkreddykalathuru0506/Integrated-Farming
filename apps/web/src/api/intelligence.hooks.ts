@@ -82,3 +82,21 @@ export function useAckRisk(successKey = 'weather.acked') {
     invalidate: intelInvalidation(farmId),
   });
 }
+
+/**
+ * Resolve a risk (POST /api/farm/risk/:id/resolve, slice 11.9) — closes the flag
+ * for good (ack keeps it visible as ACKNOWLEDGED; resolve removes it from the
+ * open set). Same canonical single-mutation pattern + invalidation as ack.
+ */
+export function useResolveRisk(successKey = 'weather.resolved') {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<unknown, string>({
+    mutationFn: (id) =>
+      fetchJson(`/api/farm/risk/${encodeURIComponent(id)}/resolve`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      }),
+    successKey,
+    invalidate: intelInvalidation(farmId),
+  });
+}
