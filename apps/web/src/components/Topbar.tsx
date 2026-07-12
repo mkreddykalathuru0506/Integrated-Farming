@@ -77,7 +77,7 @@ export function Topbar({
         {farms.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="flex min-h-11 max-w-[9rem] items-center gap-2 rounded-lg border border-input bg-card px-2.5 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 sm:max-w-[14rem]"
+              className="flex min-h-11 max-w-[7.5rem] items-center gap-2 rounded-lg border border-input bg-card px-2.5 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 sm:max-w-[14rem]"
               aria-label={t('nav.selectFarm')}
             >
               <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />

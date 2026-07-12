@@ -1035,7 +1035,10 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
       : ['onboarding', 'finance', 'kpis', 'risks', 'today', 'charts'];
 
   return (
-    <div className="relative space-y-6">
+    // overflow-x-clip: the decorative 560px contour SVG (right-0) extends past the
+    // left edge on narrow screens — clip it so it never adds horizontal page scroll
+    // at 360px. Radix menus/tooltips are portaled, so clipping here is safe.
+    <div className="relative space-y-6 overflow-x-clip">
       {/* Topographic contour texture (farmland) */}
       <svg
         className="pointer-events-none absolute -top-10 right-0 h-72 w-[560px] opacity-50"
