@@ -45,6 +45,7 @@ import vax from './vax';
 import health from './health';
 import team from './team';
 import activity from './activity';
+import landing from './landing';
 
 export const en = {
   translation: {
@@ -93,5 +94,6 @@ export const en = {
     health,
     team,
     activity,
+    landing,
   },
 };
