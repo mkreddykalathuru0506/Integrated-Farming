@@ -49,6 +49,8 @@ export default {
     market: 'Market rates',
     reports: 'Reports',
     units: 'Units',
+    team: 'Team',
+    activity: 'Activity',
     settings: 'Farm settings',
   },
 };

@@ -43,6 +43,8 @@ import events from './events';
 import workers from './workers';
 import tasks from './tasks';
 import logs from './logs';
+import team from './team';
+import activity from './activity';
 
 export const hi = {
   translation: {
@@ -89,5 +91,7 @@ export const hi = {
     workers,
     tasks,
     logs,
+    team,
+    activity,
   },
 };

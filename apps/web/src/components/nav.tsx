@@ -41,6 +41,8 @@ const WeatherPanel = lazy(() => import('../farm/WeatherPanel').then((m) => ({ de
 const MarketPanel = lazy(() => import('../farm/MarketPanel').then((m) => ({ default: m.MarketPanel })));
 const ReportsPanel = lazy(() => import('../farm/ReportsPanel').then((m) => ({ default: m.ReportsPanel })));
 const UnitsPanel = lazy(() => import('../farm/UnitsPanel').then((m) => ({ default: m.UnitsPanel })));
+const TeamPanel = lazy(() => import('../farm/TeamPanel').then((m) => ({ default: m.TeamPanel })));
+const ActivityPanel = lazy(() => import('../farm/ActivityPanel').then((m) => ({ default: m.ActivityPanel })));
 const SettingsPanel = lazy(() => import('../farm/SettingsPanel').then((m) => ({ default: m.SettingsPanel })));
 
 /** Farm membership roles (mirrors the API's FarmRole enum). */
@@ -55,6 +57,10 @@ export type Perms = {
   canWriteFinance: boolean;
   canBill: boolean;
   canLogTemp: boolean;
+  /** Membership lifecycle (add/change-role/deactivate) is OWNER-only on the API. */
+  canManageTeam: boolean;
+  /** GET /api/farm/audit is OWNER/MANAGER-only on the API. */
+  canViewAudit: boolean;
 };
 
 export function permsFor(farm: MyFarm | undefined): Perms {
@@ -67,6 +73,8 @@ export function permsFor(farm: MyFarm | undefined): Perms {
     canWriteFinance: canWriteUnits || role === 'ACCOUNTANT',
     canBill: role === 'OWNER' || role === 'ACCOUNTANT',
     canLogTemp: canWriteUnits || role === 'LABOUR',
+    canManageTeam: role === 'OWNER',
+    canViewAudit: canWriteUnits,
   };
 }
 
@@ -138,7 +146,8 @@ export const SECTIONS: Section[] = [
       { key: 'feed', render: (f, p) => <FeedPanel farmId={f} canWrite={p.canWriteFinance} /> },
       { key: 'expenses', render: (f, p) => <ExpensesPanel farmId={f} canWrite={p.canWriteFinance} /> },
       { key: 'emi', render: (f, p) => <EmiInsurancePanel farmId={f} canWrite={p.canWriteFinance} /> },
-      { key: 'invoices', render: (f, p) => <InvoicePanel farmId={f} canWrite={p.canBill} /> },
+      // canBill (OWNER/ACCOUNTANT) gates billing; customer PATCH also allows MANAGER.
+      { key: 'invoices', render: (f, p) => <InvoicePanel farmId={f} canWrite={p.canBill} canEditCustomers={p.canWriteFinance} /> },
     ],
   },
   {
@@ -183,6 +192,10 @@ export const SECTIONS: Section[] = [
     roles: ['OWNER', 'MANAGER'],
     panels: [
       { key: 'units', render: (f, p) => <UnitsPanel farmId={f} canWrite={p.canWriteUnits} /> },
+      // Members roster: OWNER manages, MANAGER reads (the section is OWNER/MANAGER-only).
+      { key: 'team', render: (f, p) => <TeamPanel farmId={f} canManage={p.canManageTeam} /> },
+      // Audit feed: the API gates GET /audit to OWNER/MANAGER — same as this section.
+      { key: 'activity', render: (f, p) => <ActivityPanel farmId={f} canView={p.canViewAudit} /> },
       { key: 'settings', render: (f, p) => <SettingsPanel farmId={f} canWrite={p.canWriteSettings} /> },
     ],
   },
