@@ -24,7 +24,7 @@ import { farmKeys } from './keys';
 
 // Open-risk reads + ack are canonical (intelligence.hooks.ts). Re-exported here so the
 // Weather panel keeps a single import site; the plural 'risks' cache key is gone.
-export { useOpenRisks as useOpenRiskFlags, useAckRisk } from './intelligence.hooks';
+export { useOpenRisks as useOpenRiskFlags, useAckRisk, useResolveRisk } from './intelligence.hooks';
 
 /* ---------- assets & maintenance ---------- */
 
@@ -58,6 +58,25 @@ export function useCreateAsset() {
       fetchJson('/api/farm/assets', { method: 'POST', body: JSON.stringify(data) }),
     successKey: 'assets.created',
     invalidate: [farmKeys.list(farmId, 'assets')],
+  });
+}
+
+export type UpdateAssetInput = {
+  id: string;
+  data: { name?: string; type?: string; status?: string };
+};
+
+/** PATCH /api/farm/assets/:id — name/type/status (slice 11.5b). */
+export function useUpdateAsset() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<{ asset: Asset }, UpdateAssetInput>({
+    mutationFn: ({ id, data }) =>
+      fetchJson(`/api/farm/assets/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    successKey: 'assets.updated',
+    invalidate: [farmKeys.list(farmId, 'assets'), farmKeys.list(farmId, 'asset-reminders')],
   });
 }
 
@@ -250,6 +269,36 @@ export function useCreateReportSchedule() {
     mutationFn: (data) =>
       fetchJson('/api/farm/reports/schedules', { method: 'POST', body: JSON.stringify(data) }),
     successKey: 'reports.added',
+    invalidate: [farmKeys.list(farmId, 'report-schedules')],
+  });
+}
+
+export type UpdateReportScheduleInput = {
+  id: string;
+  data: { isActive?: boolean; name?: string; frequency?: string; recipient?: string };
+};
+
+/** PATCH /api/farm/reports/schedules/:id — pause/resume via isActive (slice 11.5b). */
+export function useUpdateReportSchedule() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<{ schedule: ReportSchedule }, UpdateReportScheduleInput>({
+    mutationFn: ({ id, data }) =>
+      fetchJson(`/api/farm/reports/schedules/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    successKey: 'reports.updated',
+    invalidate: [farmKeys.list(farmId, 'report-schedules')],
+  });
+}
+
+/** DELETE /api/farm/reports/schedules/:id — soft-delete on the server. */
+export function useDeleteReportSchedule() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<{ ok: true; id: string }, string>({
+    mutationFn: (id) =>
+      fetchJson(`/api/farm/reports/schedules/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    successKey: 'reports.deleted',
     invalidate: [farmKeys.list(farmId, 'report-schedules')],
   });
 }

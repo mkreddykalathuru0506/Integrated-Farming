@@ -1,13 +1,18 @@
-// 11.6 follow-up: edit/soft-delete once PR #60 merges (endpoints not on main yet).
 import { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { ReceiptIndianRupee } from 'lucide-react';
+import { Pencil, ReceiptIndianRupee, Trash2 } from 'lucide-react';
 import { useBatches } from '../api/hooks';
-import { useBatchCost, useCreateExpense, useExpenses } from '../api/finance.hooks';
-import { fmtDate, fmtInr, rupeesToPaise } from '../lib/format';
+import {
+  useBatchCost,
+  useCreateExpense,
+  useDeleteExpense,
+  useExpenses,
+  useUpdateExpense,
+} from '../api/finance.hooks';
+import { fmtDate, fmtInr, isoDayIST, paiseToRupees, rupeesToPaise } from '../lib/format';
 import { pathForSection } from '../components/router';
 import { LoadMore } from './LoadMore';
 import { SpaLink } from './SpaLink';
@@ -16,6 +21,7 @@ import {
   Button,
   Card,
   CardSkeleton,
+  ConfirmDialog,
   DataTable,
   Dialog,
   DialogContent,
@@ -57,6 +63,9 @@ export function ExpensesPanel({ canWrite }: { farmId: string; canWrite: boolean 
   const [batchFilter, setBatchFilter] = useState(''); // server-side ?batchId filter
   const [catFilter, setCatFilter] = useState(''); // client-side category filter
   const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<Expense | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Expense | null>(null);
+  const deleteExpense = useDeleteExpense();
 
   const expenses = useExpenses(batchFilter || undefined);
   const batches = useBatches();
@@ -105,6 +114,37 @@ export function ExpensesPanel({ canWrite }: { farmId: string; canWrite: boolean 
       align: 'right',
       cell: (e) => fmtInr(e.amountPaise),
     },
+    ...(canWrite
+      ? [
+          {
+            id: 'actions',
+            header: 'expenses.colActions',
+            cell: (e: Expense) => (
+              <span className="inline-flex gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t('expenses.edit')}
+                  onClick={() => setEditing(e)}
+                >
+                  <Pencil aria-hidden />
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  aria-label={t('expenses.deleteAction')}
+                  disabled={deleteExpense.isPending}
+                  onClick={() => setPendingDelete(e)}
+                >
+                  <Trash2 aria-hidden />
+                </Button>
+              </span>
+            ),
+          } satisfies DataTableColumn<Expense>,
+        ]
+      : []),
   ];
 
   return (
@@ -201,7 +241,122 @@ export function ExpensesPanel({ canWrite }: { farmId: string; canWrite: boolean 
           <ExpenseForm batches={activeBatches} onDone={() => setCreateOpen(false)} />
         </DialogContent>
       </Dialog>
+
+      <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>{t('expenses.editTitle')}</DialogTitle>
+          </DialogHeader>
+          {editing && <EditExpenseForm expense={editing} onDone={() => setEditing(null)} />}
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        title={t('expenses.deleteTitle')}
+        description={t('expenses.deleteBody', { amount: fmtInr(pendingDelete?.amountPaise ?? '0') })}
+        confirmLabel={t('common.delete')}
+        variant="danger"
+        loading={deleteExpense.isPending}
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          deleteExpense.mutate(pendingDelete.id, { onSettled: () => setPendingDelete(null) });
+        }}
+      />
     </section>
+  );
+}
+
+const editSchema = z.object({
+  category: z.string().min(1),
+  amount: z.string().refine((s) => {
+    const p = rupeesToPaise(s);
+    return p !== null && !p.startsWith('-');
+  }, 'expenses.errAmount'),
+  description: z.string(),
+  occurredAt: z.string().min(1, 'expenses.errDate'),
+});
+type EditValues = z.infer<typeof editSchema>;
+
+/** Prefilled edit form → PATCH /api/farm/expenses/:id (category/amount/description/date). */
+function EditExpenseForm({ expense, onDone }: { expense: Expense; onDone: () => void }) {
+  const { t } = useTranslation();
+  const updateExpense = useUpdateExpense();
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<EditValues>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      category: expense.category,
+      amount: paiseToRupees(expense.amountPaise),
+      description: expense.description ?? '',
+      occurredAt: isoDayIST(expense.occurredAt),
+    },
+  });
+  const err = (m?: string) => (m ? t(m) : undefined);
+
+  const onSubmit = handleSubmit((v) => {
+    updateExpense.mutate(
+      {
+        id: expense.id,
+        data: {
+          category: v.category,
+          amountPaise: rupeesToPaise(v.amount)!, // integer-paise string passthrough
+          description: v.description.trim() || null, // null clears the description
+          occurredAt: dayISO(v.occurredAt),
+        },
+      },
+      { onSuccess: onDone },
+    );
+  });
+
+  return (
+    <form onSubmit={(e) => void onSubmit(e)} className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label={t('expenses.categoryField')} required>
+          <Select {...register('category')}>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {t(`expenses.category.${c}`)}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Controller
+          name="amount"
+          control={control}
+          render={({ field }) => (
+            <Field label={t('expenses.amount')} required error={err(errors.amount?.message)}>
+              <InrInput
+                value={field.value}
+                onChangePaise={(_, rupees) => field.onChange(rupees)}
+                onBlur={field.onBlur}
+              />
+            </Field>
+          )}
+        />
+      </div>
+      <Field label={t('expenses.descriptionField')}>
+        <Textarea rows={2} {...register('description')} />
+      </Field>
+      <Field label={t('expenses.occurredAt')} required error={err(errors.occurredAt?.message)}>
+        <Input type="date" {...register('occurredAt')} />
+      </Field>
+      <DialogFooter>
+        <Button type="button" variant="secondary" onClick={onDone}>
+          {t('common.cancel')}
+        </Button>
+        <Button type="submit" loading={updateExpense.isPending}>
+          {t('common.save')}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
 

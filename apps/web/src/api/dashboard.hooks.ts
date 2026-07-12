@@ -7,7 +7,14 @@ import { useQuery } from '@tanstack/react-query';
 import type { AlertLog, ColdStorage, Dashboard, FeedItem } from '../farm/api';
 import { useApiMutation } from '../lib/useApiMutation';
 import { useFarmApi } from './FarmContext';
-import { intelInvalidation, useAckRisk, useDue, useOpenRisks, type DueRollup } from './intelligence.hooks';
+import {
+  intelInvalidation,
+  useAckRisk,
+  useDue,
+  useOpenRisks,
+  useResolveRisk,
+  type DueRollup,
+} from './intelligence.hooks';
 import { farmKeys } from './keys';
 
 // Canonical risk/due layer lives in intelligence.hooks.ts (slice 11.8a). Re-exported
@@ -16,6 +23,8 @@ export { useOpenRisks as useOpenRiskFlags, useDue as useDueRollup };
 export type { DueRollup };
 /** Dashboard-flavoured ack toast; same canonical mutation + invalidation as everywhere. */
 export const useAcknowledgeRisk = () => useAckRisk('dashboard.acked');
+/** Dashboard-flavoured resolve toast; same canonical mutation + invalidation (11.9). */
+export const useResolveRiskFlag = () => useResolveRisk('dashboard.resolved');
 
 // ---------- response shapes ----------
 

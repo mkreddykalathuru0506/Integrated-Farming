@@ -78,6 +78,25 @@ export function useCreateFeedItem() {
   });
 }
 
+export type UpdateFeedItemInput = {
+  id: string;
+  data: { name?: string; unit?: string; reorderThreshold?: number | null };
+};
+
+/** PATCH /api/farm/feed/:id — rename / retune the reorder threshold (null clears it). */
+export function useUpdateFeedItem() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<{ item: FeedItem }, UpdateFeedItemInput>({
+    mutationFn: ({ id, data }) =>
+      fetchJson(`/api/farm/feed/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    successKey: 'feed.itemUpdated',
+    invalidate: [farmKeys.list(farmId, 'feed')],
+  });
+}
+
 export function usePurchaseFeed() {
   const { farmId, fetchJson } = useFarmApi();
   return useApiMutation<
@@ -108,6 +127,25 @@ export function useCreateVendor() {
   return useApiMutation<{ vendor: Vendor }, { name: string; gstin?: string; phone?: string }>({
     mutationFn: (data) => fetchJson('/api/farm/vendors', { method: 'POST', body: JSON.stringify(data) }),
     successKey: 'feed.vendorAdded',
+    invalidate: [farmKeys.list(farmId, 'vendors')],
+  });
+}
+
+export type UpdateVendorInput = {
+  id: string;
+  data: { name?: string; gstin?: string | null; phone?: string | null };
+};
+
+/** PATCH /api/farm/vendors/:id. `phone` is write-only (the list DTO omits it). */
+export function useUpdateVendor() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<{ vendor: Vendor }, UpdateVendorInput>({
+    mutationFn: ({ id, data }) =>
+      fetchJson(`/api/farm/vendors/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    successKey: 'feed.vendorUpdated',
     invalidate: [farmKeys.list(farmId, 'vendors')],
   });
 }
@@ -167,6 +205,50 @@ export function useCreateExpense() {
       farmKeys.list(farmId, 'batchCost'),
       farmKeys.list(farmId, 'pnl'),
     ],
+  });
+}
+
+export type UpdateExpenseInput = {
+  id: string;
+  data: {
+    category?: string;
+    amountPaise?: string;
+    description?: string | null;
+    occurredAt?: string;
+  };
+};
+
+/** Keys every expense-changing mutation must refresh (list, rollup, P&L, dashboard chart). */
+const expenseInvalidation = (farmId: string) =>
+  [
+    farmKeys.list(farmId, 'expenses'),
+    farmKeys.list(farmId, 'batchCost'),
+    farmKeys.list(farmId, 'pnl'),
+    farmKeys.list(farmId, 'finance-summary'),
+  ] as const;
+
+/** PATCH /api/farm/expenses/:id — category/amount/description/date (slice 11.5b). */
+export function useUpdateExpense() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<{ expense: Expense }, UpdateExpenseInput>({
+    mutationFn: ({ id, data }) =>
+      fetchJson(`/api/farm/expenses/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    successKey: 'expenses.updated',
+    invalidate: expenseInvalidation(farmId),
+  });
+}
+
+/** DELETE /api/farm/expenses/:id — soft-delete on the server (row is recoverable in the DB). */
+export function useDeleteExpense() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<{ ok: true; id: string }, string>({
+    mutationFn: (id) =>
+      fetchJson(`/api/farm/expenses/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    successKey: 'expenses.deleted',
+    invalidate: expenseInvalidation(farmId),
   });
 }
 
@@ -297,6 +379,73 @@ export function useCreateCustomer() {
     mutationFn: (data) => fetchJson('/api/farm/customers', { method: 'POST', body: JSON.stringify(data) }),
     successKey: 'invoices.customerAdded',
     invalidate: [farmKeys.list(farmId, 'customers')],
+  });
+}
+
+export type UpdateCustomerInput = {
+  id: string;
+  data: {
+    name?: string;
+    gstin?: string | null;
+    state?: string | null;
+    phone?: string | null;
+    address?: string | null;
+  };
+};
+
+/** PATCH /api/farm/customers/:id. `phone`/`address` are write-only (list DTO omits them). */
+export function useUpdateCustomer() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<{ customer: Customer }, UpdateCustomerInput>({
+    mutationFn: ({ id, data }) =>
+      fetchJson(`/api/farm/customers/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    successKey: 'invoices.customerUpdated',
+    invalidate: [farmKeys.list(farmId, 'customers')],
+  });
+}
+
+/**
+ * Prefix key covering BOTH the invoice list and every invoice detail
+ * (['farm', id, 'invoices'] is a prefix of the list AND detail keys).
+ */
+const invoicesDomain = (farmId: string) => [...farmKeys.all(farmId), 'invoices'] as const;
+
+/** POST /api/farm/invoices/:id/mark-paid — ISSUED → PAID (server-guarded). */
+export function useMarkInvoicePaid() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<{ invoice: Invoice }, string>({
+    mutationFn: (id) =>
+      fetchJson(`/api/farm/invoices/${encodeURIComponent(id)}/mark-paid`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      }),
+    successKey: 'invoices.markedPaid',
+    invalidate: [
+      invoicesDomain(farmId),
+      farmKeys.list(farmId, 'pnl'),
+      farmKeys.list(farmId, 'finance-summary'),
+    ],
+  });
+}
+
+/** POST /api/farm/invoices/:id/void — DRAFT/ISSUED → CANCELLED (paid invoices blocked). */
+export function useVoidInvoice() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<{ invoice: Invoice }, string>({
+    mutationFn: (id) =>
+      fetchJson(`/api/farm/invoices/${encodeURIComponent(id)}/void`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      }),
+    successKey: 'invoices.voided',
+    invalidate: [
+      invoicesDomain(farmId),
+      farmKeys.list(farmId, 'pnl'),
+      farmKeys.list(farmId, 'finance-summary'),
+    ],
   });
 }
 

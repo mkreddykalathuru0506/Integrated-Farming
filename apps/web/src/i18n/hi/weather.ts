@@ -19,4 +19,7 @@ export default {
   colRaised: 'उठाई गई',
   ack: 'स्वीकार करें',
   acked: 'चेतावनी स्वीकार की गई',
+  colActions: 'कार्रवाइयाँ',
+  resolve: 'सुलझाएँ',
+  resolved: 'चेतावनी सुलझाई गई',
 };

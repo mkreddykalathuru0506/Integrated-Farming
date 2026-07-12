@@ -43,6 +43,8 @@ import hatchery from './hatchery';
 import breeding from './breeding';
 import vax from './vax';
 import health from './health';
+import team from './team';
+import activity from './activity';
 
 export const en = {
   translation: {
@@ -89,5 +91,7 @@ export const en = {
     breeding,
     vax,
     health,
+    team,
+    activity,
   },
 };

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Circle, ListTodo, Plus, RefreshCw } from 'lucide-react';
 import { useUnits } from '../api/hooks';
 import {
+  useAssignTask,
   useCompleteTask,
   useCreateSchedule,
   useGenerateTasks,
@@ -102,6 +103,9 @@ export function TasksPanel({ canWrite }: { farmId: string; canWrite: boolean }) 
 
 // ---------- tasks-for-a-day view ----------
 
+/** Assignee filter sentinel — the API filters unassigned tasks via ?assigneeId=none. */
+const UNASSIGNED = 'none';
+
 function TasksView({
   canWrite,
   date,
@@ -113,9 +117,16 @@ function TasksView({
 }) {
   const { t } = useTranslation();
   const toast = useToast();
-  const tasks = useTasks(date);
-  const completeTask = useCompleteTask(date);
+  // '' = all | 'none' = unassigned | worker id — passed to ?assigneeId= verbatim.
+  const [assignee, setAssignee] = useState('');
+  const tasks = useTasks(date, assignee || undefined);
+  const completeTask = useCompleteTask(date, assignee || undefined);
   const generateTasks = useGenerateTasks();
+  const assignTask = useAssignTask();
+  const workers = useWorkers();
+  const activeWorkers = (workers.data ?? []).filter((w) => w.isActive);
+  const workerName = (id: string | null | undefined) =>
+    (workers.data ?? []).find((w) => w.id === id)?.name;
 
   const isPastDate = date < todayStr();
   const isOverdue = (task: TaskRow) =>
@@ -152,6 +163,38 @@ function TasksView({
       ),
     },
     { header: 'tasks.cols.type', accessor: (task) => t(`tasks.taskType.${task.taskType}`) },
+    {
+      id: 'assignee',
+      header: 'tasks.cols.assignee',
+      accessor: (task) => workerName(task.assignedWorkerId) ?? '',
+      cell: (task) =>
+        canWrite ? (
+          <Select
+            value={task.assignedWorkerId ?? ''}
+            aria-label={t('tasks.assignTo', { title: task.title })}
+            disabled={assignTask.isPending}
+            onChange={(e) =>
+              assignTask.mutate({ id: task.id, workerId: e.target.value || null })
+            }
+            className="w-auto min-w-36"
+          >
+            <option value="">{t('tasks.unassigned')}</option>
+            {/* Keep a now-inactive assignee selectable so the value always resolves. */}
+            {task.assignedWorkerId && !activeWorkers.some((w) => w.id === task.assignedWorkerId) && (
+              <option value={task.assignedWorkerId}>
+                {workerName(task.assignedWorkerId) ?? task.assignedWorkerId}
+              </option>
+            )}
+            {activeWorkers.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
+          </Select>
+        ) : (
+          workerName(task.assignedWorkerId) ?? t('tasks.unassigned')
+        ),
+    },
     {
       header: 'tasks.cols.status',
       accessor: 'status',
@@ -204,6 +247,20 @@ function TasksView({
             {t('tasks.today')}
           </Button>
         )}
+        <Select
+          value={assignee}
+          onChange={(e) => setAssignee(e.target.value)}
+          aria-label={t('tasks.filterAssignee')}
+          className="w-auto min-w-36"
+        >
+          <option value="">{t('tasks.allAssignees')}</option>
+          <option value={UNASSIGNED}>{t('tasks.unassigned')}</option>
+          {activeWorkers.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}
+            </option>
+          ))}
+        </Select>
         <span className="flex-1" />
         {canWrite && (
           <Button

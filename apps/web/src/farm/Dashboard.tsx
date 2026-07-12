@@ -35,6 +35,7 @@ import {
   useIntelligenceSweep,
   useOnboarding,
   useOpenRiskFlags,
+  useResolveRiskFlag,
   type DueRollup,
   type FinancePeriod,
   type Onboarding,
@@ -553,6 +554,7 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
   const farmQ = useFarmDetail(showFinance);
 
   const ackMutation = useAcknowledgeRisk();
+  const resolveMutation = useResolveRiskFlag();
   const dispatchMutation = useDispatchAlerts();
   const sweepMutation = useIntelligenceSweep();
 
@@ -872,15 +874,26 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
                     <span className="flex min-w-0 flex-1 items-start gap-3">{row}</span>
                   )}
                   {canWrite && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      loading={ackMutation.isPending && ackMutation.variables === r.id}
-                      onClick={() => ackMutation.mutate(r.id)}
-                    >
-                      {t('dashboard.ack')}
-                    </Button>
+                    <span className="inline-flex shrink-0 flex-wrap justify-end gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        loading={ackMutation.isPending && ackMutation.variables === r.id}
+                        onClick={() => ackMutation.mutate(r.id)}
+                      >
+                        {t('dashboard.ack')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        loading={resolveMutation.isPending && resolveMutation.variables === r.id}
+                        onClick={() => resolveMutation.mutate(r.id)}
+                      >
+                        {t('dashboard.resolve')}
+                      </Button>
+                    </span>
                   )}
                 </li>
               );

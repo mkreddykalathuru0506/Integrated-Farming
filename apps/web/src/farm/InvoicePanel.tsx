@@ -1,10 +1,9 @@
-// 11.6 follow-up: mark-paid / void actions once PR #60 merges (endpoints not on main yet).
 import { useMemo, useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { FilePlus2, FileText, Plus, Trash2, UserPlus } from 'lucide-react';
+import { Ban, CheckCircle2, FilePlus2, FileText, Pencil, Plus, Trash2, UserPlus } from 'lucide-react';
 import { useBatches } from '../api/hooks';
 import {
   useCreateCustomer,
@@ -14,7 +13,10 @@ import {
   useFarmPnl,
   useInvoice,
   useInvoices,
+  useMarkInvoicePaid,
   useOpenInvoicePdf,
+  useUpdateCustomer,
+  useVoidInvoice,
   type InvoiceListItem,
 } from '../api/finance.hooks';
 import { fmtDate, fmtInr, rupeesToPaise } from '../lib/format';
@@ -23,6 +25,7 @@ import {
   Button,
   Card,
   CardSkeleton,
+  ConfirmDialog,
   DataTable,
   Dialog,
   DialogContent,
@@ -43,7 +46,7 @@ import {
 } from '../ui';
 import { buildTotals, isIntraState } from './gstPreview';
 import { LoadMore } from './LoadMore';
-import type { Batch } from './api';
+import type { Batch, Customer } from './api';
 
 const GST_RATES_BPS = [0, 500, 1200, 1800, 2800] as const;
 
@@ -80,13 +83,23 @@ const customerSchema = z.object({
 });
 type CustomerValues = z.infer<typeof customerSchema>;
 
-export function InvoicePanel({ canWrite }: { farmId: string; canWrite: boolean }) {
+export function InvoicePanel({
+  canWrite,
+  canEditCustomers = canWrite,
+}: {
+  farmId: string;
+  /** Billing writes (raise / mark-paid / void / add customer): OWNER/ACCOUNTANT. */
+  canWrite: boolean;
+  /** Customer PATCH allows MANAGER too (OWNER/MANAGER/ACCOUNTANT on the API). */
+  canEditCustomers?: boolean;
+}) {
   const { t } = useTranslation();
   const invoices = useInvoices();
   const customers = useCustomers();
   const pnl = useFarmPnl();
   const [createOpen, setCreateOpen] = useState(false);
   const [custOpen, setCustOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const hasCustomers = (customers.data?.length ?? 0) > 0;
@@ -205,6 +218,39 @@ export function InvoicePanel({ canWrite }: { farmId: string; canWrite: boolean }
         </DialogContent>
       </Dialog>
 
+      {/* Customer roster — edit opens the prefilled PATCH dialog (slice 11.9). */}
+      {(customers.data?.length ?? 0) > 0 && (
+        <SubPanel className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t('invoices.customers')}
+          </p>
+          <ul className="divide-y divide-border/60">
+            {(customers.data ?? []).map((c) => (
+              <li key={c.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span className="min-w-0">
+                  <span className="font-medium text-foreground">{c.name}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {c.state ?? t('invoices.customerNoState')}
+                    {c.gstin ? ` · ${c.gstin}` : ''}
+                  </span>
+                </span>
+                {canEditCustomers && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label={t('invoices.editCustomer', { name: c.name })}
+                    onClick={() => setEditingCustomer(c)}
+                  >
+                    <Pencil aria-hidden />
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </SubPanel>
+      )}
+
       <Dialog open={custOpen} onOpenChange={setCustOpen}>
         <DialogContent aria-describedby={undefined}>
           <DialogHeader>
@@ -214,7 +260,22 @@ export function InvoicePanel({ canWrite }: { farmId: string; canWrite: boolean }
         </DialogContent>
       </Dialog>
 
-      <InvoiceDetailDialog id={detailId} onOpenChange={(o) => !o && setDetailId(null)} />
+      <Dialog open={editingCustomer !== null} onOpenChange={(o) => !o && setEditingCustomer(null)}>
+        <DialogContent aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>{t('invoices.editCustomerTitle', { name: editingCustomer?.name ?? '' })}</DialogTitle>
+          </DialogHeader>
+          {editingCustomer && (
+            <EditCustomerForm customer={editingCustomer} onDone={() => setEditingCustomer(null)} />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <InvoiceDetailDialog
+        id={detailId}
+        canWrite={canWrite}
+        onOpenChange={(o) => !o && setDetailId(null)}
+      />
     </section>
   );
 }
@@ -505,10 +566,94 @@ function CustomerForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function InvoiceDetailDialog({ id, onOpenChange }: { id: string | null; onOpenChange: (o: boolean) => void }) {
+/**
+ * Prefilled customer PATCH. `phone`/`address` are write-only on the API (the
+ * list DTO omits them), so blank keeps the stored value instead of clearing it.
+ */
+function EditCustomerForm({ customer, onDone }: { customer: Customer; onDone: () => void }) {
+  const { t } = useTranslation();
+  const updateCustomer = useUpdateCustomer();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CustomerValues>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: {
+      name: customer.name,
+      gstin: customer.gstin ?? '',
+      state: customer.state ?? '',
+      phone: '',
+      address: '',
+    },
+  });
+  const err = (m?: string) => (m ? t(m) : undefined);
+
+  const onSubmit = handleSubmit((v) => {
+    updateCustomer.mutate(
+      {
+        id: customer.id,
+        data: {
+          name: v.name.trim(),
+          gstin: v.gstin.trim() || null,
+          state: v.state.trim() || null,
+          // Write-only fields: only send when typed (blank must not wipe them).
+          ...(v.phone.trim() ? { phone: v.phone.trim() } : {}),
+          ...(v.address.trim() ? { address: v.address.trim() } : {}),
+        },
+      },
+      { onSuccess: onDone },
+    );
+  });
+
+  return (
+    <form onSubmit={(e) => void onSubmit(e)} className="space-y-3">
+      <Field label={t('invoices.custName')} required error={err(errors.name?.message)}>
+        <Input {...register('name')} />
+      </Field>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label={t('invoices.custGstin')}>
+          <Input {...register('gstin')} />
+        </Field>
+        <Field label={t('invoices.custState')} hint={t('invoices.custStateHint')}>
+          <Input {...register('state')} />
+        </Field>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label={t('invoices.custPhone')} hint={t('invoices.blankKeeps')}>
+          <Input {...register('phone')} />
+        </Field>
+        <Field label={t('invoices.custAddress')} hint={t('invoices.blankKeeps')}>
+          <Input {...register('address')} />
+        </Field>
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="secondary" onClick={onDone}>
+          {t('common.cancel')}
+        </Button>
+        <Button type="submit" loading={updateCustomer.isPending}>
+          {t('common.save')}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+function InvoiceDetailDialog({
+  id,
+  canWrite,
+  onOpenChange,
+}: {
+  id: string | null;
+  canWrite: boolean;
+  onOpenChange: (o: boolean) => void;
+}) {
   const { t } = useTranslation();
   const detail = useInvoice(id);
   const openPdf = useOpenInvoicePdf();
+  const markPaid = useMarkInvoicePaid();
+  const voidInvoice = useVoidInvoice();
+  const [voidOpen, setVoidOpen] = useState(false);
   const inv = detail.data;
 
   return (
@@ -598,7 +743,41 @@ function InvoiceDetailDialog({ id, onOpenChange }: { id: string | null; onOpenCh
               >
                 <FileText aria-hidden /> {t('invoices.pdf')}
               </Button>
+              {/* Lifecycle actions mirror the API guards: mark-paid only from
+                  ISSUED; void only from DRAFT/ISSUED (never a paid invoice). */}
+              {canWrite && (inv.status === 'ISSUED' || inv.status === 'DRAFT') && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  loading={voidInvoice.isPending}
+                  onClick={() => setVoidOpen(true)}
+                >
+                  <Ban aria-hidden /> {t('invoices.void')}
+                </Button>
+              )}
+              {canWrite && inv.status === 'ISSUED' && (
+                <Button
+                  type="button"
+                  loading={markPaid.isPending}
+                  onClick={() => markPaid.mutate(inv.id)}
+                >
+                  <CheckCircle2 aria-hidden /> {t('invoices.markPaid')}
+                </Button>
+              )}
             </DialogFooter>
+
+            <ConfirmDialog
+              open={voidOpen}
+              onOpenChange={setVoidOpen}
+              title={t('invoices.voidTitle', { number: inv.invoiceNumber })}
+              description={t('invoices.voidBody')}
+              confirmLabel={t('invoices.void')}
+              variant="danger"
+              loading={voidInvoice.isPending}
+              onConfirm={() =>
+                voidInvoice.mutate(inv.id, { onSettled: () => setVoidOpen(false) })
+              }
+            />
           </div>
         )}
       </DialogContent>

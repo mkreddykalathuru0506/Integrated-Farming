@@ -115,3 +115,77 @@ describe('ExpensesPanel (11.6c conversion)', () => {
     expect(await screen.findByText('Expense added')).toBeInTheDocument();
   });
 });
+
+describe('ExpensesPanel edit/delete (slice 11.9)', () => {
+  it('edits an expense through the prefilled dialog (PATCH category/amount/description/date)', async () => {
+    const patches: unknown[] = [];
+    mockFetchRoutes({
+      ...routes([]),
+      '/api/farm/expenses/e1': (init?: RequestInit) => {
+        patches.push({ method: init?.method, body: JSON.parse(String(init?.body)) });
+        return jsonResponse(200, {
+          expense: {
+            id: 'e1',
+            category: 'UTILITIES',
+            amountPaise: '300000',
+            occurredAt: '2026-06-15T00:00:00.000Z',
+            batchId: 'b1',
+            description: 'Vaccines + syringes',
+          },
+        });
+      },
+    });
+    renderPanel();
+    expect((await screen.findAllByText('Vaccines')).length).toBeGreaterThan(0);
+
+    const user = userEvent.setup();
+    // DataTable renders desktop + mobile variants — pick the first instance.
+    await user.click(screen.getAllByRole('button', { name: 'Edit expense' })[0]!);
+    const dialog = await screen.findByRole('dialog');
+
+    // prefilled from the row: ₹2,500.00 → "2500", category MEDICINE, IST day
+    const amount = within(dialog).getByLabelText(/Amount/);
+    expect(amount).toHaveValue('2500');
+    expect(within(dialog).getByLabelText(/Category/)).toHaveValue('MEDICINE');
+    expect(within(dialog).getByLabelText(/Date/)).toHaveValue('2026-06-15');
+
+    await user.clear(amount);
+    await user.type(amount, '3000');
+    await user.selectOptions(within(dialog).getByLabelText(/Category/), 'UTILITIES');
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0]).toEqual({
+      method: 'PATCH',
+      body: {
+        category: 'UTILITIES',
+        amountPaise: '300000',
+        description: 'Vaccines',
+        occurredAt: '2026-06-15T00:00:00.000Z',
+      },
+    });
+    expect(await screen.findByText('Expense updated')).toBeInTheDocument();
+  });
+
+  it('deletes an expense behind a danger confirm dialog (DELETE + toast)', async () => {
+    const calls: string[] = [];
+    mockFetchRoutes({
+      ...routes([]),
+      '/api/farm/expenses/e1': (init?: RequestInit) => {
+        calls.push(String(init?.method));
+        return jsonResponse(200, { ok: true, id: 'e1' });
+      },
+    });
+    renderPanel();
+    expect((await screen.findAllByText('Vaccines')).length).toBeGreaterThan(0);
+
+    const user = userEvent.setup();
+    await user.click(screen.getAllByRole('button', { name: 'Delete expense' })[0]!);
+    expect(await screen.findByText('Delete this expense?')).toBeInTheDocument();
+    expect(calls).toHaveLength(0); // nothing fired until confirmed
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(calls).toEqual(['DELETE']));
+    expect(await screen.findByText('Expense deleted')).toBeInTheDocument();
+  });
+});

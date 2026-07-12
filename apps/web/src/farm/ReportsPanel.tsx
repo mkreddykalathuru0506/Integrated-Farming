@@ -1,19 +1,22 @@
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CalendarClock, FileDown, FileSpreadsheet, Play, Plus } from 'lucide-react';
+import { CalendarClock, FileDown, FileSpreadsheet, Pause, Play, Plus, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import {
   useCreateReportSchedule,
+  useDeleteReportSchedule,
   useDownloadReport,
   useReportSchedules,
   useRunReportSchedule,
+  useUpdateReportSchedule,
 } from '../api/ops.hooks';
 import { fmtDate } from '../lib/format';
 import {
   Badge,
   Button,
+  ConfirmDialog,
   DataTable,
   Dialog,
   DialogContent,
@@ -133,10 +136,10 @@ export function ReportsPanel({ canWrite }: { farmId: string; canWrite: boolean }
   const schedules = useReportSchedules();
   const download = useDownloadReport();
   const runNow = useRunReportSchedule();
+  const updateSchedule = useUpdateReportSchedule();
+  const deleteSchedule = useDeleteReportSchedule();
   const [createOpen, setCreateOpen] = useState(false);
-
-  // Pause/delete for schedules ship with PR #60 (schedule PATCH/DELETE) — do not
-  // wire those endpoints until it merges.
+  const [pendingDelete, setPendingDelete] = useState<ReportSchedule | null>(null);
 
   const columns: DataTableColumn<ReportSchedule>[] = [
     {
@@ -174,18 +177,41 @@ export function ReportsPanel({ canWrite }: { farmId: string; canWrite: boolean }
     ...(canWrite
       ? [
           {
-            header: 'reports.runNow',
+            id: 'actions',
+            header: 'reports.colActions',
             cell: (s: ReportSchedule) => (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                loading={runNow.isPending && runNow.variables === s.id}
-                onClick={() => runNow.mutate(s.id)}
-              >
-                <Play aria-hidden />
-                {t('reports.runNow')}
-              </Button>
+              <span className="inline-flex flex-wrap gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  loading={runNow.isPending && runNow.variables === s.id}
+                  onClick={() => runNow.mutate(s.id)}
+                >
+                  <Play aria-hidden />
+                  {t('reports.runNow')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  loading={updateSchedule.isPending && updateSchedule.variables?.id === s.id}
+                  onClick={() => updateSchedule.mutate({ id: s.id, data: { isActive: !s.isActive } })}
+                >
+                  {s.isActive ? <Pause aria-hidden /> : <Play aria-hidden />}
+                  {s.isActive ? t('reports.pause') : t('reports.resume')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  aria-label={t('reports.deleteSchedule', { name: s.name })}
+                  disabled={deleteSchedule.isPending}
+                  onClick={() => setPendingDelete(s)}
+                >
+                  <Trash2 aria-hidden />
+                </Button>
+              </span>
             ),
           } satisfies DataTableColumn<ReportSchedule>,
         ]
@@ -276,6 +302,22 @@ export function ReportsPanel({ canWrite }: { farmId: string; canWrite: boolean }
       </div>
 
       <CreateScheduleDialog open={createOpen} onOpenChange={setCreateOpen} />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+        title={t('reports.confirmDeleteTitle')}
+        description={t('reports.confirmDeleteBody', { name: pendingDelete?.name ?? '' })}
+        confirmLabel={t('common.delete')}
+        variant="danger"
+        loading={deleteSchedule.isPending}
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          deleteSchedule.mutate(pendingDelete.id, { onSettled: () => setPendingDelete(null) });
+        }}
+      />
     </section>
   );
 }

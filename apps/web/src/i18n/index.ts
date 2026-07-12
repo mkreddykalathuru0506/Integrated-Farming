@@ -52,6 +52,8 @@ export const CORE_NS = [
   'workers',
   'tasks',
   'logs',
+  'team',
+  'activity',
 ] as const;
 
 /**

@@ -49,6 +49,8 @@ export default {
     market: 'बाज़ार भाव',
     reports: 'रिपोर्ट',
     units: 'इकाइयाँ',
+    team: 'टीम',
+    activity: 'गतिविधि',
     settings: 'फार्म सेटिंग्स',
   },
 };

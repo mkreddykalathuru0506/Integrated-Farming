@@ -22,6 +22,8 @@ export default {
   noMarket: 'No market rates recorded yet.',
   noAlerts: 'No alerts sent yet.',
   ack: 'Acknowledge',
+  resolve: 'Resolve',
+  resolved: 'Risk resolved',
   asOf: 'as of {{ts}}',
   greetMorning: 'Good morning, {{name}}',
   greetAfternoon: 'Good afternoon, {{name}}',
