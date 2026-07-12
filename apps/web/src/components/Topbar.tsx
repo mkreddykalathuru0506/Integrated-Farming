@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Menu, ChevronDown, Building2, LogOut, Check } from 'lucide-react';
+import { Menu, ChevronDown, Building2, LogOut, Check, UserRound } from 'lucide-react';
 import type { MyFarm } from '../auth/api';
+import { AccountDialog } from '../account/AccountDialog';
 import {
   cn,
   DropdownMenu,
@@ -47,6 +49,7 @@ export function Topbar({
 }: Props) {
   const { t } = useTranslation();
   const selected = farms.find((f) => f.farmId === selectedId);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-card/85 px-3 backdrop-blur sm:px-5">
@@ -124,6 +127,11 @@ export function Topbar({
               <LanguageToggle />
             </div>
             <DropdownMenuSeparator className="sm:hidden" />
+            <DropdownMenuItem onSelect={() => setAccountOpen(true)}>
+              <UserRound className="h-4 w-4" aria-hidden />
+              {t('account.menu')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={onLogout}
               className={cn('text-destructive focus:bg-destructive/10 focus:text-destructive', '[&_svg]:text-destructive')}
@@ -133,6 +141,8 @@ export function Topbar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <AccountDialog open={accountOpen} onOpenChange={setAccountOpen} />
       </div>
     </header>
   );

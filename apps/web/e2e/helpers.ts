@@ -26,7 +26,9 @@ export async function loginAsOwner(page: Page): Promise<void> {
   await page.goto('/');
   await page.locator('input[type=email]').fill(OWNER.email);
   await page.locator('input[type=password]').fill(OWNER.password);
-  await page.getByRole('button', { name: /sign in/i }).click();
+  // Exact-name match: the login view also has an OTP toggle ("Sign in with a
+  // code instead") that a bare /sign in/i would ambiguously match (strict mode).
+  await page.getByRole('button', { name: /^sign in$/i }).click();
   // The sidebar (desktop rail) only exists inside the authenticated shell.
   await expect(page.locator('aside').getByRole('link', { name: 'Livestock' })).toBeVisible();
 }

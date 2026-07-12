@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Leaf } from 'lucide-react';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { myFarmsRequest, type MyFarm } from './auth/api';
-import { LoginForm } from './components/LoginForm';
+import { PreAuth } from './auth/PreAuth';
 import { LanguageToggle } from './components/LanguageToggle';
 import { AppLayout } from './components/AppLayout';
 import { FarmProvider } from './api/FarmContext';
@@ -133,7 +133,7 @@ function Root() {
     <Authed />
   ) : (
     <CenterShell>
-      <LoginForm />
+      <PreAuth />
     </CenterShell>
   );
 }

@@ -4,6 +4,7 @@ import app from './app';
 import common from './common';
 import table from './table';
 import auth from './auth';
+import account from './account';
 import errors from './errors';
 import farms from './farms';
 import farm from './farm';
@@ -49,6 +50,7 @@ export const hi = {
     common,
     table,
     auth,
+    account,
     errors,
     farms,
     farm,
