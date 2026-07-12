@@ -149,7 +149,7 @@ export function HatcheryPanel({ canWrite }: { farmId: string; canWrite: boolean 
           onRowClick={(b) => setDetailId(b.id)}
           emptyState={
             <EmptyState
-              icon={Egg}
+              icon={Egg} illustration="livestock"
               title={t('hatchery.empty')}
               description={t('hatchery.emptyDesc')}
               action={
@@ -541,7 +541,7 @@ function DetailDialog({
                   {b.incubationLogs.map((log) => (
                     <li
                       key={log.id}
-                      className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-1.5 text-sm"
+                      className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm"
                     >
                       <Badge variant="muted">{t(`hatchery.events.${log.event}`)}</Badge>
                       <span className="text-xs text-muted-foreground tabular">

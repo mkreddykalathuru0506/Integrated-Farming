@@ -183,7 +183,7 @@ export function InvoicePanel({
             onRowClick={(i) => setDetailId(i.id)}
             emptyState={
               <EmptyState
-                icon={FileText}
+                icon={FileText} illustration="finance"
                 title={t('invoices.empty')}
                 description={t('invoices.emptyDesc')}
                 action={
@@ -690,7 +690,7 @@ function InvoiceDetailDialog({
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-border">
+            <div className="overflow-x-auto rounded-md border border-border">
               <table className="w-full min-w-[480px] text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">

@@ -69,7 +69,7 @@ export function SpeciesPanel(_props: { farmId: string }) {
           getRowId={(s) => s.id}
           emptyState={
             <EmptyState
-              icon={Bird}
+              icon={Bird} illustration="livestock"
               title={t('species.empty')}
               description={t('species.emptyHint')}
             />

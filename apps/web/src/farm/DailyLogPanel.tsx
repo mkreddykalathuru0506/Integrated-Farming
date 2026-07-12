@@ -307,7 +307,7 @@ export function DailyLogPanel(_props: { farmId: string }) {
               getRowId={(l) => l.id}
               emptyState={
                 <EmptyState
-                  icon={NotebookPen}
+                  icon={NotebookPen} illustration="tasks"
                   title={t('logs.empty')}
                   description={t('logs.emptyHint')}
                   size="compact"

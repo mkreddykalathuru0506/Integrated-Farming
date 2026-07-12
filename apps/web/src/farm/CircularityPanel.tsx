@@ -3,21 +3,47 @@ import { useTranslation } from 'react-i18next';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useCircularity } from '../api/ops.hooks';
 import { fmtInr, fmtInrCompact } from '../lib/format';
-import { Button, EmptyState, PanelError, PanelHeading, StatSkeleton, SubPanel } from '../ui';
+import {
+  BAR_CURSOR,
+  Button,
+  ChartTooltipFrame,
+  chartAnim,
+  EmptyState,
+  PanelError,
+  PanelHeading,
+  StatSkeleton,
+  SubPanel,
+} from '../ui';
 import { SpaLink, spaNavigate } from './SpaLink';
 
 type BarDatum = { name: string; rupees: number; paise: string };
 
+/** Money exact in the tooltip (chart-spec §6) — reads paise from the raw datum. */
+function SavingsTip({ active, payload }: { active?: boolean; payload?: { payload: BarDatum }[] }) {
+  if (!active || !payload || payload.length === 0) return null;
+  const p = payload[0]!.payload;
+  return (
+    <ChartTooltipFrame>
+      <p className="flex items-center gap-1.5 text-muted-foreground">
+        <span className="h-2 w-2 shrink-0 rounded-[3px]" style={{ background: 'hsl(var(--chart-1))' }} />
+        <span>{p.name}</span>
+        <span className="tabular ml-auto pl-2 font-semibold text-foreground">{fmtInr(p.paise)}</span>
+      </p>
+    </ChartTooltipFrame>
+  );
+}
+
 /**
- * Horizontal single-hue bar list (magnitude job → sequential colour, one token hue).
- * Values are integer paise end-to-end; the numeric axis is display-only rupees.
+ * Horizontal single-series bar list — every mark is chart-1 (magnitude is encoded by
+ * length, never by color; chart-spec §1). Values are integer paise end-to-end; the
+ * numeric axis is display-only rupees.
  */
-function SavingsBars({ data, hue }: { data: BarDatum[]; hue: string }) {
+function SavingsBars({ data }: { data: BarDatum[] }) {
   const height = data.length * 36 + 8;
   return (
     <div style={{ height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 56, bottom: 0, left: 0 }}>
+        <BarChart data={data} layout="vertical" barCategoryGap="25%" margin={{ top: 0, right: 56, bottom: 0, left: 0 }}>
           <XAxis type="number" hide />
           <YAxis
             type="category"
@@ -27,20 +53,10 @@ function SavingsBars({ data, hue }: { data: BarDatum[]; hue: string }) {
             axisLine={false}
             tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
           />
-          <Tooltip
-            cursor={{ fill: 'hsl(var(--muted) / 0.5)' }}
-            contentStyle={{
-              background: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: 8,
-              fontSize: 12,
-              color: 'hsl(var(--foreground))',
-            }}
-            formatter={(_v, _n, item) => [fmtInr((item.payload as BarDatum).paise), null]}
-          />
+          <Tooltip cursor={BAR_CURSOR} content={<SavingsTip />} />
           <Bar
             dataKey="rupees"
-            fill={hue}
+            fill="hsl(var(--chart-1))"
             radius={[0, 4, 4, 0]}
             barSize={14}
             label={{
@@ -49,6 +65,7 @@ function SavingsBars({ data, hue }: { data: BarDatum[]; hue: string }) {
               fontSize: 11,
               formatter: (v) => fmtInrCompact(Math.round(Number(v ?? 0) * 100)),
             }}
+            {...chartAnim()}
           />
         </BarChart>
       </ResponsiveContainer>
@@ -58,9 +75,9 @@ function SavingsBars({ data, hue }: { data: BarDatum[]; hue: string }) {
 
 function StatTile({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className={`rounded-xl border border-border p-3 ${accent ? 'bg-success/10' : 'bg-card'}`}>
-      <p className={`text-xs font-medium ${accent ? 'text-success' : 'text-muted-foreground'}`}>{label}</p>
-      <p className={`mt-1 font-display text-xl font-semibold tabular ${accent ? 'text-success' : 'text-foreground'}`}>
+    <div className={`rounded-md border border-border p-3 ${accent ? 'bg-success/10' : 'bg-card'}`}>
+      <p className={`text-xs font-medium ${accent ? 'text-success-ink' : 'text-muted-foreground'}`}>{label}</p>
+      <p className={`mt-1 font-display text-xl font-semibold tabular ${accent ? 'text-success-ink' : 'text-foreground'}`}>
         {value}
       </p>
     </div>
@@ -106,6 +123,7 @@ export function CircularityPanel(_props: { farmId: string }) {
       {circularity.data && circularity.data.transferCount === 0 && (
         <EmptyState
           icon={Recycle}
+          illustration="generic"
           title={t('circularity.emptyTitle')}
           description={t('circularity.empty')}
           action={
@@ -129,7 +147,7 @@ export function CircularityPanel(_props: { farmId: string }) {
               <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 {t('circularity.byType')}
               </p>
-              <SavingsBars data={byType} hue="hsl(var(--success))" />
+              <SavingsBars data={byType} />
             </SubPanel>
           )}
 
@@ -138,7 +156,7 @@ export function CircularityPanel(_props: { farmId: string }) {
               <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 {t('circularity.byDestination')}
               </p>
-              <SavingsBars data={byDestination} hue="hsl(var(--primary))" />
+              <SavingsBars data={byDestination} />
             </SubPanel>
           )}
 

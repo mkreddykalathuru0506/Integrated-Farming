@@ -157,7 +157,7 @@ export function BreedingPanel({ canWrite }: { farmId: string; canWrite: boolean 
           searchable={(breeding.data?.length ?? 0) > 10}
           emptyState={
             <EmptyState
-              icon={Heart}
+              icon={Heart} illustration="health"
               title={t('breeding.empty')}
               description={t('breeding.emptyDesc')}
               action={

@@ -282,7 +282,7 @@ function AssetDetailDialog({
                 return (
                   <li
                     key={s.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm"
                   >
                     <span className="min-w-0">
                       <span className="font-medium text-foreground">{s.name}</span>
@@ -499,7 +499,7 @@ export function AssetsPanel({ canWrite }: { farmId: string; canWrite: boolean })
       </PanelHeading>
 
       {due.length > 0 && (
-        <div className="rounded-xl bg-warning/12 p-3 text-sm text-warning">
+        <div className="rounded-md bg-warning/12 p-3 text-sm text-warning">
           <p className="font-semibold">{t('assets.dueReminder', { count: due.length })}</p>
           <ul className="mt-1 space-y-0.5 text-xs tabular">
             {due.slice(0, 4).map((d) => (
@@ -529,7 +529,7 @@ export function AssetsPanel({ canWrite }: { farmId: string; canWrite: boolean })
           getRowId={(a) => a.id}
           emptyState={
             <EmptyState
-              icon={Package}
+              icon={Package} illustration="generic"
               title={t('assets.empty')}
               description={t('assets.emptyDesc')}
               action={

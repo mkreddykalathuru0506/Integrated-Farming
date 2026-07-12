@@ -126,7 +126,7 @@ function ActivityRow({ item }: { item: ActivityItem }) {
   const verb = item.action.split('.').pop() ?? item.action;
   const label = `${t(`activity.entity.${item.entity}`, item.entity)} · ${t(`activity.verb.${verb}`, verb)}`;
   return (
-    <li className="flex items-start gap-3 rounded-xl border border-border bg-card px-3 py-2.5">
+    <li className="flex items-start gap-3 rounded-md border border-border bg-card px-3 py-2.5">
       <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-secondary text-secondary-foreground">
         <Icon className="h-4 w-4" aria-hidden />
       </span>
@@ -236,7 +236,7 @@ export function ActivityPanel({ canView }: { farmId: string; canView: boolean })
       )}
 
       {feed.items && feed.items.length === 0 && (
-        <EmptyState icon={History} title={t('activity.empty')} description={t('activity.emptyDesc')} size="compact" />
+        <EmptyState icon={History} illustration="generic" title={t('activity.empty')} description={t('activity.emptyDesc')} size="compact" />
       )}
 
       {groups.length > 0 && (

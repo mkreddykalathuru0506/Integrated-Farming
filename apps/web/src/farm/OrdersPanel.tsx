@@ -329,7 +329,7 @@ export function OrdersPanel({
           onRowClick={(o) => setDetailId(o.id)}
           emptyState={
             <EmptyState
-              icon={ShoppingCart}
+              icon={ShoppingCart} illustration="orders"
               title={t('orders.empty')}
               description={t('orders.emptyDesc')}
               action={
@@ -368,7 +368,7 @@ export function OrdersPanel({
                 {detail.notes && <span className="text-muted-foreground">{detail.notes}</span>}
               </div>
 
-              <div className="overflow-x-auto rounded-xl border border-border">
+              <div className="overflow-x-auto rounded-md border border-border">
                 <Table>
                   <THead>
                     <Tr>

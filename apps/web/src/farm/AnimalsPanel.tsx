@@ -176,7 +176,7 @@ export function AnimalsPanel({ canWrite }: { farmId: string; canWrite: boolean }
           getRowId={(a) => a.id}
           emptyState={
             <EmptyState
-              icon={PawPrint}
+              icon={PawPrint} illustration="livestock"
               title={t('animals.empty')}
               description={t('animals.emptyHint')}
               action={

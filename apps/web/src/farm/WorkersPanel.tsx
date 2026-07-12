@@ -134,7 +134,7 @@ export function WorkersPanel({ canWrite }: { farmId: string; canWrite: boolean }
               getRowId={(w) => w.id}
               emptyState={
                 <EmptyState
-                  icon={Users}
+                  icon={Users} illustration="tasks"
                   title={t('workers.empty')}
                   description={t('workers.emptyHint')}
                   action={
@@ -261,7 +261,7 @@ function AttendanceView({
       )}
 
       {workersReady && !attendance.isPending && activeWorkers.length === 0 && (
-        <EmptyState icon={Users} title={t('workers.empty')} description={t('workers.emptyHint')} size="compact" />
+        <EmptyState icon={Users} illustration="tasks" title={t('workers.empty')} description={t('workers.emptyHint')} size="compact" />
       )}
 
       {workersReady && attendance.data && activeWorkers.length > 0 && (

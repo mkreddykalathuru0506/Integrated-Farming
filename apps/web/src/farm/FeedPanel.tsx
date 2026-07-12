@@ -220,7 +220,7 @@ export function FeedPanel({ canWrite }: { farmId: string; canWrite: boolean }) {
               getRowId={(i) => i.id}
               emptyState={
                 <EmptyState
-                  icon={Package}
+                  icon={Package} illustration="orders"
                   title={t('feed.empty')}
                   description={t('feed.emptyDesc')}
                   action={
@@ -438,7 +438,7 @@ function VendorsList({ canWrite }: { canWrite: boolean }) {
           getRowId={(v) => v.id}
           emptyState={
             <EmptyState
-              icon={Users}
+              icon={Users} illustration="generic"
               title={t('feed.vendorsEmpty')}
               description={t('feed.vendorsEmptyDesc')}
               size="compact"

@@ -211,7 +211,7 @@ export function ExpensesPanel({ canWrite }: { farmId: string; canWrite: boolean 
             getRowId={(e) => e.id}
             emptyState={
               <EmptyState
-                icon={ReceiptIndianRupee}
+                icon={ReceiptIndianRupee} illustration="finance"
                 title={t('expenses.empty')}
                 description={t('expenses.emptyDesc')}
                 action={

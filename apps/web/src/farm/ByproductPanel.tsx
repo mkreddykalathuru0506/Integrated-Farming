@@ -257,7 +257,7 @@ export function ByproductPanel({ canWrite }: { farmId: string; canWrite: boolean
           getRowId={(tr) => tr.id}
           emptyState={
             <EmptyState
-              icon={Recycle}
+              icon={Recycle} illustration="generic"
               title={t('byproducts.empty')}
               description={t('byproducts.emptyDesc')}
               action={

@@ -140,7 +140,7 @@ function CreateProcessingDialog({ onOpenChange }: { onOpenChange: (open: boolean
           <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-4" noValidate>
             {/* The §6 withdrawal hard gate, surfaced as a first-class explanation. */}
             {withdrawalBlocked && (
-              <div role="alert" className="space-y-1 rounded-xl border border-destructive/40 bg-destructive/10 p-3">
+              <div role="alert" className="space-y-1 rounded-md border border-destructive/40 bg-destructive/10 p-3">
                 <p className="flex items-center gap-2 text-sm font-semibold text-destructive">
                   <ShieldAlert className="h-4 w-4" aria-hidden />
                   {t('processing.withdrawalTitle')}
@@ -362,7 +362,7 @@ function LotDetailDialog({ lot, onOpenChange }: { lot: ProductLot; onOpenChange:
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t('processing.qrTitle')}
             </p>
-            <div ref={qrRef} className="mx-auto w-fit rounded-xl border border-border bg-card p-3">
+            <div ref={qrRef} className="mx-auto w-fit rounded-md border border-border bg-card p-3">
               <QRCodeSVG value={qrValue} size={160} aria-label={qrValue} />
             </div>
             <p className="tabular text-xs text-muted-foreground">{qrValue}</p>
@@ -460,7 +460,7 @@ export function ProcessingPanel({ canWrite }: { farmId: string; canWrite: boolea
           onRowClick={(l) => setDetailId(l.id)}
           emptyState={
             <EmptyState
-              icon={Package}
+              icon={Package} illustration="orders"
               title={t('processing.empty')}
               description={t('processing.emptyDesc')}
               action={

@@ -138,7 +138,11 @@ function TasksView({
       header: 'tasks.cols.done',
       cell: (task) =>
         task.status === 'DONE' ? (
-          <CheckCircle2 className="h-5 w-5 text-success" aria-hidden />
+          /* Optimistic check: swaps in instantly, then a 200ms zoom settles it (motion §4). */
+          <CheckCircle2
+            className="h-5 w-5 text-success motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-200"
+            aria-hidden
+          />
         ) : (
           <Button
             type="button"
@@ -296,7 +300,7 @@ function TasksView({
           getRowId={(task) => task.id}
           emptyState={
             <EmptyState
-              icon={ListTodo}
+              icon={ListTodo} illustration="tasks"
               title={t('tasks.empty', { date: fmtDate(`${date}T00:00:00.000Z`) })}
               description={t('tasks.emptyHint')}
               action={
@@ -379,7 +383,7 @@ function SchedulesView({ canWrite }: { canWrite: boolean }) {
           getRowId={(s) => s.id}
           emptyState={
             <EmptyState
-              icon={CalendarDays}
+              icon={CalendarDays} illustration="tasks"
               title={t('tasks.schedulesEmpty')}
               description={t('tasks.schedulesEmptyHint')}
               action={
