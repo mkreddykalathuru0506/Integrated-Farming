@@ -35,6 +35,16 @@
     --warning: 22 66% 46%; /* terracotta clay #C15A2B */
     --warning-foreground: 44 40% 98%;
 
+    /*
+     * Text-ink companions (slice 11.10, audit P1-3): the status fills above sit at
+     * 3.3–4.1:1 on the light card — fine for fills/icons (3:1 graphical), but small
+     * (12px) text needs 4.5:1. These darker inks are for *text* utilities only
+     * (text-success-ink / text-warning-ink / text-accent-ink); fills keep the originals.
+     */
+    --success-ink: 95 50% 31%;
+    --warning-ink: 20 70% 40%;
+    --accent-ink: 41 90% 32%;
+
     --border: 40 30% 85%; /* warm border */
     --input: 40 28% 82%;
     --ring: 150 58% 30%;
@@ -48,6 +58,26 @@
     --sidebar-border: 150 24% 20%;
 
     --radius: 1rem;
+
+    /*
+     * Harvest chart series tokens (slice 11.10) — "Field" theme, fixed slot order:
+     *   1 pine · 2 terracotta · 3 sky · 4 gold · 5 leaf
+     * Deliberately decoupled from --primary/--warning/--accent/--success: chart colors
+     * are tuned for ≥3:1 mark contrast + CVD separation on each canvas and must not
+     * drift if a status/brand token is re-tuned. Assign in sequence, never cycle/skip
+     * (the order is the colorblind-safety mechanism); a 6th series folds into "Other"
+     * (muted-foreground at 45%). Validated (Machado-2009 CVD + OKLCH bands, 2026-07-11):
+     * light contrast vs card #FEFDFB 5.64/4.34/4.55/3.32/4.77:1, worst adjacent CVD
+     * ΔE 14.8 — all PASS. Slot 4 (gold) is the thinnest; always pair with legend/tooltip.
+     */
+    --chart-1: 150 70% 27%; /* pine   #157545 — the workhorse; every single-series chart */
+    --chart-2: 19 64% 46%;  /* terracotta #C15A2B — the contrast series (cost vs revenue) */
+    --chart-3: 203 62% 42%; /* sky    #297BAE — third series; also water/temperature contexts */
+    --chart-4: 42 85% 38%;  /* gold   #B5830F — fourth series */
+    --chart-5: 95 50% 33%;  /* leaf   #4D7E2A — fifth series */
+
+    /* Shared chart chrome */
+    --chart-grid: var(--muted-foreground); /* stroke at /0.4, horizontal only, 1px */
   }
 
   /*
@@ -75,12 +105,22 @@
     --muted: 156 12% 16%;
     --muted-foreground: 145 12% 62%; /* readable secondary text on dark */
 
-    --destructive: 4 66% 57%;
-    --destructive-foreground: 40 40% 96%;
+    /*
+     * Brightened from 57% (slice 11.10, audit P1-3): 12px text-destructive on the dark
+     * card was 4.18:1 — 62% clears 4.5:1. The foreground flips dark (matches the dark
+     * accent/warning pattern) because white on the lighter red fill would fail.
+     */
+    --destructive: 4 70% 62%;
+    --destructive-foreground: 0 45% 10%;
     --success: 95 42% 52%;
     --success-foreground: 120 40% 8%;
     --warning: 28 74% 56%;
     --warning-foreground: 30 45% 10%;
+
+    /* Dark mode: the status fills already pass 6.2–8.3:1 as text — inks alias them. */
+    --success-ink: var(--success);
+    --warning-ink: var(--warning);
+    --accent-ink: var(--accent);
 
     --border: 156 12% 20%;
     --input: 156 12% 23%;
@@ -93,6 +133,15 @@
     --sidebar-muted: 145 12% 58%;
     --sidebar-accent: 150 34% 18%;
     --sidebar-border: 150 20% 18%;
+
+    /* Chart series on the dark card #17211D: 4.74/5.09/5.01/4.25/5.71:1, CVD ΔE 12.8 — PASS. */
+    --chart-1: 150 44% 42%; /* pine   #3C9A6B */
+    --chart-2: 24 70% 52%;  /* terracotta #DA732F */
+    --chart-3: 203 58% 52%; /* sky    #3E95CC */
+    --chart-4: 41 82% 36%;  /* gold   #A87911 */
+    --chart-5: 96 46% 45%;  /* leaf   #68A83E */
+
+    --chart-grid: var(--muted-foreground);
   }
 
   * {

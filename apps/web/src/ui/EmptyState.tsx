@@ -1,9 +1,12 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from './cn';
+import { spotIllustrations, type SpotName } from './illustrations';
 
 export type EmptyStateProps = {
   icon: LucideIcon;
+  /** Bespoke spot illustration (slice 11.10); when set it replaces the icon circle. */
+  illustration?: SpotName;
   title: string;
   /** One-line supporting description. */
   description?: string;
@@ -15,9 +18,10 @@ export type EmptyStateProps = {
   className?: string;
 };
 
-/** Friendly empty state: icon in a muted circle, title, description, optional CTA. */
+/** Friendly empty state: spot illustration (or icon in a muted circle), title, description, optional CTA. */
 export function EmptyState({
   icon: Icon,
+  illustration,
   title,
   description,
   action,
@@ -26,6 +30,7 @@ export function EmptyState({
   className,
 }: EmptyStateProps) {
   const compact = size === 'compact';
+  const Spot = illustration ? spotIllustrations[illustration] : null;
   return (
     <div
       className={cn(
@@ -34,14 +39,20 @@ export function EmptyState({
         className,
       )}
     >
-      <span
-        className={cn(
-          'grid place-items-center rounded-full bg-muted text-muted-foreground',
-          compact ? 'h-10 w-10' : 'h-14 w-14',
-        )}
-      >
-        <Icon className={compact ? 'h-5 w-5' : 'h-6 w-6'} aria-hidden />
-      </span>
+      {Spot ? (
+        <span className="text-muted-foreground">
+          <Spot size={compact ? 84 : 108} />
+        </span>
+      ) : (
+        <span
+          className={cn(
+            'grid place-items-center rounded-full bg-muted text-muted-foreground',
+            compact ? 'h-10 w-10' : 'h-14 w-14',
+          )}
+        >
+          <Icon className={compact ? 'h-5 w-5' : 'h-6 w-6'} aria-hidden />
+        </span>
+      )}
       <div className="space-y-1">
         <p className={cn('font-display font-semibold text-foreground', compact ? 'text-sm' : 'text-base')}>
           {title}
