@@ -31,7 +31,8 @@ export const DialogContent = forwardRef<
       <RD.Overlay
         className={cn(
           'fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm',
-          'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
+          'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-200',
+          'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-150',
         )}
       />
       <RD.Content
@@ -39,8 +40,15 @@ export const DialogContent = forwardRef<
         className={cn(
           'fixed left-1/2 top-1/2 z-50 max-h-[85dvh] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card p-5 text-card-foreground shadow-elevated focus:outline-none sm:p-6',
           SIZE[size],
+          // The slide-in/out-from-left-1/2/top-[48%] pairs re-encode the static centering
+          // transform INSIDE the animation transform — without them the zoom keyframes
+          // override -translate-x/y-1/2 and the panel plays off-center, then snaps
+          // (motion-standard §2.1 / audit P1-2).
           'duration-200 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
+          'data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
           'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
+          'data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%]',
+          'data-[state=closed]:duration-150',
           className,
         )}
         {...props}
@@ -48,7 +56,7 @@ export const DialogContent = forwardRef<
         {children}
         <RD.Close
           aria-label={t('common.close')}
-          className="absolute right-4 top-4 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+          className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-md text-muted-foreground transition duration-150 after:absolute after:-inset-1.5 active:scale-95 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <X className="h-4 w-4" aria-hidden />
         </RD.Close>
@@ -59,7 +67,7 @@ export const DialogContent = forwardRef<
 DialogContent.displayName = 'DialogContent';
 
 export function DialogHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('mb-4 space-y-1.5 pr-8', className)} {...props} />;
+  return <div className={cn('mb-4 space-y-1.5 pr-10', className)} {...props} />;
 }
 
 export const DialogTitle = forwardRef<

@@ -27,8 +27,8 @@ export const TabsTrigger = forwardRef<
   <RT.Trigger
     ref={ref}
     className={cn(
-      '-mb-px inline-flex min-h-10 items-center gap-2 border-b-2 border-transparent px-1 text-sm font-medium text-muted-foreground transition-colors',
-      'hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30',
+      '-mb-px inline-flex min-h-10 items-center gap-2 border-b-2 border-transparent px-1 text-sm font-medium text-muted-foreground transition-colors duration-150',
+      'hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset',
       'data-[state=active]:border-primary data-[state=active]:text-foreground',
       'disabled:pointer-events-none disabled:opacity-50',
       className,
@@ -45,7 +45,7 @@ export const TabsContent = forwardRef<
   <RT.Content
     ref={ref}
     className={cn(
-      'mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30',
+      'mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset',
       className,
     )}
     {...props}

@@ -68,8 +68,10 @@ function ToastCard({ item, onDone }: { item: ToastItem; onDone: () => void }) {
         'pointer-events-auto flex items-start gap-3 rounded-lg border border-border bg-card p-4 text-card-foreground shadow-popover',
         'border-l-4',
         EDGE[item.variant],
-        'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-4',
-        'data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full',
+        // Exit duration MUST match EXIT_MS — the default 150ms left a 50ms
+        // mounted-but-invisible gap before state cleanup (motion-standard §2.4).
+        'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-4 data-[state=open]:duration-200',
+        'data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=closed]:duration-200',
         'data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none',
         'data-[swipe=cancel]:translate-x-0 data-[swipe=cancel]:transition-transform',
         'data-[swipe=end]:animate-out data-[swipe=end]:slide-out-to-right-full',
@@ -81,7 +83,7 @@ function ToastCard({ item, onDone }: { item: ToastItem; onDone: () => void }) {
       </RadixToast.Description>
       <RadixToast.Close
         aria-label={t('common.close')}
-        className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+        className="relative -m-1.5 grid h-9 w-9 shrink-0 place-items-center rounded-md text-muted-foreground transition duration-150 after:absolute after:-inset-1.5 active:scale-95 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <X className="h-4 w-4" aria-hidden />
       </RadixToast.Close>

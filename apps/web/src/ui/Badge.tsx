@@ -7,11 +7,12 @@ const badge = cva(
   {
     variants: {
       variant: {
+        // Text sits on the -ink tokens (AA at 12px); the /12 washes keep the status hue.
         default: 'bg-secondary text-secondary-foreground',
-        success: 'bg-success/12 text-success',
-        warning: 'bg-warning/15 text-warning',
+        success: 'bg-success/12 text-success-ink',
+        warning: 'bg-warning/15 text-warning-ink',
         destructive: 'bg-destructive/12 text-destructive',
-        accent: 'bg-accent/12 text-accent',
+        accent: 'bg-accent/12 text-accent-ink',
         muted: 'bg-muted text-muted-foreground',
       },
     },

@@ -165,8 +165,10 @@ export function DataTable<T>({
         <PanelNote>{t('table.empty')}</PanelNote>
       ) : (
         <>
-          {/* Desktop / ≥sm: real table with sticky header */}
-          <div className="hidden overflow-x-auto rounded-xl border border-border bg-card sm:block">
+          {/* Desktop / ≥sm: real table. The wrapper is the scroll container in BOTH
+              axes (capped height) so the sticky header actually sticks on long lists
+              (audit P2-16 — page scroll never reached it before). */}
+          <div className="hidden max-h-[70vh] overflow-auto rounded-md border border-border bg-card sm:block">
             <Table>
               <THead className="sticky top-0 z-10 bg-card">
                 <Tr>
@@ -187,7 +189,7 @@ export function DataTable<T>({
                             type="button"
                             onClick={col.getToggleSortingHandler()}
                             className={cn(
-                              'inline-flex items-center gap-1 rounded uppercase tracking-wider transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30',
+                              'inline-flex items-center gap-1 rounded uppercase tracking-wider transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
                               def.align === 'right' && 'flex-row-reverse',
                             )}
                           >
@@ -216,9 +218,9 @@ export function DataTable<T>({
                     onKeyDown={onRowClick ? rowKeyDown(row.original) : undefined}
                     tabIndex={onRowClick ? 0 : undefined}
                     className={cn(
-                      'hover:bg-muted/50',
+                      'transition-colors duration-150 hover:bg-muted/50',
                       onRowClick &&
-                        'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30',
+                        'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset',
                     )}
                   >
                     {columns.map((def, i) => (
@@ -244,9 +246,9 @@ export function DataTable<T>({
                 onKeyDown={onRowClick ? rowKeyDown(row.original) : undefined}
                 tabIndex={onRowClick ? 0 : undefined}
                 className={cn(
-                  'space-y-1.5 rounded-xl border border-border bg-card p-3',
+                  'space-y-1.5 rounded-md border border-border bg-card p-3',
                   onRowClick &&
-                    'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30',
+                    'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset',
                 )}
               >
                 {columns.map((def, i) => {

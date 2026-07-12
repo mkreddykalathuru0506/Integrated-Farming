@@ -4,7 +4,9 @@ import { cn } from './cn';
 import { Spinner } from './Spinner';
 
 const button = cva(
-  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-md font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-60 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0',
+  // `transition` (not transition-colors) so the press scale transitions too; press-down
+  // reads instant (100ms), release eases back over 150ms (motion-standard §1.1).
+  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-md font-semibold transition duration-150 active:scale-[0.98] active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-60 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
