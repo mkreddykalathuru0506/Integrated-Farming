@@ -7,10 +7,11 @@ import { Bird, MoreVertical, Plus } from 'lucide-react';
 import {
   Area,
   AreaChart,
+  CartesianGrid,
   Line,
   LineChart,
   ResponsiveContainer,
-  Tooltip as ChartTooltip,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
 } from 'recharts';
@@ -33,6 +34,9 @@ import type { Batch, Unit } from './api';
 import {
   Badge,
   Button,
+  ChartEmpty,
+  ChartTooltip,
+  chartAnim,
   ConfirmDialog,
   DataTable,
   Dialog,
@@ -48,7 +52,9 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   Field,
+  GRID_PROPS,
   Input,
+  LINE_CURSOR,
   PanelHeading,
   PanelNote,
   Select,
@@ -223,7 +229,7 @@ export function BatchesPanel({ canWrite }: { farmId: string; canWrite: boolean }
           getRowId={(b) => b.id}
           emptyState={
             <EmptyState
-              icon={Bird}
+              icon={Bird} illustration="livestock"
               title={t('batches.empty')}
               description={t('batches.emptyHint')}
               action={
@@ -667,13 +673,6 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-const chartTooltipStyle = {
-  background: 'hsl(var(--card))',
-  border: '1px solid hsl(var(--border))',
-  borderRadius: 8,
-  fontSize: 12,
-} as const;
-
 function BatchDetailDialog({
   batch,
   onOpenChange,
@@ -829,21 +828,46 @@ function BatchDetailDialog({
                       {t('batches.detail.feedChart')}
                     </h3>
                     {feedData.length === 0 ? (
-                      <PanelNote>{t('batches.detail.noSeries')}</PanelNote>
+                      <ChartEmpty art="generic" text={t('batches.detail.noSeries')} className="h-40" />
                     ) : (
                       <div className="h-40">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={feedData} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
-                            <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                            <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                            <ChartTooltip contentStyle={chartTooltipStyle} />
+                          <AreaChart data={feedData} margin={{ top: 4, right: 4, bottom: 0, left: -8 }}>
+                            <defs>
+                              {/* Sanctioned gradient: series token fading to transparent (§3). */}
+                              <linearGradient id="fillChart1Feed" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.28} />
+                                <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0.02} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid {...GRID_PROPS} />
+                            <XAxis
+                              dataKey="date"
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                            />
+                            <YAxis
+                              width={36}
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{
+                                fontSize: 11,
+                                fill: 'hsl(var(--muted-foreground))',
+                                style: { fontVariantNumeric: 'tabular-nums' },
+                              }}
+                            />
+                            <RechartsTooltip cursor={LINE_CURSOR} content={<ChartTooltip />} />
                             <Area
                               type="monotone"
                               dataKey="kg"
                               name={t('batches.detail.feedChart')}
-                              stroke="hsl(var(--primary))"
-                              fill="hsl(var(--primary) / 0.15)"
+                              stroke="hsl(var(--chart-1))"
+                              fill="url(#fillChart1Feed)"
                               strokeWidth={2}
+                              dot={false}
+                              activeDot={{ r: 4, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+                              {...chartAnim()}
                             />
                           </AreaChart>
                         </ResponsiveContainer>
@@ -855,14 +879,32 @@ function BatchDetailDialog({
                       {t('batches.detail.mortalityChart')}
                     </h3>
                     {mortalityData.length === 0 ? (
-                      <PanelNote>{t('batches.detail.noSeries')}</PanelNote>
+                      <ChartEmpty art="generic" text={t('batches.detail.noSeries')} className="h-40" />
                     ) : (
                       <div className="h-40">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={mortalityData} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
-                            <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                            <YAxis tick={{ fontSize: 10 }} allowDecimals={false} stroke="hsl(var(--muted-foreground))" />
-                            <ChartTooltip contentStyle={chartTooltipStyle} />
+                          <LineChart data={mortalityData} margin={{ top: 4, right: 4, bottom: 0, left: -8 }}>
+                            <CartesianGrid {...GRID_PROPS} />
+                            <XAxis
+                              dataKey="date"
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                            />
+                            <YAxis
+                              width={36}
+                              allowDecimals={false}
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{
+                                fontSize: 11,
+                                fill: 'hsl(var(--muted-foreground))',
+                                style: { fontVariantNumeric: 'tabular-nums' },
+                              }}
+                            />
+                            <RechartsTooltip cursor={LINE_CURSOR} content={<ChartTooltip />} />
+                            {/* Cumulative losses are a STATUS series (bad outcome) — destructive
+                                by design, not a chart-N identity slot (chart-spec §1). */}
                             <Line
                               type="stepAfter"
                               dataKey="lost"
@@ -870,6 +912,8 @@ function BatchDetailDialog({
                               stroke="hsl(var(--destructive))"
                               strokeWidth={2}
                               dot={false}
+                              activeDot={{ r: 4, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+                              {...chartAnim()}
                             />
                           </LineChart>
                         </ResponsiveContainer>

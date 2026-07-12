@@ -80,7 +80,7 @@ export function UnitsPanel({ canWrite }: { farmId: string; canWrite: boolean }) 
       />
 
       {canWrite && (
-        <form onSubmit={onAdd} className="space-y-2 rounded-xl bg-secondary/60 p-3">
+        <form onSubmit={onAdd} className="space-y-2 rounded-md bg-secondary/60 p-3">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}

@@ -20,7 +20,9 @@ export const SheetContent = forwardRef<
     <RD.Overlay
       className={cn(
         'fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm',
-        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+        // Overlay timings sync with the content (300 in / 200 out — motion-standard §2.5).
+        'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-300',
+        'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-200',
       )}
     />
     <RD.Content

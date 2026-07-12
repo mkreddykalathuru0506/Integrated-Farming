@@ -234,7 +234,7 @@ export function ReportsPanel({ canWrite }: { farmId: string; canWrite: boolean }
       </PanelHeading>
 
       {/* On-demand download card */}
-      <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+      <div className="space-y-2 rounded-md border border-border bg-card p-3">
         <PanelNote>{t('reports.blurb')}</PanelNote>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button
@@ -283,7 +283,7 @@ export function ReportsPanel({ canWrite }: { farmId: string; canWrite: boolean }
             getRowId={(s) => s.id}
             emptyState={
               <EmptyState
-                icon={CalendarClock}
+                icon={CalendarClock} illustration="generic"
                 title={t('reports.noSchedules')}
                 description={t('reports.noSchedulesDesc')}
                 size="compact"

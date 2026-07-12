@@ -41,7 +41,8 @@ function CenterShell({ children, onBack }: { children: ReactNode; onBack?: () =>
   const { t } = useTranslation();
   return (
     <div className="grid min-h-dvh place-items-center bg-gradient-to-b from-secondary to-background px-4 py-10">
-      <div className="w-full max-w-sm">
+      {/* <main> landmark: pre-auth pages have no AppLayout main (Lighthouse a11y). */}
+      <main className="w-full max-w-sm">
         <div className="mb-6 flex items-center justify-between gap-2">
           <BrandHeader />
           <LanguageToggle />
@@ -57,7 +58,7 @@ function CenterShell({ children, onBack }: { children: ReactNode; onBack?: () =>
           </button>
         )}
         <Card className="shadow-elevated">{children}</Card>
-      </div>
+      </main>
     </div>
   );
 }

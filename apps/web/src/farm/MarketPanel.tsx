@@ -3,13 +3,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, RefreshCw, TrendingUp } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { z } from 'zod';
 import { useMarketHistory, useMarketRates, useRecordRate, useRefreshRate } from '../api/ops.hooks';
-import { fmtDate, fmtDateTime, fmtInr, rupeesToPaise } from '../lib/format';
+import { fmtDate, fmtDateTime, fmtInr, fmtInrCompact, rupeesToPaise } from '../lib/format';
 import {
   Badge,
   Button,
+  ChartEmpty,
+  ChartTooltipFrame,
+  chartAnim,
   DataTable,
   Dialog,
   DialogContent,
@@ -18,11 +21,12 @@ import {
   DialogTitle,
   EmptyState,
   Field,
+  GRID_PROPS,
   InrInput,
   Input,
+  LINE_CURSOR,
   PanelError,
   PanelHeading,
-  PanelNote,
   Select,
   Skeleton,
   useToast,
@@ -137,13 +141,20 @@ function HistoryChart({ commodity }: { commodity: string }) {
     paise: r.pricePaise,
     unit: r.unit,
   }));
-  if (points.length === 0) return <PanelNote>{t('market.historyEmpty')}</PanelNote>;
+  if (points.length === 0) return <ChartEmpty art="generic" text={t('market.historyEmpty')} className="h-48" />;
 
   return (
     <div className="h-48 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-          <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
+        <AreaChart data={points} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+          {/* The only sanctioned chart gradient: series token fading to transparent (§3). */}
+          <defs>
+            <linearGradient id="fillChart1" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.28} />
+              <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid {...GRID_PROPS} />
           <XAxis
             dataKey="ts"
             tickFormatter={(v: string) => fmtDate(v).slice(0, 5)}
@@ -155,36 +166,54 @@ function HistoryChart({ commodity }: { commodity: string }) {
           <YAxis
             tickLine={false}
             axisLine={false}
-            width={56}
-            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+            width={44}
+            tick={{
+              fill: 'hsl(var(--muted-foreground))',
+              fontSize: 11,
+              style: { fontVariantNumeric: 'tabular-nums' },
+            }}
+            tickFormatter={(v) => fmtInrCompact(Math.round(Number(v) * 100))}
             domain={['auto', 'auto']}
           />
-          <Tooltip
-            cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeDasharray: '3 3' }}
-            contentStyle={{
-              background: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: 8,
-              fontSize: 12,
-              color: 'hsl(var(--foreground))',
-            }}
-            labelFormatter={(v) => fmtDateTime(String(v))}
-            formatter={(_v, _n, item) => {
-              const p = item.payload as { paise: string; unit: string };
-              return [`${fmtInr(p.paise)}/${p.unit}`, null];
-            }}
-          />
-          <Line
+          <Tooltip cursor={LINE_CURSOR} content={<PriceTip />} />
+          <Area
             type="monotone"
             dataKey="rupees"
-            stroke="hsl(var(--primary))"
+            stroke="hsl(var(--chart-1))"
             strokeWidth={2}
+            fill="url(#fillChart1)"
             dot={false}
-            activeDot={{ r: 4, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+            activeDot={{ r: 4, stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+            {...chartAnim()}
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+/** Bespoke tooltip body on the shared popover frame — money exact (fmtInr), never compact. */
+function PriceTip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { payload: { paise: string; unit: string } }[];
+  label?: string;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  const p = payload[0]!.payload;
+  return (
+    <ChartTooltipFrame>
+      <p className="mb-0.5 font-semibold text-foreground">{fmtDateTime(String(label))}</p>
+      <p className="flex items-center gap-1.5 text-muted-foreground">
+        <span className="h-2 w-2 shrink-0 rounded-[3px]" style={{ background: 'hsl(var(--chart-1))' }} />
+        <span className="tabular font-semibold text-foreground">
+          {fmtInr(p.paise)}/{p.unit}
+        </span>
+      </p>
+    </ChartTooltipFrame>
   );
 }
 
@@ -295,6 +324,7 @@ export function MarketPanel({ canWrite }: { farmId: string; canWrite: boolean })
             emptyState={
               <EmptyState
                 icon={TrendingUp}
+                illustration="generic"
                 title={t('market.empty')}
                 description={t('market.emptyDesc')}
                 action={
@@ -318,7 +348,7 @@ export function MarketPanel({ canWrite }: { farmId: string; canWrite: boolean })
       )}
 
       {commodities.length > 0 && (
-        <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+        <div className="space-y-2 rounded-md border border-border bg-card p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               {t('market.history')}

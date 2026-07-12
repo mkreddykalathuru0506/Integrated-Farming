@@ -15,7 +15,7 @@ export function LoadErrorNote({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
       <PanelError className="m-0">{text}</PanelError>
       <Button type="button" size="sm" variant="secondary" onClick={onRetry}>
         <RefreshCw aria-hidden />

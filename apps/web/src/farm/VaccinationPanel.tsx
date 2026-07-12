@@ -71,7 +71,7 @@ export function VaccinationPanel({ canWrite }: { farmId: string; canWrite: boole
       <section className="space-y-3">
         <PanelHeading>{t('vax.title')}</PanelHeading>
         <EmptyState
-          icon={Syringe}
+          icon={Syringe} illustration="health"
           title={t('vax.noBatches')}
           description={t('vax.noBatchesDesc')}
           action={
@@ -118,7 +118,7 @@ export function VaccinationPanel({ canWrite }: { farmId: string; canWrite: boole
 
           {items.length === 0 ? (
             <EmptyState
-              icon={Syringe}
+              icon={Syringe} illustration="health"
               title={t('vax.none')}
               description={t('vax.noneDesc')}
               size="compact"

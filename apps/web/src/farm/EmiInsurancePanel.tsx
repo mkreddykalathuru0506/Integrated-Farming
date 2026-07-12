@@ -227,7 +227,7 @@ export function EmiInsurancePanel({ canWrite }: { farmId: string; canWrite: bool
               getRowId={(l) => l.id}
               emptyState={
                 <EmptyState
-                  icon={Landmark}
+                  icon={Landmark} illustration="finance"
                   title={t('emi.loansEmpty')}
                   description={t('emi.loansEmptyDesc')}
                   action={
@@ -261,7 +261,7 @@ export function EmiInsurancePanel({ canWrite }: { farmId: string; canWrite: bool
               getRowId={(p) => p.id}
               emptyState={
                 <EmptyState
-                  icon={ShieldCheck}
+                  icon={ShieldCheck} illustration="finance"
                   title={t('emi.insEmpty')}
                   description={t('emi.insEmptyDesc')}
                   action={

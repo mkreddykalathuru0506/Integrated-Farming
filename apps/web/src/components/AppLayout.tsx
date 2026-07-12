@@ -201,15 +201,22 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
           </h1>
           <div className={cn('mx-auto w-full', activePanel.full ? 'max-w-7xl' : 'max-w-5xl')}>
             <SectionTabs section={section} activePanelKey={panelKey} navigate={navigate} />
-            <ErrorBoundary resetKey={canonicalPath + selectedId}>
-              <Suspense fallback={<SectionFallback full={activePanel.full ?? false} />}>
-                {activePanel.full ? (
-                  <div key={activePanel.key + selectedId}>{activePanel.render(selectedId, perms)}</div>
-                ) : (
-                  <Card key={activePanel.key + selectedId}>{activePanel.render(selectedId, perms)}</Card>
-                )}
-              </Suspense>
-            </ErrorBoundary>
+            {/* Section-mount fade (motion-standard §3.1): once per navigation, on the
+                container — never per Card. Keyed by route so it re-runs on nav only. */}
+            <div
+              key={canonicalPath + selectedId}
+              className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-300"
+            >
+              <ErrorBoundary resetKey={canonicalPath + selectedId}>
+                <Suspense fallback={<SectionFallback full={activePanel.full ?? false} />}>
+                  {activePanel.full ? (
+                    <div key={activePanel.key + selectedId}>{activePanel.render(selectedId, perms)}</div>
+                  ) : (
+                    <Card key={activePanel.key + selectedId}>{activePanel.render(selectedId, perms)}</Card>
+                  )}
+                </Suspense>
+              </ErrorBoundary>
+            </div>
           </div>
         </main>
       </div>

@@ -71,7 +71,8 @@ export function SidebarContent({ sections, activeKey, onSelect, collapsed, onTog
                 }}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium no-underline transition-colors',
+                  // Gold focus ring — the standard ring token vanishes on the dark pine rail.
+                  'group flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium no-underline transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70',
                   collapsed && 'justify-center px-0',
                   active
                     ? 'bg-gradient-to-r from-success/20 to-success/[0.04] text-white'
@@ -99,7 +100,7 @@ export function SidebarContent({ sections, activeKey, onSelect, collapsed, onTog
                 {active && (
                   <span
                     aria-hidden
-                    className="absolute -left-3 top-2 bottom-2 w-[3px] rounded-r bg-accent shadow-[0_0_12px_hsl(var(--accent)/0.7)]"
+                    className="absolute -left-3 top-2 bottom-2 w-[3px] rounded-r bg-accent shadow-[0_0_12px_hsl(var(--accent)/0.7)] motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-150"
                   />
                 )}
                 {collapsed ? (
@@ -124,7 +125,7 @@ export function SidebarContent({ sections, activeKey, onSelect, collapsed, onTog
             onClick={onToggleCollapse}
             aria-label={collapsed ? t('nav.expand') : t('nav.collapse')}
             className={cn(
-              'flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-sidebar-muted transition-colors hover:bg-white/[0.06] hover:text-sidebar-foreground',
+              'flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-sidebar-muted transition-colors duration-150 hover:bg-white/[0.06] hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70',
               collapsed && 'justify-center px-0',
             )}
           >

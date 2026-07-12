@@ -30,6 +30,8 @@ Thumbs.db
 # Test / coverage
 coverage/
 playwright-report/
+# Local pixel-sweep output (slice 11.10) — reviewed, never committed
+apps/web/e2e/.screens/
 test-results/
 .nyc_output/
 

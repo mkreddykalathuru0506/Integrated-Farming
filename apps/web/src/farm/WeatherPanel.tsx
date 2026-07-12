@@ -96,7 +96,7 @@ export function WeatherPanel({ canWrite }: { farmId: string; canWrite: boolean }
 
       {weather.isError && locationRequired && (
         <EmptyState
-          icon={MapPin}
+          icon={MapPin} illustration="generic"
           title={t('weather.needLocationTitle')}
           description={t('weather.needLocation')}
           size="compact"
@@ -122,7 +122,7 @@ export function WeatherPanel({ canWrite }: { farmId: string; canWrite: boolean }
       )}
 
       {current && (
-        <div className="rounded-xl bg-accent/10 p-3 text-sm">
+        <div className="rounded-md bg-accent/10 p-3 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="font-display text-2xl font-semibold text-accent tabular">
               {current.tempC}°C
@@ -157,7 +157,7 @@ export function WeatherPanel({ canWrite }: { farmId: string; canWrite: boolean }
       )}
 
       {heatRisk?.atRisk && (
-        <div className="flex items-start gap-2 rounded-xl bg-warning/12 p-3 text-sm text-warning" role="alert">
+        <div className="flex items-start gap-2 rounded-md bg-warning/12 p-3 text-sm text-warning" role="alert">
           <ThermometerSun className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <span>
             <span className="font-semibold">{t('weather.heatRisk')}</span>
@@ -185,7 +185,7 @@ export function WeatherPanel({ canWrite }: { farmId: string; canWrite: boolean }
             isLoading={risks.isPending}
             pageSize={10}
             getRowId={(r) => r.id}
-            emptyState={<EmptyState icon={CloudSun} title={t('weather.noAlerts')} size="compact" />}
+            emptyState={<EmptyState icon={CloudSun} illustration="allClear" title={t('weather.noAlerts')} size="compact" />}
           />
         )}
       </div>

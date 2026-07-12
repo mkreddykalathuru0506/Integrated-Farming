@@ -27,6 +27,8 @@ import {
   Badge,
   Button,
   CardSkeleton,
+  ChartTooltipFrame,
+  chartAnim,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -36,6 +38,7 @@ import {
   EmptyState,
   Field,
   Input,
+  LINE_CURSOR,
   PanelError,
   PanelHeading,
   PanelNote,
@@ -53,11 +56,11 @@ function TempTooltip({ active, payload }: { active?: boolean; payload?: { payloa
   if (!active || !payload || payload.length === 0) return null;
   const p = payload[0]!.payload;
   return (
-    <div className="rounded-md border border-border bg-card px-2 py-1 text-xs shadow-popover">
+    <ChartTooltipFrame>
       <span className="tabular font-semibold text-foreground">{p.t}°C</span>
       <span className="ml-2 text-muted-foreground">{fmtDateTime(p.at)}</span>
       {p.out && <span className="ml-2 font-semibold text-destructive">{t('cold.outOfRange')}</span>}
-    </div>
+    </ChartTooltipFrame>
   );
 }
 
@@ -117,15 +120,16 @@ function TempSparkline({ store }: { store: ColdStorage }) {
               fillOpacity={0.09}
               stroke="none"
             />
-            <ChartTooltip content={<TempTooltip />} cursor={{ stroke: 'hsl(var(--border))' }} />
+            <ChartTooltip content={<TempTooltip />} cursor={LINE_CURSOR} />
+            {/* Single series ⇒ chart-1; exception dots stay status-colored (§1/§3). */}
             <Line
               type="monotone"
               dataKey="t"
-              stroke="hsl(var(--primary))"
+              stroke="hsl(var(--chart-1))"
               strokeWidth={2}
               dot={renderDot}
-              activeDot={{ r: 4, fill: 'hsl(var(--primary))' }}
-              isAnimationActive={false}
+              activeDot={{ r: 4, fill: 'hsl(var(--chart-1))', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+              {...chartAnim()}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -189,7 +193,7 @@ function TempLogger({ store }: { store: ColdStorage }) {
 function StoreCard({ store, canLog }: { store: ColdStorage; canLog: boolean }) {
   const { t } = useTranslation();
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+    <div className="space-y-3 rounded-md border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-medium text-foreground">{store.name}</span>
         <Badge variant={store.mode === 'FROZEN' ? 'accent' : 'success'}>
@@ -352,6 +356,7 @@ export function ColdStoragePanel({
       {stores.data && stores.data.length === 0 && (
         <EmptyState
           icon={Snowflake}
+          illustration="coldChain"
           title={t('cold.empty')}
           description={t('cold.emptyDesc')}
           action={

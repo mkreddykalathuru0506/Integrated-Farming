@@ -36,7 +36,7 @@ export function PanelError({ className, ...props }: HTMLAttributes<HTMLParagraph
 
 /** Warm sub-surface used to group a form or secondary block inside a Card. */
 export function SubPanel({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('rounded-xl bg-secondary/60 p-3', className)} {...props} />;
+  return <div className={cn('rounded-md bg-secondary/60 p-3', className)} {...props} />;
 }
 
 /** A bordered list row — the default shape for data lists inside a panel. */
@@ -44,7 +44,7 @@ export function DataRow({ className, ...props }: HTMLAttributes<HTMLLIElement>) 
   return (
     <li
       className={cn(
-        'flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-3 py-2',
+        'flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2',
         className,
       )}
       {...props}

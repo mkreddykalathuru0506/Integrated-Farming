@@ -212,7 +212,7 @@ export function TeamPanel({ canManage }: { farmId: string; canManage: boolean })
           getRowId={(m) => m.id}
           emptyState={
             <EmptyState
-              icon={Users}
+              icon={Users} illustration="generic"
               title={t('team.empty')}
               description={t('team.emptyDesc')}
               action={

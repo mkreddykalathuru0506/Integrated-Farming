@@ -242,7 +242,7 @@ export function HealthPanel({ canWrite }: { farmId: string; canWrite: boolean })
               searchable={rows.length > 10}
               emptyState={
                 <EmptyState
-                  icon={HeartPulse}
+                  icon={HeartPulse} illustration="health"
                   title={t('health.noBatches')}
                   description={t('health.noBatchesDesc')}
                   action={goBatches}
@@ -273,7 +273,7 @@ export function HealthPanel({ canWrite }: { farmId: string; canWrite: boolean })
             searchable
             emptyState={
               <EmptyState
-                icon={ShieldCheck}
+                icon={ShieldCheck} illustration="health"
                 title={t('health.historyEmpty')}
                 description={t('health.historyEmptyDesc')}
                 size="compact"
