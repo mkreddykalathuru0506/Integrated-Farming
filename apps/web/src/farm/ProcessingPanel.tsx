@@ -39,7 +39,7 @@ import {
   type BadgeProps,
   type DataTableColumn,
 } from '../ui';
-import { goToPanel } from './panelNav';
+import { goToPanel } from './SpaLink';
 
 const STATE_VARIANT: Record<ProductLot['state'], BadgeProps['variant']> = {
   FRESH: 'success',

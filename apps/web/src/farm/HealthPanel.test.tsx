@@ -35,12 +35,20 @@ function baseRoutes(overrides: Record<string, RouteHandler> = {}) {
       jsonResponse(200, { batches: [makeBatch('b1', 'B-001', 'Broilers A'), makeBatch('b2', 'B-002', null)] }),
     '/api/farm/animals': () => jsonResponse(200, { animals: [] }),
     '/api/farm/health/records': () => jsonResponse(200, { records: [] }),
-    '/api/farm/health/withdrawal': (_init, url) => {
-      const batchId = new URL(url).searchParams.get('batchId');
-      return batchId === 'b1'
-        ? jsonResponse(200, { underWithdrawal: true, until: IN_5_DAYS })
-        : jsonResponse(200, { underWithdrawal: false, until: null });
-    },
+    // ONE farm-wide withdrawals request (slice 11.8a) — b1 under withdrawal, b2 clear.
+    '/api/farm/health/withdrawals': () =>
+      jsonResponse(200, {
+        withdrawals: [
+          {
+            batchId: 'b1',
+            batchCode: 'B-001',
+            batchName: 'Broilers A',
+            currentCount: 90,
+            drugName: 'Oxytet',
+            until: IN_5_DAYS,
+          },
+        ],
+      }),
     ...overrides,
   });
 }
@@ -71,6 +79,8 @@ describe('HealthPanel (farm-wide withdrawal board)', () => {
     // b1 under withdrawal → destructive countdown badge; b2 clear → success badge
     expect((await screen.findAllByText(/days? left/)).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('Clear')).length).toBeGreaterThan(0);
+    // The single endpoint delivers the binding drug name the fan-out couldn't show.
+    expect((await screen.findAllByText('Oxytet')).length).toBeGreaterThan(0);
   });
 
   it('records a medication through the dialog (dose/route/withdrawal days)', async () => {

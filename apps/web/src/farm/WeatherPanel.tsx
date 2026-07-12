@@ -40,7 +40,9 @@ export function WeatherPanel({ canWrite }: { farmId: string; canWrite: boolean }
       accessor: (r) => r.severity,
       cell: (r) => (
         <span className="inline-flex flex-wrap items-center gap-1.5">
-          <Badge variant={SEVERITY_VARIANT[r.severity] ?? 'default'}>{r.severity}</Badge>
+          <Badge variant={SEVERITY_VARIANT[r.severity] ?? 'default'}>
+            {t(`risk.severity.${r.severity}`, r.severity)}
+          </Badge>
           <span className="text-xs text-muted-foreground">{t(`risk.type.${r.type}`)}</span>
         </span>
       ),
@@ -85,10 +87,14 @@ export function WeatherPanel({ canWrite }: { farmId: string; canWrite: boolean }
           title={t('weather.needLocationTitle')}
           description={t('weather.needLocation')}
           size="compact"
+          // Farm settings is OWNER/MANAGER-only (canWrite): for VET/ACCOUNTANT the
+          // link would resolve to Overview, so drop the dead-end CTA for them.
           action={
-            <SpaLink href="/settings/settings" className="text-sm">
-              {t('weather.goSettings')} →
-            </SpaLink>
+            canWrite ? (
+              <SpaLink href="/settings/settings" className="text-sm">
+                {t('weather.goSettings')} →
+              </SpaLink>
+            ) : undefined
           }
         />
       )}

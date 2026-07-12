@@ -104,6 +104,33 @@ describe('AnimalsPanel (11.6a rewrite)', () => {
     expect(await screen.findByText('Animal added')).toBeInTheDocument();
   });
 
+  it('QR print renders a hostile tagNumber as TEXT — no element injection (stored XSS guard)', async () => {
+    const payload = '<img src=x onerror="window.__pwned=true">';
+    const hostile = { ...animal, id: 'a9', tagNumber: payload, qrCode: 'IFM-A-9' };
+    routes({ '/api/farm/animals': () => jsonResponse(200, { animals: [hostile] }) });
+
+    // Fake popup window backed by a real detached document (never attached to jsdom's DOM).
+    const popupDoc = document.implementation.createHTMLDocument('popup');
+    const print = vi.fn();
+    const popup = { document: popupDoc, focus: vi.fn(), print } as unknown as Window;
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(popup);
+
+    renderPanel();
+    const user = userEvent.setup();
+    await user.click((await screen.findAllByLabelText(`Show QR for ${payload}`))[0]!);
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Print' }));
+
+    expect(openSpy).toHaveBeenCalled();
+    expect(print).toHaveBeenCalled();
+    // The payload must appear as literal text…
+    expect(popupDoc.body.textContent).toContain(payload);
+    // …and must NOT have been parsed into an element (the classic XSS sink).
+    expect(popupDoc.querySelector('img')).toBeNull();
+    expect((window as unknown as { __pwned?: boolean }).__pwned).toBeUndefined();
+    openSpy.mockRestore();
+  });
+
   it('gates cull behind ConfirmDialog from the detail dialog', async () => {
     const posts: unknown[] = [];
     routes({

@@ -5,8 +5,9 @@
  * Pattern mirrors api/hooks.ts: reads via useQuery + farmKeys, writes via
  * useApiMutation (central toasts + invalidation).
  */
-import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qs } from '../lib/http';
+import { todayIST } from '../lib/format';
 import { useApiMutation } from '../lib/useApiMutation';
 import type { Animal, SpeciesDetail } from '../farm/api';
 import { useFarmApi } from './FarmContext';
@@ -32,10 +33,9 @@ export function useSpeciesDetail(id: string | undefined) {
   });
 }
 
-/** `YYYY-MM-DD` for today in Asia/Kolkata — default value for date inputs. */
-export function todayISO(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
-}
+/** `YYYY-MM-DD` for today in Asia/Kolkata — default value for date inputs.
+ * @deprecated re-export of the shared lib/format `todayIST`; import that directly. */
+export const todayISO = todayIST;
 
 // ------------------------------------------------------ health records
 
@@ -91,22 +91,28 @@ export function useCreateHealthRecord() {
 // ---------------------------------------------------------- withdrawal
 
 export type WithdrawalStatus = { underWithdrawal: boolean; until: string | null };
-export type BatchWithdrawal = WithdrawalStatus & { batchId: string };
+
+/** One farm-wide active-withdrawal row per batch (GET /api/farm/health/withdrawals). */
+export type ActiveWithdrawal = {
+  batchId: string;
+  batchCode: string;
+  batchName: string | null;
+  currentCount: number;
+  drugName: string;
+  until: string;
+};
 
 /**
- * Per-batch withdrawal checks, one query per ACTIVE batch (bounded fan-out).
- * Keys are `list` variants so a single prefix invalidation refreshes them all.
+ * Farm-wide active batch withdrawals in ONE request (slice 11.8a) — replaces the
+ * former one-query-per-active-batch fan-out. The server collapses to the binding
+ * medication per batch and returns its drugName + until.
  */
-export function useWithdrawals(batchIds: string[]) {
+export function useActiveWithdrawals() {
   const { farmId, fetchJson } = useFarmApi();
-  return useQueries({
-    queries: batchIds.map((batchId) => ({
-      queryKey: farmKeys.list(farmId, 'health-withdrawal', { batchId }),
-      queryFn: async (): Promise<BatchWithdrawal> => ({
-        batchId,
-        ...(await fetchJson<WithdrawalStatus>(`/api/farm/health/withdrawal${qs({ batchId })}`)),
-      }),
-    })),
+  return useQuery({
+    queryKey: farmKeys.list(farmId, 'health-withdrawal'),
+    queryFn: async () =>
+      (await fetchJson<{ withdrawals: ActiveWithdrawal[] }>('/api/farm/health/withdrawals')).withdrawals,
   });
 }
 

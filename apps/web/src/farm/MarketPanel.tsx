@@ -28,6 +28,7 @@ import {
   useToast,
   type DataTableColumn,
 } from '../ui';
+import { LoadMore } from './LoadMore';
 import type { MarketRate } from './api';
 
 function SourceBadge({ source }: { source: string }) {
@@ -198,8 +199,8 @@ export function MarketPanel({ canWrite }: { farmId: string; canWrite: boolean })
   const [historyCommodity, setHistoryCommodity] = useState('');
 
   const commodities = useMemo(
-    () => [...new Set((rates.data ?? []).map((r) => r.commodity))],
-    [rates.data],
+    () => [...new Set((rates.items ?? []).map((r) => r.commodity))],
+    [rates.items],
   );
   const selectedCommodity = historyCommodity || commodities[0] || '';
 
@@ -283,29 +284,37 @@ export function MarketPanel({ canWrite }: { farmId: string; canWrite: boolean })
           </Button>
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={rates.data}
-          isLoading={rates.isPending}
-          searchable
-          pageSize={10}
-          getRowId={(r) => r.id}
-          emptyState={
-            <EmptyState
-              icon={TrendingUp}
-              title={t('market.empty')}
-              description={t('market.emptyDesc')}
-              action={
-                canWrite && (
-                  <Button type="button" onClick={() => setRecordOpen(true)}>
-                    <Plus aria-hidden />
-                    {t('market.record')}
-                  </Button>
-                )
-              }
-            />
-          }
-        />
+        <>
+          <DataTable
+            columns={columns}
+            data={rates.items}
+            isLoading={rates.isPending}
+            searchable
+            pageSize={10}
+            getRowId={(r) => r.id}
+            emptyState={
+              <EmptyState
+                icon={TrendingUp}
+                title={t('market.empty')}
+                description={t('market.emptyDesc')}
+                action={
+                  canWrite && (
+                    <Button type="button" onClick={() => setRecordOpen(true)}>
+                      <Plus aria-hidden />
+                      {t('market.record')}
+                    </Button>
+                  )
+                }
+              />
+            }
+          />
+          <LoadMore
+            shown={rates.items?.length ?? 0}
+            total={rates.total}
+            loading={rates.isFetchingNextPage}
+            onLoadMore={() => void rates.fetchNextPage()}
+          />
+        </>
       )}
 
       {commodities.length > 0 && (

@@ -11,7 +11,7 @@ import {
   useInsurance,
   useLoans,
 } from '../api/finance.hooks';
-import { fmtDate, fmtInr, rupeesToPaise } from '../lib/format';
+import { fmtDate, fmtInr, rupeesToPaise, todayIST } from '../lib/format';
 import {
   Badge,
   Button,
@@ -40,7 +40,7 @@ import type { InsurancePolicy, Loan } from './api';
 const INS_TYPES = ['LIVESTOCK', 'ASSET', 'CROP', 'OTHER'] as const;
 
 const dayISO = (s: string) => `${s}T00:00:00.000Z`;
-const todayInput = () => new Date().toISOString().slice(0, 10);
+const todayInput = () => todayIST();
 
 /** Mirror of the API's finance dueWithin(): on/before now + N days. */
 const dueWithin = (iso: string, days: number) =>

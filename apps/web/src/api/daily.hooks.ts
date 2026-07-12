@@ -6,6 +6,7 @@
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qs } from '../lib/http';
+import { usePagedList } from './paged';
 import { useApiMutation } from '../lib/useApiMutation';
 import type { AttendanceRow, DailyLog, Schedule, Task, Worker } from '../farm/api';
 import { useFarmApi } from './FarmContext';
@@ -162,12 +163,11 @@ export function useCreateSchedule() {
 
 // ---------- daily logs ----------
 
+/** Recent daily logs via the paged envelope + "Load more" (slice 11.8a). */
 export function useLogs(type?: string) {
-  const { farmId, fetchJson } = useFarmApi();
-  return useQuery({
-    queryKey: farmKeys.list(farmId, 'logs', { type: type ?? 'ALL' }),
-    queryFn: async () =>
-      (await fetchJson<{ logs: DailyLog[] }>(`/api/farm/logs${qs({ type: type || undefined })}`))
-        .logs,
-  });
+  const { farmId } = useFarmApi();
+  return usePagedList<DailyLog>(
+    farmKeys.list(farmId, 'logs', { type: type ?? 'ALL' }),
+    (page, pageSize) => `/api/farm/logs${qs({ page, pageSize, type: type || undefined })}`,
+  );
 }

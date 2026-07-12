@@ -41,7 +41,7 @@ import {
   type OnboardingStepKey,
 } from '../api/dashboard.hooks';
 import { useAuth } from '../auth/AuthContext';
-import type { Role } from '../components/nav';
+import { visibleSections, type Role } from '../components/nav';
 import { pathForSection } from '../components/router';
 import { fmtDate, fmtInrCompact } from '../lib/format';
 import { Badge, Button, EmptyState, Skeleton, StatSkeleton, cn } from '../ui';
@@ -284,12 +284,17 @@ function OnboardingCard({ data, onDismiss }: { data: Onboarding; onDismiss: () =
 /* ---------- "Today" panel ---------- */
 
 type TodayRow = { id: string; text: string; when?: string; badge: string; badgeVariant: 'warning' | 'muted' };
-type TodayGroup = { key: string; titleKey: string; href: string; rows: TodayRow[] };
+type TodayGroup = { key: string; section: string; titleKey: string; href: string; rows: TodayRow[] };
 
-function todayGroups(due: DueRollup, t: (k: string, o?: Record<string, unknown>) => string, showFinance: boolean): TodayGroup[] {
+function todayGroups(
+  due: DueRollup,
+  t: (k: string, o?: Record<string, unknown>) => string,
+  visibleKeys: Set<string>,
+): TodayGroup[] {
   const groups: TodayGroup[] = [
     {
       key: 'tasks',
+      section: 'daily',
       titleKey: 'dashboard.groupTasks',
       href: pathForSection('daily', 'tasks'),
       rows: due.tasksToday.map((task) => ({
@@ -301,6 +306,7 @@ function todayGroups(due: DueRollup, t: (k: string, o?: Record<string, unknown>)
     },
     {
       key: 'vaccinations',
+      section: 'health',
       titleKey: 'dashboard.groupVaccinations',
       href: pathForSection('health', 'vaccination'),
       rows: due.vaccinations.map((v) => ({
@@ -312,6 +318,7 @@ function todayGroups(due: DueRollup, t: (k: string, o?: Record<string, unknown>)
     },
     {
       key: 'maintenance',
+      section: 'maintenance',
       titleKey: 'dashboard.groupMaintenance',
       href: pathForSection('maintenance', 'assets'),
       rows: due.maintenance.map((m) => ({
@@ -322,43 +329,43 @@ function todayGroups(due: DueRollup, t: (k: string, o?: Record<string, unknown>)
         badgeVariant: 'warning' as const,
       })),
     },
+    {
+      key: 'emi',
+      section: 'finance',
+      titleKey: 'dashboard.groupEmi',
+      href: pathForSection('finance', 'emi'),
+      rows: due.emiDue.map((l) => ({
+        id: `emi-${l.id}`,
+        text: l.lender,
+        when: l.nextDueDate ? fmtDate(l.nextDueDate) : undefined,
+        badge: t('dashboard.badgeDue'),
+        badgeVariant: 'warning' as const,
+      })),
+    },
+    {
+      key: 'insurance',
+      section: 'finance',
+      titleKey: 'dashboard.groupInsurance',
+      href: pathForSection('finance', 'emi'),
+      rows: due.policiesExpiring.map((p) => ({
+        id: `ins-${p.id}`,
+        text: p.provider,
+        when: fmtDate(p.endDate),
+        badge: t('dashboard.badgeDue'),
+        badgeVariant: 'warning' as const,
+      })),
+    },
   ];
-  if (showFinance) {
-    groups.push(
-      {
-        key: 'emi',
-        titleKey: 'dashboard.groupEmi',
-        href: pathForSection('finance', 'emi'),
-        rows: due.emiDue.map((l) => ({
-          id: `emi-${l.id}`,
-          text: l.lender,
-          when: l.nextDueDate ? fmtDate(l.nextDueDate) : undefined,
-          badge: t('dashboard.badgeDue'),
-          badgeVariant: 'warning' as const,
-        })),
-      },
-      {
-        key: 'insurance',
-        titleKey: 'dashboard.groupInsurance',
-        href: pathForSection('finance', 'emi'),
-        rows: due.policiesExpiring.map((p) => ({
-          id: `ins-${p.id}`,
-          text: p.provider,
-          when: fmtDate(p.endDate),
-          badge: t('dashboard.badgeDue'),
-          badgeVariant: 'warning' as const,
-        })),
-      },
-    );
-  }
-  return groups.filter((g) => g.rows.length > 0);
+  // Only groups whose target section is visible for this role — an ACCOUNTANT
+  // clicking a health/maintenance link would otherwise full-reload to Overview.
+  return groups.filter((g) => g.rows.length > 0 && visibleKeys.has(g.section));
 }
 
 const TODAY_ROW_LIMIT = 4;
 
-function TodayPanel({ due, showFinance }: { due: DueRollup; showFinance: boolean }) {
+function TodayPanel({ due, visibleKeys }: { due: DueRollup; visibleKeys: Set<string> }) {
   const { t } = useTranslation();
-  const groups = todayGroups(due, t, showFinance);
+  const groups = todayGroups(due, t, visibleKeys);
   if (groups.length === 0) {
     return (
       <EmptyState
@@ -532,6 +539,8 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
   const showIntel = role !== 'LABOUR' && role !== 'BUYER';
   const isLabour = role === 'LABOUR';
   const isAccountant = role === 'ACCOUNTANT';
+  // Role-visible section keys — gates the "Today" group deep-links (finding 11.8a).
+  const visibleKeys = useMemo(() => new Set(visibleSections(role).map((s) => s.key)), [role]);
 
   const dashQ = useDashboard();
   const risksQ = useOpenRiskFlags();
@@ -711,7 +720,7 @@ export function Dashboard({ farmId, canWrite, role }: { farmId: string; canWrite
         ) : dueQ.isPending ? (
           <Skeleton className="h-28" />
         ) : (
-          <TodayPanel due={dueQ.data} showFinance={showFinance} />
+          <TodayPanel due={dueQ.data} visibleKeys={visibleKeys} />
         )}
       </Panel>
     </div>

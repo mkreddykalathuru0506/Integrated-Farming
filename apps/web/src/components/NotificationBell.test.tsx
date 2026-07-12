@@ -116,16 +116,32 @@ describe('NotificationBell', () => {
     expect(await screen.findByText('Alert acknowledged')).toBeInTheDocument();
   });
 
-  it('hides the ack control for non-managing roles', async () => {
+  it('hides the ack control for non-managing roles that can still see the section', async () => {
     mockFetchRoutes({
       '/api/farm/risk': () => jsonResponse(200, { risks: [RISK] }),
       '/api/farm/due': () => jsonResponse(200, EMPTY_DUE),
     });
-    renderBell('LABOUR');
+    // VET can see the Intelligence section (so the risk item shows) but cannot ack.
+    renderBell('VETERINARIAN');
     const user = userEvent.setup();
     await user.click(await screen.findByLabelText('1 unread notifications'));
     expect(await screen.findByText('Broiler price dropped 30%')).toBeInTheDocument();
     expect(screen.queryByLabelText('Acknowledge')).not.toBeInTheDocument();
+  });
+
+  it('role-gates deep-links: a LABOUR user never sees a risk item routing to Intelligence', async () => {
+    mockFetchRoutes({
+      '/api/farm/risk': () => jsonResponse(200, { risks: [RISK] }),
+      '/api/farm/due': () => jsonResponse(200, EMPTY_DUE),
+    });
+    // Intelligence is hidden from LABOUR, so the risk item must not appear (it would
+    // otherwise deep-link to a section the user can't open → silent no-op).
+    renderBell('LABOUR');
+    const user = userEvent.setup();
+    // No unread badge → open via the plain title.
+    await user.click(await screen.findByLabelText('Notifications'));
+    expect(await screen.findByText("You're all caught up")).toBeInTheDocument();
+    expect(screen.queryByText('Broiler price dropped 30%')).not.toBeInTheDocument();
   });
 
   it('shows the friendly empty state when nothing is due', async () => {

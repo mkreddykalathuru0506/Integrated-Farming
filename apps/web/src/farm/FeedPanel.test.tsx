@@ -74,6 +74,7 @@ describe('FeedPanel (11.6c conversion)', () => {
         return jsonResponse(200, { items: [item('fi1', 'Starter', '100', null), item('fi2', 'Grower', '50', null)] });
       },
       '/api/farm/batches': () => jsonResponse(200, { batches: [batch('b1', 'B-001')] }),
+      '/api/farm/vendors': () => jsonResponse(200, { vendors: [] }),
       '/api/farm/feed/purchase': (init) => {
         posts.push(JSON.parse(String(init?.body)));
         return jsonResponse(201, { item: item('fi1', 'Starter', '110', null), totalPaise: '25500' });
@@ -95,11 +96,53 @@ describe('FeedPanel (11.6c conversion)', () => {
     expect(await screen.findByText('Purchase recorded')).toBeInTheDocument();
   });
 
+  it('attributes a purchase to an existing vendor, and quick-adds a new one', async () => {
+    const purchases: unknown[] = [];
+    const vendorPosts: unknown[] = [];
+    mockFetchRoutes({
+      '/api/farm/feed': (init) => {
+        if (init?.method === 'POST') return jsonResponse(201, { item: item('fi3', 'New', '0', null) });
+        return jsonResponse(200, { items: [item('fi1', 'Starter', '100', null)] });
+      },
+      '/api/farm/batches': () => jsonResponse(200, { batches: [batch('b1', 'B-001')] }),
+      '/api/farm/vendors': (init) => {
+        if (init?.method === 'POST') {
+          vendorPosts.push(JSON.parse(String(init.body)));
+          return jsonResponse(201, { vendor: { id: 've9', name: 'AgriFeeds Co', gstin: null } });
+        }
+        return jsonResponse(200, { vendors: [{ id: 've1', name: 'Existing Vendor', gstin: null }] });
+      },
+      '/api/farm/feed/purchase': (init) => {
+        purchases.push(JSON.parse(String(init?.body)));
+        return jsonResponse(201, { item: item('fi1', 'Starter', '110', null), totalPaise: '25500' });
+      },
+    });
+    renderPanel();
+    expect((await screen.findAllByText('Starter')).length).toBeGreaterThan(0);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /Record purchase/ }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText(/Quantity/), '10');
+    await user.type(within(dialog).getByLabelText(/Price per unit/), '25.50');
+
+    // Quick-add a vendor via the picker's sentinel option.
+    await user.selectOptions(within(dialog).getByLabelText(/^Vendor/), '__new__');
+    await user.type(within(dialog).getByLabelText(/Vendor name/), 'AgriFeeds Co');
+    await user.click(within(dialog).getByRole('button', { name: /Record purchase/ }));
+
+    await waitFor(() => expect(purchases).toHaveLength(1));
+    expect(vendorPosts).toEqual([{ name: 'AgriFeeds Co' }]);
+    // The purchase is attributed to the newly-created vendor id.
+    expect(purchases[0]).toEqual({ feedItemId: 'fi1', qty: 10, unitPricePaise: '2550', vendorId: 've9' });
+  });
+
   it('keeps purchase and consumption item selections independent (buyId bug fix)', async () => {
     mockFetchRoutes({
       '/api/farm/feed': () =>
         jsonResponse(200, { items: [item('fi1', 'Starter', '100', null), item('fi2', 'Grower', '50', null)] }),
       '/api/farm/batches': () => jsonResponse(200, { batches: [batch('b1', 'B-001')] }),
+      '/api/farm/vendors': () => jsonResponse(200, { vendors: [] }),
     });
     renderPanel();
     expect((await screen.findAllByText('Starter')).length).toBeGreaterThan(0);

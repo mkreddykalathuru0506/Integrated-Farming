@@ -35,7 +35,7 @@ import {
   Textarea,
   type DataTableColumn,
 } from '../ui';
-import { goToPanel } from './panelNav';
+import { goToPanel } from './SpaLink';
 
 // Zod messages are i18n keys, translated at render time.
 const lineSchema = z.object({

@@ -8,7 +8,15 @@ import { useFarmApi } from '../api/FarmContext';
 import { farmKeys } from '../api/keys';
 import { fmtDateTime } from '../lib/format';
 import type { DailyLog } from './api';
-import { enqueueAndFlush, flush, pendingCount, type Poster, type QueuedLog } from '../offline/queue';
+import {
+  discard,
+  enqueueAndFlush,
+  failedItems,
+  flush,
+  pendingCount,
+  type Poster,
+  type QueuedLog,
+} from '../offline/queue';
 import {
   Badge,
   Button,
@@ -24,6 +32,7 @@ import {
   type DataTableColumn,
 } from '../ui';
 import { LoadErrorNote } from './LoadErrorNote';
+import { LoadMore } from './LoadMore';
 
 const LOG_TYPES = ['FEED', 'EGGS', 'WEIGHT'] as const;
 const UNIT_FOR: Record<string, string> = { FEED: 'kg', EGGS: 'units', WEIGHT: 'kg' };
@@ -54,6 +63,7 @@ export function DailyLogPanel(_props: { farmId: string }) {
   const [quantity, setQuantity] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(0);
+  const [failed, setFailed] = useState<QueuedLog[]>([]);
   const [filter, setFilter] = useState<string>('');
 
   const batches = useBatches();
@@ -87,12 +97,14 @@ export function DailyLogPanel(_props: { farmId: string }) {
 
   const refresh = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: farmKeys.list(farmId, 'logs') });
-    void pendingCount().then(setPending);
+    void pendingCount(farmId).then(setPending);
+    void failedItems(farmId).then(setFailed);
   }, [queryClient, farmId]);
 
+  // Flush only THIS farm's queued items (X-Farm-Id must match, else the server 422s).
   const syncThenRefresh = useCallback(() => {
-    void flush(poster).finally(refresh);
-  }, [poster, refresh]);
+    void flush(poster, farmId).finally(refresh);
+  }, [poster, farmId, refresh]);
 
   useEffect(() => {
     syncThenRefresh();
@@ -114,6 +126,7 @@ export function DailyLogPanel(_props: { farmId: string }) {
     }
     const item: QueuedLog = {
       clientLogId: genId(),
+      farmId, // scope the queued write to the active farm
       type,
       batchId,
       quantity: qty,
@@ -121,6 +134,11 @@ export function DailyLogPanel(_props: { farmId: string }) {
     };
     await enqueueAndFlush(item, poster);
     setQuantity('');
+    refresh();
+  }
+
+  async function onDiscard(clientLogId: string) {
+    await discard(clientLogId);
     refresh();
   }
 
@@ -156,6 +174,38 @@ export function DailyLogPanel(_props: { farmId: string }) {
       >
         {t('logs.title')}
       </PanelHeading>
+
+      {failed.length > 0 && (
+        <SubPanel className="space-y-2 border-destructive/40" data-testid="log-failed">
+          <p className="text-sm font-semibold text-destructive">
+            {t('logs.failedTitle', { count: failed.length })}
+          </p>
+          <p className="text-xs text-muted-foreground">{t('logs.failedHint')}</p>
+          <ul className="space-y-1.5">
+            {failed.map((f) => (
+              <li key={f.clientLogId} className="flex items-center justify-between gap-2 text-sm">
+                <span className="min-w-0 flex-1 truncate text-foreground">
+                  {t(`logs.type.${f.type}`)} · {f.quantity} {f.unit}
+                  {f.batchId && (
+                    <span className="text-xs text-muted-foreground">
+                      {' '}
+                      · {batchCodeById.get(f.batchId) ?? f.batchId}
+                    </span>
+                  )}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void onDiscard(f.clientLogId)}
+                >
+                  {t('logs.discard')}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </SubPanel>
+      )}
 
       {activeBatches.length > 0 && (
         <SubPanel>
@@ -241,28 +291,36 @@ export function DailyLogPanel(_props: { farmId: string }) {
       </div>
 
       <div data-testid="log-recent">
-        {logs.isError && !logs.data ? (
+        {logs.isError && !logs.items ? (
           <LoadErrorNote
             text={t('logs.error')}
             retryLabel={t('logs.retry')}
             onRetry={() => void logs.refetch()}
           />
         ) : (
-          <DataTable
-            columns={columns}
-            data={logs.data}
-            isLoading={logs.isPending}
-            pageSize={10}
-            getRowId={(l) => l.id}
-            emptyState={
-              <EmptyState
-                icon={NotebookPen}
-                title={t('logs.empty')}
-                description={t('logs.emptyHint')}
-                size="compact"
-              />
-            }
-          />
+          <>
+            <DataTable
+              columns={columns}
+              data={logs.items}
+              isLoading={logs.isPending}
+              pageSize={10}
+              getRowId={(l) => l.id}
+              emptyState={
+                <EmptyState
+                  icon={NotebookPen}
+                  title={t('logs.empty')}
+                  description={t('logs.emptyHint')}
+                  size="compact"
+                />
+              }
+            />
+            <LoadMore
+              shown={logs.items?.length ?? 0}
+              total={logs.total}
+              loading={logs.isFetchingNextPage}
+              onLoadMore={() => void logs.fetchNextPage()}
+            />
+          </>
         )}
       </div>
     </section>

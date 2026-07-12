@@ -5,7 +5,8 @@ import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Plus, Users } from 'lucide-react';
 import { useAttendance, useCreateWorker, useMarkAttendance, useWorkers } from '../api/daily.hooks';
-import { fmtInr, rupeesToPaise } from '../lib/format';
+import { fmtInr, rupeesToPaise, todayIST } from '../lib/format';
+import { rupeeField } from '../lib/moneyField';
 import type { Worker } from './api';
 import {
   Badge,
@@ -36,16 +37,14 @@ import { LoadErrorNote } from './LoadErrorNote';
 const WAGE_TYPES = ['DAILY', 'PIECE_RATE', 'MONTHLY'] as const;
 const ATT_STATUSES = ['PRESENT', 'HALF_DAY', 'ABSENT'] as const;
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayIST();
 
 const createSchema = z.object({
   name: z.string().min(1, 'workers.form.nameRequired').max(120, 'workers.form.nameTooLong'),
   phone: z.string().max(20, 'workers.form.phoneTooLong'),
   designation: z.string().max(80, 'workers.form.designationTooLong'),
   wageType: z.string(),
-  wage: z
-    .string()
-    .refine((v) => v.trim() === '' || rupeesToPaise(v) !== null, 'workers.form.wageInvalid'),
+  wage: rupeeField('workers.form.wageInvalid', true),
 });
 type CreateForm = z.infer<typeof createSchema>;
 
@@ -195,12 +194,15 @@ function AttendanceView({
   }, [attendance.data]);
 
   const counts = useMemo(() => {
-    const c = { PRESENT: 0, HALF_DAY: 0, ABSENT: 0, unmarked: 0 };
+    // LEAVE is an API-valid status (written by integrations) — count it in its own
+    // bucket, not as 'unmarked' (finding 11.8a).
+    const c = { PRESENT: 0, HALF_DAY: 0, ABSENT: 0, LEAVE: 0, unmarked: 0 };
     for (const w of activeWorkers) {
       const s = statusByWorker[w.id];
       if (s === 'PRESENT') c.PRESENT += 1;
       else if (s === 'HALF_DAY') c.HALF_DAY += 1;
       else if (s === 'ABSENT') c.ABSENT += 1;
+      else if (s === 'LEAVE') c.LEAVE += 1;
       else c.unmarked += 1;
     }
     return c;
@@ -236,6 +238,9 @@ function AttendanceView({
         <Badge variant="success">{t('workers.chipPresent', { count: counts.PRESENT })}</Badge>
         <Badge variant="accent">{t('workers.chipHalfDay', { count: counts.HALF_DAY })}</Badge>
         <Badge variant="destructive">{t('workers.chipAbsent', { count: counts.ABSENT })}</Badge>
+        {counts.LEAVE > 0 && (
+          <Badge variant="default">{t('workers.chipLeave', { count: counts.LEAVE })}</Badge>
+        )}
         <Badge variant="muted">{t('workers.chipUnmarked', { count: counts.unmarked })}</Badge>
       </div>
 

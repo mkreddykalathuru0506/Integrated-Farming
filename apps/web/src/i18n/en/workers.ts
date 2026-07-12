@@ -30,11 +30,13 @@ export default {
   chipPresent: '{{count}} present',
   chipHalfDay: '{{count}} half-day',
   chipAbsent: '{{count}} absent',
+  chipLeave: '{{count}} on leave',
   chipUnmarked: '{{count}} unmarked',
   att: {
     PRESENT: 'Present',
     HALF_DAY: 'Half-day',
     ABSENT: 'Absent',
+    LEAVE: 'On leave',
   },
   form: {
     name: 'Worker name',

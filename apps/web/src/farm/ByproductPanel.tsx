@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useBatches, useUnits } from '../api/hooks';
 import { useByproducts, useCreateByproduct } from '../api/ops.hooks';
 import { fmtDate, fmtInr, rupeesToPaise } from '../lib/format';
+import { rupeeField } from '../lib/moneyField';
 import {
   Badge,
   Button,
@@ -48,9 +49,7 @@ const transferSchema = z.object({
   sourceBatchId: z.string(),
   quantity: z.string().refine((v) => Number(v) > 0, 'byproducts.invalidQty'),
   unit: z.string().trim().min(1, 'byproducts.unitRequired'),
-  credit: z
-    .string()
-    .refine((v) => v.trim() === '' || rupeesToPaise(v) !== null, 'byproducts.invalidCredit'),
+  credit: rupeeField('byproducts.invalidCredit', true),
 });
 type TransferValues = z.infer<typeof transferSchema>;
 

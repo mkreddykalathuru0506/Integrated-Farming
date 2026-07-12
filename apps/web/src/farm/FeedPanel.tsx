@@ -5,7 +5,15 @@ import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { Package, ShoppingCart, Soup } from 'lucide-react';
 import { useBatches } from '../api/hooks';
-import { useConsumeFeed, useCreateFeedItem, useFcr, useFeedItems, usePurchaseFeed } from '../api/finance.hooks';
+import {
+  useConsumeFeed,
+  useCreateFeedItem,
+  useCreateVendor,
+  useFcr,
+  useFeedItems,
+  usePurchaseFeed,
+  useVendors,
+} from '../api/finance.hooks';
 import { fmtInr, rupeesToPaise } from '../lib/format';
 import {
   Badge,
@@ -63,12 +71,24 @@ const addItemSchema = z.object({
 });
 type AddItemValues = z.infer<typeof addItemSchema>;
 
-const purchaseSchema = z.object({
-  feedItemId: z.string().min(1, 'feed.errItem'),
-  qty: qtyString,
-  price: paiseString('feed.errPrice'),
-  occurredAt: z.string(),
-});
+/** Sentinel option value that switches the vendor picker into quick-add mode. */
+const NEW_VENDOR = '__new__';
+
+const purchaseSchema = z
+  .object({
+    feedItemId: z.string().min(1, 'feed.errItem'),
+    qty: qtyString,
+    price: paiseString('feed.errPrice'),
+    /** '' (none) | vendor id | NEW_VENDOR (quick-add name below). */
+    vendorId: z.string(),
+    newVendorName: z.string().trim().max(160, 'feed.errVendorName'),
+    occurredAt: z.string(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.vendorId === NEW_VENDOR && v.newVendorName.trim() === '') {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['newVendorName'], message: 'feed.errVendorName' });
+    }
+  });
 type PurchaseValues = z.infer<typeof purchaseSchema>;
 
 const consumeSchema = z.object({
@@ -357,23 +377,45 @@ function PurchaseDialog({
 function PurchaseForm({ items, onDone }: { items: FeedItem[]; onDone: () => void }) {
   const { t } = useTranslation();
   const purchase = usePurchaseFeed();
+  const vendors = useVendors();
+  const createVendor = useCreateVendor();
   const {
     register,
     control,
+    watch,
     handleSubmit,
     formState: { errors },
   } = useForm<PurchaseValues>({
     resolver: zodResolver(purchaseSchema),
-    defaultValues: { feedItemId: items[0]?.id ?? '', qty: '', price: '', occurredAt: '' },
+    defaultValues: {
+      feedItemId: items[0]?.id ?? '',
+      qty: '',
+      price: '',
+      vendorId: '',
+      newVendorName: '',
+      occurredAt: '',
+    },
   });
   const err = (m?: string) => (m ? t(m) : undefined);
+  const vendorChoice = watch('vendorId');
 
-  const onSubmit = handleSubmit((v) => {
+  const onSubmit = handleSubmit(async (v) => {
+    // Quick-add path: create the vendor first, then purchase against its id.
+    let vendorId = v.vendorId && v.vendorId !== NEW_VENDOR ? v.vendorId : undefined;
+    if (v.vendorId === NEW_VENDOR) {
+      try {
+        const created = await createVendor.mutateAsync({ name: v.newVendorName.trim() });
+        vendorId = created.vendor.id;
+      } catch {
+        return; // toast already shown by useApiMutation; keep the dialog open
+      }
+    }
     purchase.mutate(
       {
         feedItemId: v.feedItemId,
         qty: Number(v.qty),
         unitPricePaise: rupeesToPaise(v.price)!, // integer-paise string passthrough
+        vendorId, // dormant API field surfaced (11.6c deferred item)
         occurredAt: v.occurredAt ? dayISO(v.occurredAt) : undefined,
       },
       { onSuccess: onDone },
@@ -409,6 +451,22 @@ function PurchaseForm({ items, onDone }: { items: FeedItem[]; onDone: () => void
           )}
         />
       </div>
+      <Field label={t('feed.vendor')} hint={t('feed.vendorHint')}>
+        <Select {...register('vendorId')}>
+          <option value="">{t('feed.vendorNone')}</option>
+          {(vendors.data ?? []).map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name}
+            </option>
+          ))}
+          <option value={NEW_VENDOR}>{t('feed.vendorNew')}</option>
+        </Select>
+      </Field>
+      {vendorChoice === NEW_VENDOR && (
+        <Field label={t('feed.vendorName')} required error={err(errors.newVendorName?.message)}>
+          <Input {...register('newVendorName')} />
+        </Field>
+      )}
       {/* Dormant API field surfaced: purchases are backdatable via occurredAt. */}
       <Field label={t('feed.occurredAt')} hint={t('feed.occurredAtHint')}>
         <Input type="date" {...register('occurredAt')} />
@@ -417,7 +475,7 @@ function PurchaseForm({ items, onDone }: { items: FeedItem[]; onDone: () => void
         <Button type="button" variant="secondary" onClick={onDone}>
           {t('common.cancel')}
         </Button>
-        <Button type="submit" loading={purchase.isPending}>
+        <Button type="submit" loading={purchase.isPending || createVendor.isPending}>
           {t('feed.buy')}
         </Button>
       </DialogFooter>

@@ -1,8 +1,7 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MyFarm } from '../auth/api';
 import { Card, CardSkeleton, cn, Sheet, SheetContent, SheetTitle, StatSkeleton, TableSkeleton } from '../ui';
-import { CommandPalette } from './CommandPalette';
 import { ErrorBoundary } from './ErrorBoundary';
 import { MobileTabBar } from './MobileTabBar';
 import { SectionTabs } from './SectionTabs';
@@ -14,6 +13,10 @@ import type { NavTarget } from './commands';
 import { permsFor, visibleSections, type Role } from './nav';
 import { panelFromPath, resolveRoute, useRoute } from './router';
 import { useHotkeys } from './useHotkeys';
+
+// The command palette (cmdk) loads on first Ctrl+K / '/' — the hotkey listener stays
+// eager, but its ~code + cmdk leaves the entry chunk (slice 11.8a bundle trim).
+const CommandPalette = lazy(() => import('./CommandPalette').then((m) => ({ default: m.CommandPalette })));
 
 type Props = {
   farms: MyFarm[];
@@ -53,6 +56,8 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
   const { pathname, navigate } = useRoute();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Mount the lazy palette only after it's first requested (keeps it out of first paint).
+  const [paletteLoaded, setPaletteLoaded] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -107,8 +112,14 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
 
   // Global shortcuts: Ctrl/Cmd+K toggle, `/` open, `?` help, g+letter section jumps.
   useHotkeys({
-    onTogglePalette: () => setPaletteOpen((o) => !o),
-    onOpenPalette: () => setPaletteOpen(true),
+    onTogglePalette: () => {
+      setPaletteLoaded(true);
+      setPaletteOpen((o) => !o);
+    },
+    onOpenPalette: () => {
+      setPaletteLoaded(true);
+      setPaletteOpen(true);
+    },
     onOpenHelp: () => setHelpOpen(true),
     onGoto: (key) => {
       if (sections.some((s) => s.key === key)) navigate(key); // hidden section = no-op
@@ -206,13 +217,17 @@ export function AppLayout({ farms, selectedId, onSelectFarm, userName, userEmail
       {/* Mobile bottom tab bar */}
       <MobileTabBar role={role} activeKey={sectionKey} navigate={navigate} onMore={() => setMobileOpen(true)} />
 
-      {/* Command palette + shortcut cheat-sheet */}
-      <CommandPalette
-        open={paletteOpen}
-        onOpenChange={setPaletteOpen}
-        role={role}
-        onNavigate={navigateTarget}
-      />
+      {/* Command palette (lazy — mounts on first open) + shortcut cheat-sheet */}
+      {paletteLoaded && (
+        <Suspense fallback={null}>
+          <CommandPalette
+            open={paletteOpen}
+            onOpenChange={setPaletteOpen}
+            role={role}
+            onNavigate={navigateTarget}
+          />
+        </Suspense>
+      )}
       <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
   );

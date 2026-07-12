@@ -4,10 +4,18 @@
  * Colocated here (not api/hooks.ts) per the sweep convention to avoid merge conflicts.
  */
 import { useQuery } from '@tanstack/react-query';
-import type { AlertLog, ColdStorage, Dashboard, FeedItem, RiskFlag } from '../farm/api';
+import type { AlertLog, ColdStorage, Dashboard, FeedItem } from '../farm/api';
 import { useApiMutation } from '../lib/useApiMutation';
 import { useFarmApi } from './FarmContext';
+import { intelInvalidation, useAckRisk, useDue, useOpenRisks, type DueRollup } from './intelligence.hooks';
 import { farmKeys } from './keys';
+
+// Canonical risk/due layer lives in intelligence.hooks.ts (slice 11.8a). Re-exported
+// here under the dashboard's historical names so its consumers keep one import site.
+export { useOpenRisks as useOpenRiskFlags, useDue as useDueRollup };
+export type { DueRollup };
+/** Dashboard-flavoured ack toast; same canonical mutation + invalidation as everywhere. */
+export const useAcknowledgeRisk = () => useAckRisk('dashboard.acked');
 
 // ---------- response shapes ----------
 
@@ -16,16 +24,6 @@ export type Onboarding = {
   steps: Record<OnboardingStepKey, { done: boolean }>;
   completedCount: number;
   total: number;
-};
-
-/** GET /api/farm/due?days=7 (the slices the dashboard renders). */
-export type DueRollup = {
-  counts: { vaccinations: number; maintenance: number; emi: number; insurance: number; tasks: number };
-  vaccinations: { batch: { id: string; code: string }; due: { id: string; vaccineName: string; ageDays: number }[] }[];
-  maintenance: { id: string; name: string; nextDueDate: string | null; asset: { name: string } }[];
-  emiDue: { id: string; lender: string; nextDueDate: string | null }[];
-  policiesExpiring: { id: string; provider: string; endDate: string }[];
-  tasksToday: { id: string; title: string }[];
 };
 
 /** GET /api/farm/finance/summary — money stays integer-paise strings on the wire. */
@@ -56,14 +54,6 @@ export function useDashboard() {
   });
 }
 
-export function useOpenRiskFlags() {
-  const { farmId, fetchJson } = useFarmApi();
-  return useQuery({
-    queryKey: farmKeys.list(farmId, 'risk', { status: 'OPEN' }),
-    queryFn: async () => (await fetchJson<{ risks: RiskFlag[] }>('/api/farm/risk?status=OPEN')).risks,
-  });
-}
-
 export function useAlerts() {
   const { farmId, fetchJson } = useFarmApi();
   return useQuery({
@@ -85,14 +75,6 @@ export function useColdStorages() {
   return useQuery({
     queryKey: farmKeys.list(farmId, 'coldstorage'),
     queryFn: async () => (await fetchJson<{ stores: ColdStorage[] }>('/api/farm/coldstorage')).stores,
-  });
-}
-
-export function useDueRollup(days = 7) {
-  const { farmId, fetchJson } = useFarmApi();
-  return useQuery({
-    queryKey: farmKeys.list(farmId, 'due', { days }),
-    queryFn: () => fetchJson<DueRollup>(`/api/farm/due?days=${days}`),
   });
 }
 
@@ -123,31 +105,33 @@ export function istMonthStart(now = new Date()): string {
 }
 
 /**
+ * "All time" fallback start when the farm's createdAt is unavailable — a fixed
+ * early FY boundary, so the query can never be permanently disabled.
+ */
+export const ALL_TIME_FROM = '2000-04-01T00:00:00+05:30';
+
+/**
  * Finance summary for a period: 'fy' = server default (current Indian FY),
- * 'month' = from the 1st of the current IST month, 'all' = from the farm's creation.
+ * 'month' = from the 1st of the current IST month, 'all' = from the farm's
+ * creation (falling back to ALL_TIME_FROM so 'all' always fetches — a missing
+ * createdAt must never leave the panel on a permanent skeleton).
  */
 export function useFinanceSummary(period: FinancePeriod, farmCreatedAt: string | undefined) {
   const { farmId, fetchJson } = useFarmApi();
-  const from = period === 'month' ? istMonthStart() : period === 'all' ? farmCreatedAt : undefined;
+  const from =
+    period === 'month'
+      ? istMonthStart()
+      : period === 'all'
+        ? new Date(farmCreatedAt ?? ALL_TIME_FROM).toISOString()
+        : undefined;
   return useQuery({
     queryKey: farmKeys.list(farmId, 'finance-summary', { period, from: from ?? null }),
     queryFn: () =>
       fetchJson<FinanceSummary>(`/api/farm/finance/summary${from ? `?from=${encodeURIComponent(from)}` : ''}`),
-    enabled: period !== 'all' || from !== undefined,
   });
 }
 
 // ---------- mutations ----------
-
-export function useAcknowledgeRisk() {
-  const { farmId, fetchJson } = useFarmApi();
-  return useApiMutation<{ risk: RiskFlag }, string>({
-    mutationFn: (id) =>
-      fetchJson(`/api/farm/risk/${encodeURIComponent(id)}/ack`, { method: 'POST', body: JSON.stringify({}) }),
-    successKey: 'dashboard.acked',
-    invalidate: [farmKeys.list(farmId, 'risk'), farmKeys.list(farmId, 'dashboard')],
-  });
-}
 
 export function useDispatchAlerts() {
   const { farmId, fetchJson } = useFarmApi();
@@ -164,10 +148,8 @@ export function useIntelligenceSweep() {
   return useApiMutation<{ dispatched: number }, void>({
     mutationFn: () => fetchJson('/api/farm/intelligence/sweep', { method: 'POST', body: JSON.stringify({}) }),
     successKey: 'dashboard.sweepDone',
-    invalidate: [
-      farmKeys.list(farmId, 'dashboard'),
-      farmKeys.list(farmId, 'risk'),
-      farmKeys.list(farmId, 'alerts'),
-    ],
+    // Canonical intel keys (risk/due/dashboard/alerts) so newly-raised flags reach
+    // the Weather panel and the bell too — not just the dashboard rollup.
+    invalidate: intelInvalidation(farmId),
   });
 }

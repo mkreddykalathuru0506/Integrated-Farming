@@ -15,7 +15,7 @@ import {
   type ScheduleRow,
   type TaskRow,
 } from '../api/daily.hooks';
-import { fmtDate } from '../lib/format';
+import { fmtDate, todayIST } from '../lib/format';
 import {
   Badge,
   Button,
@@ -50,7 +50,7 @@ const TASK_TYPES = [
 ] as const;
 const FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY'] as const;
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = () => todayIST();
 
 function shiftDate(date: string, days: number): string {
   const d = new Date(`${date}T00:00:00.000Z`);

@@ -41,13 +41,13 @@ const baseRoutes: Record<string, RouteHandler> = {
   '/api/farm/batches': () => jsonResponse(200, { batches: [] }),
 };
 
-function renderPanel() {
+function renderPanel(canAddCustomer = true) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <FarmProvider farmId="f1">
-          <OrdersPanel farmId="f1" canWrite />
+          <OrdersPanel farmId="f1" canWrite canAddCustomer={canAddCustomer} />
         </FarmProvider>
       </ToastProvider>
     </QueryClientProvider>,
@@ -98,6 +98,37 @@ describe('OrdersPanel', () => {
       lines: [{ description: 'Chicken breast', qty: 2, unit: 'kg', unitPricePaise: '25000' }],
     });
     expect(await screen.findByText('Order created')).toBeInTheDocument();
+  });
+
+  it('no-customer CTA is gated: a MANAGER (canAddCustomer=false) gets guidance, not a dead link', async () => {
+    mockFetchRoutes({
+      ...baseRoutes,
+      '/api/farm/customers': () => jsonResponse(200, { customers: [] }),
+      '/api/farm/orders': () => jsonResponse(200, { orders: [] }),
+    });
+    renderPanel(false);
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'New order' }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByText('Ask an owner or accountant to add a customer first.')).toBeInTheDocument();
+    // The dead-ending "Go to invoices" CTA must NOT render for this role.
+    expect(within(dialog).queryByRole('button', { name: 'Go to invoices' })).not.toBeInTheDocument();
+  });
+
+  it('no-customer CTA shows the invoices link for an OWNER/ACCOUNTANT (canAddCustomer=true)', async () => {
+    mockFetchRoutes({
+      ...baseRoutes,
+      '/api/farm/customers': () => jsonResponse(200, { customers: [] }),
+      '/api/farm/orders': () => jsonResponse(200, { orders: [] }),
+    });
+    renderPanel(true);
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'New order' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: 'Go to invoices' })).toBeInTheDocument();
   });
 
   it('opens the detail dialog with lines, and cancel goes through ConfirmDialog', async () => {

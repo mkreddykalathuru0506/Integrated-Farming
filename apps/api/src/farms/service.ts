@@ -9,7 +9,13 @@ import type {
   UpdateUnitInput,
 } from './schemas';
 
-type FarmRow = { id: string; name: string; state: string | null; district: string | null };
+type FarmRow = {
+  id: string;
+  name: string;
+  state: string | null;
+  district: string | null;
+  createdAt: Date;
+};
 type SettingRow = {
   timezone: string;
   currency: string;
@@ -31,7 +37,9 @@ type UnitRow = {
   createdAt: Date;
 };
 
-const FARM_SELECT = { id: true, name: true, state: true, district: true } as const;
+// createdAt is additive (slice 11.8a): the dashboard's "All time" finance
+// period starts at farm creation. Date serializes to ISO via res.json.
+const FARM_SELECT = { id: true, name: true, state: true, district: true, createdAt: true } as const;
 const UNIT_SELECT = {
   id: true,
   name: true,

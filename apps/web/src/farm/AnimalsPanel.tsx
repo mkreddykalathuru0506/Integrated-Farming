@@ -423,19 +423,33 @@ function QrDialog({
     return svg ? new XMLSerializer().serializeToString(svg) : null;
   }
 
+  // Print a small label (QR + tag + code) in a same-origin blank window.
+  // SECURITY: tag/name are user-supplied free text — they must only ever be
+  // assigned via textContent (never document.write / innerHTML), or a crafted
+  // tag like `<img onerror=…>` would execute in the app origin (token theft).
+  // Mirrors the safe pattern in ProcessingPanel's lot-label print.
   function onPrint() {
     const markup = svgMarkup();
     if (!markup || !animal) return;
     const label = animalLabel(animal);
     const win = window.open('', '_blank', 'width=420,height=520');
     if (!win) return;
-    win.document.write(
-      `<!doctype html><html><head><title>${label}</title></head>` +
-        `<body style="display:grid;place-items:center;gap:12px;font-family:sans-serif;padding:24px">` +
-        `${markup}<p style="font-size:14px;margin:0">${label}</p>` +
-        `<p style="font-size:12px;color:#555;margin:0">${animal.qrCode ?? ''}</p></body></html>`,
+    const doc = win.document;
+    doc.title = label;
+    const wrap = doc.createElement('div');
+    wrap.setAttribute(
+      'style',
+      'display:grid;place-items:center;gap:12px;font-family:sans-serif;text-align:center;padding:24px',
     );
-    win.document.close();
+    wrap.innerHTML = markup; // qrcode.react SVG output — trusted markup
+    const tag = doc.createElement('p');
+    tag.textContent = label; // user text → textContent, never parsed as HTML
+    tag.setAttribute('style', 'font-size:14px;margin:0');
+    const code = doc.createElement('p');
+    code.textContent = animal.qrCode ?? '';
+    code.setAttribute('style', 'font-size:12px;color:#555;margin:0');
+    wrap.append(tag, code);
+    doc.body.appendChild(wrap);
     win.focus();
     win.print();
   }

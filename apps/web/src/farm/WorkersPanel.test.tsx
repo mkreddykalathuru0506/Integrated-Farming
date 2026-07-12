@@ -131,4 +131,33 @@ describe('WorkersPanel (11.6a rewrite)', () => {
     // summary chip reflects the optimistic mark
     expect(screen.getByText('1 present')).toBeInTheDocument();
   });
+
+  it('renders an API-written LEAVE status correctly and counts it separately (not "unmarked")', async () => {
+    routes({
+      '/api/farm/attendance': () =>
+        jsonResponse(200, {
+          attendance: [{ id: 'att-lv', workerId: 'w1', date: '2026-07-11', status: 'LEAVE', notes: null }],
+        }),
+    });
+    // Read-only viewer path (no write buttons) so the status renders as a badge.
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <FarmProvider farmId="f1">
+            <WorkersPanel farmId="f1" canWrite={false} />
+          </FarmProvider>
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('tab', { name: 'Attendance' }));
+
+    // Translated label, not the raw 'workers.att.LEAVE' key.
+    expect(await screen.findByText('On leave')).toBeInTheDocument();
+    // Counted in its own chip, not folded into "unmarked".
+    expect(screen.getByText('1 on leave')).toBeInTheDocument();
+    expect(screen.getByText('0 unmarked')).toBeInTheDocument();
+  });
 });

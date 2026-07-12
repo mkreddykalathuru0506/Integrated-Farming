@@ -9,6 +9,8 @@ import { useBatches } from '../api/hooks';
 import { useBatchCost, useCreateExpense, useExpenses } from '../api/finance.hooks';
 import { fmtDate, fmtInr, rupeesToPaise } from '../lib/format';
 import { pathForSection } from '../components/router';
+import { LoadMore } from './LoadMore';
+import { SpaLink } from './SpaLink';
 import {
   Badge,
   Button,
@@ -68,8 +70,8 @@ export function ExpensesPanel({ canWrite }: { farmId: string; canWrite: boolean 
   );
 
   const shown = useMemo(
-    () => (catFilter ? (expenses.data ?? []).filter((e) => e.category === catFilter) : expenses.data),
-    [expenses.data, catFilter],
+    () => (catFilter ? (expenses.items ?? []).filter((e) => e.category === catFilter) : expenses.items),
+    [expenses.items, catFilter],
   );
 
   const columns: DataTableColumn<Expense>[] = [
@@ -94,14 +96,7 @@ export function ExpensesPanel({ canWrite }: { farmId: string; canWrite: boolean 
       cell: (e) => {
         if (!e.batchId) return t('expenses.farmLevel');
         const code = batchById.get(e.batchId)?.code ?? e.batchId;
-        return (
-          <a
-            href={pathForSection('livestock', 'batches')}
-            className="font-medium text-primary underline-offset-2 hover:underline"
-          >
-            {code}
-          </a>
-        );
+        return <SpaLink href={pathForSection('livestock', 'batches')}>{code}</SpaLink>;
       },
     },
     {
@@ -165,29 +160,37 @@ export function ExpensesPanel({ canWrite }: { farmId: string; canWrite: boolean 
           </Button>
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={shown}
-          isLoading={expenses.isLoading}
-          searchable
-          searchPlaceholderKey="expenses.search"
-          pageSize={10}
-          getRowId={(e) => e.id}
-          emptyState={
-            <EmptyState
-              icon={ReceiptIndianRupee}
-              title={t('expenses.empty')}
-              description={t('expenses.emptyDesc')}
-              action={
-                canWrite ? (
-                  <Button size="sm" onClick={() => setCreateOpen(true)}>
-                    {t('expenses.add')}
-                  </Button>
-                ) : undefined
-              }
-            />
-          }
-        />
+        <>
+          <DataTable
+            columns={columns}
+            data={shown}
+            isLoading={expenses.isPending}
+            searchable
+            searchPlaceholderKey="expenses.search"
+            pageSize={10}
+            getRowId={(e) => e.id}
+            emptyState={
+              <EmptyState
+                icon={ReceiptIndianRupee}
+                title={t('expenses.empty')}
+                description={t('expenses.emptyDesc')}
+                action={
+                  canWrite ? (
+                    <Button size="sm" onClick={() => setCreateOpen(true)}>
+                      {t('expenses.add')}
+                    </Button>
+                  ) : undefined
+                }
+              />
+            }
+          />
+          <LoadMore
+            shown={expenses.items?.length ?? 0}
+            total={expenses.total}
+            loading={expenses.isFetchingNextPage}
+            onLoadMore={() => void expenses.fetchNextPage()}
+          />
+        </>
       )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
