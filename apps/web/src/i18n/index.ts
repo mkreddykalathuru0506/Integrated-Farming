@@ -1,7 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { en } from './en';
-import { hi } from './hi';
 
 export const SUPPORTED_LANGS = [
   { code: 'en', label: 'EN' },
@@ -54,7 +53,32 @@ export const CORE_NS = [
   'logs',
 ] as const;
 
-export const resources = { en, hi };
+/**
+ * Only the default-active locale (en) is bundled in the entry chunk. Other locales
+ * are code-split and pulled on demand (slice 11.8a bundle trim). The parity test
+ * imports en/hi directly from their modules — not from here — so it still compares
+ * both without dragging hi into the production entry.
+ */
+const LANG_LOADERS: Record<string, () => Promise<Record<string, unknown>>> = {
+  hi: () => import('./hi').then((m) => m.hi.translation),
+};
+const loadedLangs = new Set<string>(['en']);
+
+/** Load a locale's (code-split) resource bundle into i18next once. */
+export async function loadLanguage(lng: string): Promise<void> {
+  if (loadedLangs.has(lng)) return;
+  const loader = LANG_LOADERS[lng];
+  if (!loader) return;
+  const bundle = await loader();
+  i18n.addResourceBundle(lng, 'translation', bundle, true, true);
+  loadedLangs.add(lng);
+}
+
+/** Switch language, fetching its resource bundle first (the public entry point). */
+export async function changeLanguage(lng: string): Promise<void> {
+  await loadLanguage(lng);
+  await i18n.changeLanguage(lng);
+}
 
 const LANG_KEY = 'ifm.lang';
 
@@ -81,12 +105,18 @@ function syncHtmlLang(lng: string) {
   if (typeof document !== 'undefined') document.documentElement.lang = lng;
 }
 
+const initialLang = readStoredLang() ?? 'en';
+
 void i18n.use(initReactI18next).init({
-  resources,
-  lng: readStoredLang() ?? 'en',
+  resources: { en }, // only en is bundled eagerly; others load on demand
+  lng: initialLang,
   fallbackLng: 'en',
   interpolation: { escapeValue: false },
 });
+
+// Booting straight into a non-en locale: pull its bundle in the background
+// (falls back to en for the first paint until it lands — precached for PWA).
+if (initialLang !== 'en') void loadLanguage(initialLang).then(() => i18n.changeLanguage(initialLang));
 
 syncHtmlLang(i18n.resolvedLanguage ?? 'en');
 i18n.on('languageChanged', (lng) => {

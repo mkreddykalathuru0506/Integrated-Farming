@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { resources, CORE_NS } from './i18n';
+// Import both locale bundles DIRECTLY (not via the app's lazy `resources`) so parity
+// still compares every key while hi stays code-split out of the production entry.
+import { en as enBundle } from './i18n/en';
+import { hi as hiBundle } from './i18n/hi';
+import { CORE_NS } from './i18n';
 
 /** Recursively collect dot-paths of leaf keys under an object. */
 function leafPaths(obj: Record<string, unknown>, prefix = ''): string[] {
@@ -10,8 +14,8 @@ function leafPaths(obj: Record<string, unknown>, prefix = ''): string[] {
 }
 
 describe('i18n parity — Hindi covers the core namespaces', () => {
-  const en = resources.en.translation as Record<string, Record<string, unknown>>;
-  const hi = resources.hi.translation as Record<string, Record<string, unknown>>;
+  const en = enBundle.translation as Record<string, Record<string, unknown>>;
+  const hi = hiBundle.translation as Record<string, Record<string, unknown>>;
 
   for (const ns of CORE_NS) {
     it(`hi.${ns} matches en.${ns} key-for-key`, () => {
