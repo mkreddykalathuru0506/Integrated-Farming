@@ -82,12 +82,33 @@ export function usePurchaseFeed() {
   const { farmId, fetchJson } = useFarmApi();
   return useApiMutation<
     { item: FeedItem; totalPaise: string },
-    { feedItemId: string; qty: number; unitPricePaise: string; occurredAt?: string }
+    { feedItemId: string; qty: number; unitPricePaise: string; vendorId?: string; occurredAt?: string }
   >({
     mutationFn: (data) =>
       fetchJson('/api/farm/feed/purchase', { method: 'POST', body: JSON.stringify(data) }),
     successKey: 'feed.purchased',
     invalidate: [farmKeys.list(farmId, 'feed')],
+  });
+}
+
+// ---------- vendors (feed purchase attribution) ----------
+
+export type Vendor = { id: string; name: string; gstin: string | null };
+
+export function useVendors() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useQuery({
+    queryKey: farmKeys.list(farmId, 'vendors'),
+    queryFn: async () => (await fetchJson<{ vendors: Vendor[] }>('/api/farm/vendors')).vendors,
+  });
+}
+
+export function useCreateVendor() {
+  const { farmId, fetchJson } = useFarmApi();
+  return useApiMutation<{ vendor: Vendor }, { name: string; gstin?: string; phone?: string }>({
+    mutationFn: (data) => fetchJson('/api/farm/vendors', { method: 'POST', body: JSON.stringify(data) }),
+    successKey: 'feed.vendorAdded',
+    invalidate: [farmKeys.list(farmId, 'vendors')],
   });
 }
 
