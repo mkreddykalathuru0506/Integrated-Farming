@@ -47,3 +47,4 @@ pgdata/
 
 # Claude agent worktrees (local scratch checkouts)
 .claude/worktrees/
+infra/docker/.env.localtest
